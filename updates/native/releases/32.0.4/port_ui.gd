@@ -71,6 +71,10 @@ func received(op: String,data: Dictionary):
 		operation=""
 		settings_page(data)
 		return
+	if not data.has("error") and op=="import_legacy":
+		operation=""
+		status.text="Imported "+str(data.imported)+" as "+str(data.slug)+". Original file unchanged."
+		return
 	if not data.has("error") and op=="diagnostics":
 		operation=""
 		status.text="Native diagnostics ready."
@@ -180,7 +184,6 @@ func update_scene(data: Dictionary):
 		target_ids.append("player")
 		target_choice.add_item("Self")
 		if target_choice.selected<0:target_choice.select(0)
-	var tab_index=right_tabs.get_tab_count()
 	var features=tab("Features")
 	var p=data.player
 	small_text(features,"Class: "+str(p.char_class)+"  •  Level "+str(int(p.level)))
@@ -307,6 +310,20 @@ func settings_page(data: Dictionary):
 	var footer=HBoxContainer.new();body.add_child(footer)
 	footer.add_child(button("Appearance",appearance_dialog))
 	footer.add_child(button("Diagnostics",func():send("diagnostics")))
+	footer.add_child(button("Import old save",legacy_file_picker))
+
+func legacy_file_picker():
+	var d=FileDialog.new()
+	d.title="Import a legacy character or completed campaign (copy only)"
+	d.access=FileDialog.ACCESS_FILESYSTEM
+	d.file_mode=FileDialog.FILE_MODE_OPEN_FILE
+	d.filters=PackedStringArray(["*.json ; JSON saves"])
+	add_child(d)
+	d.file_selected.connect(func(path):
+		d.queue_free()
+		send("import_legacy",{"path":path}))
+	d.canceled.connect(d.queue_free)
+	d.popup_centered_ratio(0.72)
 
 func appearance_dialog():
 	var d=ConfirmationDialog.new();d.title="Appearance"
@@ -319,7 +336,10 @@ func appearance_dialog():
 	var size=SpinBox.new();size.min_value=14;size.max_value=24;size.step=1;size.value=int(native.cfg.get("journal_size",18))
 	v.add_child(label("Journal text size",17));v.add_child(size)
 	add_child(d)
-	d.confirmed.connect(func():var args={"background":names[bg.selected],"journal_size":int(size.value)};d.queue_free();send("appearance",args))
+	d.confirmed.connect(func():
+		var args={"background":names[bg.selected],"journal_size":int(size.value)}
+		d.queue_free()
+		send("appearance",args))
 	d.canceled.connect(d.queue_free);d.popup_centered(Vector2i(460,220))
 
 func updates_page(data: Dictionary):
