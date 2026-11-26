@@ -2,27 +2,33 @@
   "schema": 1,
   "channel": "development",
   "status": "ready",
-  "version": "30.8.1",
+  "version": "30.9",
   "from_versions": [
-    "30.8"
+    "30.8",
+    "30.8.1"
   ],
-  "commit": "19ec3eca3dc427881c9f03f846ff0b78cc2be5cd",
+  "commit": "c81e3b504706414282b36a71cfee04c7b66cb4db",
   "files": [
     {
-      "path": "journal_scroll.py",
-      "remote": "updates/releases/30.8.1/journal_scroll.py",
-      "sha256": "37456f12b2312476d5adb580f485d11c004fa17b7dfed97997ad323466605b2b"
+      "path": "immersive_ui.py",
+      "remote": "updates/releases/30.9/immersive_ui.py",
+      "sha256": "bd5b76ec08616949dbef54ead57cfecd8dae1f21d0e7bb6935e01755a3b2bdbe"
     },
     {
       "path": "ui_preferences.py",
-      "remote": "updates/releases/30.8.1/ui_preferences.py",
-      "sha256": "cd439a74b42f5c941aeeb07b08eeff4327f855f92b481b597f8d5b6bc6a7c8be"
+      "remote": "updates/releases/30.9/ui_preferences.py",
+      "sha256": "95d3ec889336abf2076a731a0baf56db64473dfc2756c862c6bf7ffca38eb989"
     },
     {
       "path": "connected_update.py",
-      "remote": "updates/releases/30.8.1/connected_update.py",
-      "sha256": "cf68e9795b12bfcf2bb4d5b3c906e7efe68cd88b232d7a8e5fb05bb42d46da02"
+      "remote": "updates/releases/30.9/connected_update.py",
+      "sha256": "b29cf47310ab738d6519762e30c64303eef0bca7e05307630b53b1d6863c650a"
+    },
+    {
+      "path": "update_ui.py",
+      "remote": "updates/releases/30.9/update_ui.py",
+      "sha256": "2bd3a63f50c48fadde07991c3f920c6fb6450519e047420f5c0c2d89baa92bce"
     }
   ],
-  "notes": "Smooth journal scrolling: adventure and combat journals follow new replies after layout, and mouse wheels/trackpads scroll in small pixel steps instead of large blocks. No changes to saved games or mechanics."
+  "notes": "Illustrated surfaces, ornate gold headers and buttons, scenic character roster and Update Centre, journal auto-follow and smoother wheel movement. Includes fresh manifest checks. No changes to campaigns, credentials, prompts or mechanics."
 }
