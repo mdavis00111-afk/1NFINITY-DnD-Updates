@@ -126,6 +126,26 @@
           "sha256": "bb252ddb94302863bc1c124f558431727eadef73aa30b84700ed5d180b6a2910"
         }
       ]
+    },
+    {
+      "version": "32.0.6",
+      "from_versions": [
+        "32.0.5"
+      ],
+      "commit": "0ab62ea90f6cc4c0060c3b131650f2454a77cd28",
+      "notes": "Main menu only: removes opaque menu panel, frames existing castle artwork at right, adds gold vector dragon crest, larger fantasy navigation labels, version/update shortcut and brighter scenery. Preserves inherited navigation callbacks, other screens and engine. Windows runtime and exact artwork match not yet verified.",
+      "files": [
+        {
+          "path": "client/port_ui.gd",
+          "remote": "updates/native/releases/32.0.6/port_ui.gd",
+          "sha256": "551ce1777d29f1f7597fad7d38246135dc6477bdc74aa1b531ec77035653cd82"
+        },
+        {
+          "path": "client/release.json",
+          "remote": "updates/native/releases/32.0.6/release.json",
+          "sha256": "c4ec8f185229cb48189b0677cc5e2e88a1485b314a1fae83c0759d06dcc98e4b"
+        }
+      ]
     }
   ]
 }
