@@ -24,13 +24,13 @@ func _ready() -> void:
 	menu.custom_minimum_size.x = 380
 	menu.add_theme_constant_override("separation", 12)
 	center.add_child(menu)
-	var heading = label("1NFINITY D&D", 48, GOLD)
-	menu.add_child(heading)
-	menu.add_child(label("HYBRID IV", 16, MUTED))
-	menu.add_child(HSeparator.new())
 	check_button = menu_button("Check for Updates")
 	menu.add_child(check_button)
 	check_button.pressed.connect(check_updates)
+	menu.add_child(HSeparator.new())
+	var heading = label("1NFINITY D&D", 48, GOLD)
+	menu.add_child(heading)
+	menu.add_child(label("HYBRID IV", 16, MUTED))
 	status = label("Development build  |  v" + version, 15, MUTED)
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	menu.add_child(status)
