@@ -2,18 +2,20 @@
   "schema": 1,
   "channel": "development",
   "status": "ready",
-  "version": "30.9.1",
+  "version": "30.11",
   "from_versions": [
     "30.8",
     "30.8.1",
-    "30.9"
+    "30.9",
+    "30.9.1",
+    "30.10"
   ],
-  "commit": "7c477858f0c7724e468a29f15ffa39ec728cb98e",
+  "commit": "8375c461bec999f6e19369f1d6b6a5e73318ea51",
   "files": [
     {
       "path": "connected_update.py",
-      "remote": "updates/releases/30.9.1/connected_update.py",
-      "sha256": "d8245533fe9dcb892ce367e3368f922f6de220442259b3b147a43a1e2aed31af"
+      "remote": "updates/releases/30.11/connected_update.py",
+      "sha256": "9e5ccb62b4b08fb4d16f82f57904fdcf9f9f4e854c5b60167c42c3af03fe8763"
     },
     {
       "path": "immersive_ui.py",
@@ -31,58 +33,60 @@
       "sha256": "2bd3a63f50c48fadde07991c3f920c6fb6450519e047420f5c0c2d89baa92bce"
     }
   ],
-  "notes": "One-time incremental updater upgrade. After restarting, open Update again to install v30.10 NPC Temperament.",
-  "next": {
-    "schema": 1,
-    "channel": "development",
-    "status": "ready",
-    "version": "30.10",
-    "from_versions": [
-      "30.9.1"
-    ],
-    "commit": "7c477858f0c7724e468a29f15ffa39ec728cb98e",
-    "files": [
-      {
-        "path": "engine.py",
-        "remote": "updates/releases/30.10/engine.py.json",
-        "sha256": "a83202f3c0c83da32ff259a8b7862a355b0c5c08719f080162aa925f02e7a395",
-        "mode": "line_delta"
-      },
-      {
-        "path": "mechanics.py",
-        "remote": "updates/releases/30.10/mechanics.py.json",
-        "sha256": "0e578a30f8afe60148556a1aa24cfa09a24a8620912fe1393cb00b419e511499",
-        "mode": "line_delta"
-      },
-      {
-        "path": "schemas.py",
-        "remote": "updates/releases/30.10/schemas.py.json",
-        "sha256": "b91229dbc30fa9e817fdf2616f181120bc7593a65fb4923c34e17a235df70f8a",
-        "mode": "line_delta"
-      },
-      {
-        "path": "store.py",
-        "remote": "updates/releases/30.10/store.py.json",
-        "sha256": "daa218c5530ef5afd83c41928ca52ee12209a9189eb04854ed49ba862910b52c",
-        "mode": "line_delta"
-      },
-      {
-        "path": "lore.py",
-        "remote": "updates/releases/30.10/lore.py.json",
-        "sha256": "1d742702b8067f0c4e68ae8388f4f2db9e6f565d3ffbf0421c6cc2d73fe7ffa3",
-        "mode": "line_delta"
-      },
-      {
-        "path": "temperament.py",
-        "remote": "updates/releases/30.10/temperament.py",
-        "sha256": "bbe2df55577a856d8e592fe5613a2e6f90963d0898b79ea5b5daac86fe24efbc"
-      },
-      {
-        "path": "connected_update.py",
-        "remote": "updates/releases/30.10/connected_update.py",
-        "sha256": "aeae067d1dddf9e67e5af20ba56c92cbed70727ce96cef7d35dc93cd47455718"
-      }
-    ],
-    "notes": "Persistent role-based NPC temperament, fed into rules adjudication and narration. Existing relationships retained. First-contact narration uses the assigned profile. No change to saves or credentials."
-  }
+  "notes": "One-time cumulative updater bootstrap, including the illustrated interface and journal scrolling. Restart, then open Update once more. Future compatible missed releases install together.",
+  "releases": [
+    {
+      "schema": 1,
+      "channel": "development",
+      "status": "ready",
+      "version": "30.11.1",
+      "from_versions": [
+        "30.11"
+      ],
+      "commit": "8375c461bec999f6e19369f1d6b6a5e73318ea51",
+      "files": [
+        {
+          "path": "engine.py",
+          "remote": "updates/releases/30.10/engine.py.json",
+          "sha256": "a83202f3c0c83da32ff259a8b7862a355b0c5c08719f080162aa925f02e7a395",
+          "mode": "line_delta"
+        },
+        {
+          "path": "mechanics.py",
+          "remote": "updates/releases/30.10/mechanics.py.json",
+          "sha256": "0e578a30f8afe60148556a1aa24cfa09a24a8620912fe1393cb00b419e511499",
+          "mode": "line_delta"
+        },
+        {
+          "path": "schemas.py",
+          "remote": "updates/releases/30.10/schemas.py.json",
+          "sha256": "b91229dbc30fa9e817fdf2616f181120bc7593a65fb4923c34e17a235df70f8a",
+          "mode": "line_delta"
+        },
+        {
+          "path": "store.py",
+          "remote": "updates/releases/30.10/store.py.json",
+          "sha256": "daa218c5530ef5afd83c41928ca52ee12209a9189eb04854ed49ba862910b52c",
+          "mode": "line_delta"
+        },
+        {
+          "path": "lore.py",
+          "remote": "updates/releases/30.10/lore.py.json",
+          "sha256": "1d742702b8067f0c4e68ae8388f4f2db9e6f565d3ffbf0421c6cc2d73fe7ffa3",
+          "mode": "line_delta"
+        },
+        {
+          "path": "temperament.py",
+          "remote": "updates/releases/30.10/temperament.py",
+          "sha256": "bbe2df55577a856d8e592fe5613a2e6f90963d0898b79ea5b5daac86fe24efbc"
+        },
+        {
+          "path": "connected_update.py",
+          "remote": "updates/releases/30.11.1/connected_update.py",
+          "sha256": "e99e13a728dd280fddc83b5847740e98263c316496708067cbbe8ed513458a4f"
+        }
+      ],
+      "notes": "Complete NPC temperament release and cumulative updater. Includes persistent role-based temperaments in rules and narration. Accepts already updated temperament source files without rerolling NPCs."
+    }
+  ]
 }
