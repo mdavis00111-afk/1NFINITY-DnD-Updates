@@ -1,0 +1,1 @@
+{"base_sha256":"a089e4ef6778d68192e1c5d65681aa18c6ed75d311b3fafb1cdcfb37355e82e2","result_sha256":"8c5b322ad6261ca5f405a22cada52daba18df9ce4a6159f6236d13566eb7bb56","edits":[[130,130,"    temperament_category: str = \"\"\n    temperament_roll: int | None = Field(default=None, ge=1, le=6)\n    temperament: str = \"\"\n"]]}
