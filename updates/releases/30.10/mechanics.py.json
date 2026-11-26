@@ -1,0 +1,1 @@
+{"base_sha256":"4f3755b8078420d4d4afd9acaa7030a01ae5c36dd1604202586b17b1ae0b44de","result_sha256":"d4bea0d20f63786b159ba4fd68abff668d2b205bab2cbdc08c97f1bd4ae2ef96","edits":[[293,293,"    import temperament\n    temperament.initialise(s,npc,new=True)\n"]]}
