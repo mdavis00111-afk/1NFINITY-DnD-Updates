@@ -1,0 +1,24 @@
+{
+  "channel": "godot",
+  "version": "0.0.1",
+  "source_commit": "fd3cd1508bfb9c1fd58688115769f91088daf80d",
+  "notes": "Initial main menu and Windows developer updater. Gameplay not yet enabled.",
+  "files": [
+    {
+      "path": "project.godot",
+      "blob": "2ee92ecd1ed2423dc1740efe15d624ec7e07443d"
+    },
+    {
+      "path": "main.tscn",
+      "blob": "e31f2d10cc1c617542e2e21fc01e4bd09561e7e6"
+    },
+    {
+      "path": "version.txt",
+      "blob": "8acdd82b765e8e0b8cd8787f7f18c7fe2ec52493"
+    },
+    {
+      "path": "main.gd",
+      "blob": "645f7162a8e7cbb6734459c8d899fc399e50bc25"
+    }
+  ]
+}
