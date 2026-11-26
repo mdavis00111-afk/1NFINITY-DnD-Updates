@@ -41,6 +41,36 @@
           "sha256": "3ed97c902c94585268367f60db49f806701c52dc3b2184ab28d2e84c035aac00"
         }
       ]
+    },
+    {
+      "version": "32.0.3",
+      "from_versions": [
+        "32.0.2"
+      ],
+      "commit": "078ec3cfbd300788c5572236e2c1245f642f27aa",
+      "notes": "Native gilded UI: gold vector end caps and padded buttons, compact cinematic menu, three-column character roster, styled input and journal panels, scrollable combat sidebar. Dedicated persistent pending-dice controls call the saved engine roll directly. Adds explicit target/weapon picker, unarmed attack rolls and limited approach movement. Existing creator, saves and release history retained. Windows execution not yet tested.",
+      "files": [
+        {
+          "path": "client/combat_engine.gd",
+          "remote": "updates/native/releases/32.0.3/combat_engine.gd",
+          "sha256": "9d37e8bfee8b92b11e47840426bc2cc2fd25f84425859d33ced1e605339401cc"
+        },
+        {
+          "path": "client/visual_ui.gd",
+          "remote": "updates/native/releases/32.0.3/visual_ui.gd",
+          "sha256": "afb2e78aaf5a0f308fab8197915e4932c24da7d2b13bf0603a67dcfbfe502ae2"
+        },
+        {
+          "path": "client/main.tscn",
+          "remote": "updates/native/releases/32.0.3/main.tscn",
+          "sha256": "9607efd9d93bd2b5005954ed51a9a00895fa55bd4cdc4a2562ccd92f45e8f572"
+        },
+        {
+          "path": "client/release.json",
+          "remote": "updates/native/releases/32.0.3/release.json",
+          "sha256": "6869b6fc1c1deaa809213b09254f99981b7929d122f0c37df12d232385b60630"
+        }
+      ]
     }
   ]
 }
