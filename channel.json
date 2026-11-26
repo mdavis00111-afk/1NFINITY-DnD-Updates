@@ -1,12 +1,12 @@
 {
   "channel": "godot",
-  "version": "0.0.2",
-  "source_commit": "e8f38e602160562419f476fada33805bedef4ece",
-  "notes": "Single cover page with update button and installed version only.",
+  "version": "0.0.3",
+  "source_commit": "011d51c5b0b205dad87852c3d490de7de9d4797e",
+  "notes": "Visual update test: moved the Check for Updates button above the title. No other functionality changed.",
   "files": [
     {
       "path": "project.godot",
-      "blob": "765eb046c526f3c74542494acc04bc8ba43a8353"
+      "blob": "dde770cfb09ce87f5c0ab7eca141d618a969de5f"
     },
     {
       "path": "main.tscn",
@@ -14,11 +14,11 @@
     },
     {
       "path": "version.txt",
-      "blob": "4e379d2bfeab6461d0455bf5bbb8792845d9bbea"
+      "blob": "bcab45af15a0f1b0166daf8cbf18b17cd8649277"
     },
     {
       "path": "main.gd",
-      "blob": "a7f01db3f93e757a8093b32815f14a4f3434d2a9"
+      "blob": "067f82130aa1a82a4da994ade4bbcb0d632711e6"
     }
   ]
 }
