@@ -2,8 +2,27 @@
   "schema": 1,
   "channel": "development",
   "status": "ready",
-  "version": "30.8",
-  "from_versions": [],
-  "files": [],
-  "notes": "Connected Edition baseline. Install v30.8 once on each PC. No later patch available yet."
+  "version": "30.8.1",
+  "from_versions": [
+    "30.8"
+  ],
+  "commit": "19ec3eca3dc427881c9f03f846ff0b78cc2be5cd",
+  "files": [
+    {
+      "path": "journal_scroll.py",
+      "remote": "updates/releases/30.8.1/journal_scroll.py",
+      "sha256": "37456f12b2312476d5adb580f485d11c004fa17b7dfed97997ad323466605b2b"
+    },
+    {
+      "path": "ui_preferences.py",
+      "remote": "updates/releases/30.8.1/ui_preferences.py",
+      "sha256": "cd439a74b42f5c941aeeb07b08eeff4327f855f92b481b597f8d5b6bc6a7c8be"
+    },
+    {
+      "path": "connected_update.py",
+      "remote": "updates/releases/30.8.1/connected_update.py",
+      "sha256": "cf68e9795b12bfcf2bb4d5b3c906e7efe68cd88b232d7a8e5fb05bb42d46da02"
+    }
+  ],
+  "notes": "Smooth journal scrolling: adventure and combat journals follow new replies after layout, and mouse wheels/trackpads scroll in small pixel steps instead of large blocks. No changes to saved games or mechanics."
 }
