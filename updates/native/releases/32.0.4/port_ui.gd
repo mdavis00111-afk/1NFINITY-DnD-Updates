@@ -67,7 +67,7 @@ func received(op: String,data: Dictionary):
 		operation=""
 		campaign_cards(data)
 		return
-	if not data.has("error") and op=="appearance":
+	if not data.has("error") and (op=="appearance" or op=="save_guidance"):
 		operation=""
 		settings_page(data)
 		return
@@ -75,10 +75,16 @@ func received(op: String,data: Dictionary):
 		operation=""
 		status.text="Imported "+str(data.imported)+" as "+str(data.slug)+". Original file unchanged."
 		return
+	if not data.has("error") and op=="dm_guidance":
+		operation=""
+		guidance_dialog(data.get("guidance",{}))
+		return
 	if not data.has("error") and op=="diagnostics":
 		operation=""
 		status.text="Native diagnostics ready."
-		show_info("Native diagnostics","Version: "+str(data.version)+"\nRuntime: Godot / GDScript\nAPI configured: "+str(data.configured)+"\nModel: "+str(data.model)+"\nClass definitions: "+str(data.rules)+"\nSpell entries: "+str(data.spells)+"\nMonster entries: "+str(data.monsters)+"\nLocal storage: "+str(data.save_folder))
+		var lines: Array=[]
+		for key in data.get("checks",{}):lines.append(("PASS  " if data.checks[key] else "FAIL  ")+str(key))
+		show_info("Native diagnostics","Version: "+str(data.version)+"\nRuntime: Godot / GDScript\nAPI configured: "+str(data.configured)+"\nModel: "+str(data.model)+"\nClass definitions: "+str(data.rules)+"\nSpell entries: "+str(data.spells)+"\nMonster entries: "+str(data.monsters)+"\nLocal storage: "+str(data.save_folder)+"\n\n"+ "\n".join(lines))
 		return
 	super.received(op,data)
 
@@ -311,6 +317,34 @@ func settings_page(data: Dictionary):
 	footer.add_child(button("Appearance",appearance_dialog))
 	footer.add_child(button("Diagnostics",func():send("diagnostics")))
 	footer.add_child(button("Import old save",legacy_file_picker))
+	footer.add_child(button("DM guidance",func():send("dm_guidance")))
+
+func guidance_dialog(data: Dictionary):
+	var d=ConfirmationDialog.new()
+	d.title="Local DM guidance"
+	var v=VBoxContainer.new()
+	v.custom_minimum_size.x=650
+	d.add_child(v)
+	var editors: Dictionary={}
+	var hint=label("Optional style guidance for each layer. Core mechanical checks and JSON contracts remain enforced.",16)
+	hint.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(hint)
+	for layer in ["Interpreter","Rules Lawyer","Storyteller"]:
+		v.add_child(label(layer,18))
+		var editor=TextEdit.new()
+		editor.custom_minimum_size.y=96
+		editor.text=str(data.get(layer,""))
+		editor.wrap_mode=TextEdit.LINE_WRAPPING_BOUNDARY
+		v.add_child(editor)
+		editors[layer]=editor
+	add_child(d)
+	d.confirmed.connect(func():
+		var values: Dictionary={}
+		for layer in editors:values[layer]=editors[layer].text
+		d.queue_free()
+		send("save_guidance",values))
+	d.canceled.connect(d.queue_free)
+	d.popup_centered(Vector2i(710,510))
 
 func legacy_file_picker():
 	var d=FileDialog.new()
