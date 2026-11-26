@@ -58,8 +58,15 @@ func context(action: String) -> Dictionary:
 
 func call_ai(system: String, context: Dictionary, temperature: float=0.0) -> Dictionary:
 	var extra=""
+	var preferences=read_json(root.path_join("dm_prompts.json"),{})
+	if preferences is Dictionary:
+		for layer in ["Interpreter","Rules Lawyer","Storyteller"]:
+			if layer in system and str(preferences.get(layer,"")).strip_edges()!="":
+				extra+="\nLocal "+layer+" style guidance (does not change the response schema or mechanical rules): "+str(preferences[layer]).left(12000)
+	if not state.is_empty():
+		extra+="\nCampaign content profile: "+str(state.get("content","standard"))+". Family means non-graphic and age-appropriate; standard means ordinary fantasy adventure; mature means mature themes without graphic excess. Preserve player choices and the response schema."
 	if "Rules Lawyer" in system:
-		extra="\nAdditional optional fields on resolved social/world actions: attitude_changes {existing NPC id: -1, 0 or +1} for justified relationship changes; objects [{id,name,description}] for persistent local non-mechanical scenery; companion_join existing NPC id only for an explicit successful recruitment. An NPC's native temperament is separate from attitude. Do not force an encounter or recruit anyone automatically."
+		extra+="\nAdditional optional fields on resolved social/world actions: attitude_changes {existing NPC id: -1, 0 or +1} for justified relationship changes; objects [{id,name,description}] for persistent local non-mechanical scenery; companion_join existing NPC id only for an explicit successful recruitment. An NPC's native temperament is separate from attitude. Do not force an encounter or recruit anyone automatically."
 	return await super.call_ai(system+extra,context,temperature)
 
 func apply_world(plan: Dictionary, action: String, allow_position: bool) -> String:
@@ -163,6 +170,13 @@ func import_legacy(path: String) -> Dictionary:
 
 func dispatch(op: String,q: Dictionary) -> Dictionary:
 	if op=="import_legacy":return import_legacy(str(q.get("path","")))
+	if op=="dm_guidance":
+		return {"guidance":read_json(root.path_join("dm_prompts.json"),{})}
+	if op=="save_guidance":
+		var guidance={}
+		for layer in ["Interpreter","Rules Lawyer","Storyteller"]:guidance[layer]=str(q.get(layer,"")).left(12000)
+		if not write_json(root.path_join("dm_prompts.json"),guidance):return error("Cannot save local DM guidance.")
+		return {"connected":str(cfg.get("key",""))!="","model":cfg.get("model","gemini-3.5-flash-lite")}
 	if op=="appearance" or op=="key":
 		var backup=cfg.duplicate(true)
 		if op=="appearance":
@@ -179,7 +193,7 @@ func dispatch(op: String,q: Dictionary) -> Dictionary:
 		if not write_json(root.path_join("settings.json"),cfg):cfg=backup;return error("Settings could not be saved.")
 		return {"connected":str(cfg.get("key",""))!="","model":cfg.get("model","gemini-3.5-flash-lite")}
 	if op=="diagnostics":
-		return {"version":read_json("res://release.json",{}).get("version","unknown"),"native":true,"configured":str(cfg.get("key",""))!="","model":cfg.get("model",""),"rules":book.classes.size(),"spells":spells.size(),"monsters":monsters.size(),"save_folder":root}
+		return {"checks":native_self_checks(),"version":read_json("res://release.json",{}).get("version","unknown"),"native":true,"configured":str(cfg.get("key",""))!="","model":cfg.get("model",""),"rules":book.classes.size(),"spells":spells.size(),"monsters":monsters.size(),"save_folder":root}
 	if op=="companion_action":
 		if state.is_empty() or active!=str(q.get("slug","")) or state.combat==null or state.player.dead or state.pending_roll!=null:return error("No companion turn is pending.")
 		var cid=str(q.get("cid",""))
@@ -205,6 +219,23 @@ func dispatch(op: String,q: Dictionary) -> Dictionary:
 			return snapshot(state,active)
 		return out
 	return await super.dispatch(op,q)
+
+func native_self_checks() -> Dictionary:
+	var results: Dictionary={}
+	results["Ability modifiers"]=mod(9)==-1 and mod(18)==4
+	results["Proficiency"]=prof({"level":1})==2 and prof({"level":5})==3
+	results["Dice syntax"]=dice("2d6+2").has("total") and dice("nonsense").has("error")
+	results["Rule data"]=book.classes.size()==4 and spells.size()>0 and monsters.size()>0
+	results["NPC categories"]=role_category({"role":"merchant"})=="friendly" and role_category({"role":"bandit"})=="hostile"
+	results["Protected local saves"]=not updates.allowed("local/settings.json") and not updates.allowed("client/../../local/settings.json")
+	results["Update path"]=updates.allowed("client/port_engine.gd") and updates.newer("32.1.0","32.0.9")
+	var previous=state
+	state={"player":{"level":5},"elevations":{"player":20,"test":0}}
+	results["Vertical reach"]=not can_reach("player","test",5) and can_reach("player","test",30)
+	results["Cantrip scaling"]=spell_damage_expression(spell_info("Fire Bolt"),{"expr":"1d10"},0,0)=="2d10+0"
+	results["Fireball upcast"]=spell_damage_expression(spell_info("Fireball"),{"expr":"8d6"},0,4)=="9d6+0"
+	state=previous
+	return results
 
 func commit_action(backup: Dictionary,action: String,facts: String,seconds: int) -> Dictionary:
 	var out=finish(action,facts,seconds)
