@@ -110,6 +110,49 @@
         }
       ],
       "notes": "Fullscreen by default; F11 toggles fullscreen and Esc returns to windowed mode. Remembers your choice locally. All prior releases retained."
+    },
+    {
+      "schema": 1,
+      "channel": "development",
+      "status": "ready",
+      "version": "30.13",
+      "from_versions": [
+        "30.12"
+      ],
+      "commit": "51a637367205f72e132d4b05c88e264fda207d9a",
+      "files": [
+        {
+          "path": "app.py",
+          "remote": "updates/releases/30.13/app.py.json",
+          "sha256": "201c1ecdad5775c4ff4e4c7b2ba7f5160ebecdc620b35fcee7dc2aed5194b73a",
+          "mode": "line_delta"
+        },
+        {
+          "path": "theme.py",
+          "remote": "updates/releases/30.13/theme.py.json",
+          "sha256": "c12f9e618cd42d3cd584f781e553426dd545e8ba29854edb3293b8b5b9f86c03",
+          "mode": "line_delta"
+        },
+        {
+          "path": "wizard.py",
+          "remote": "updates/releases/30.13/wizard.py.json",
+          "sha256": "35268070a0aa3d79ae71371dfc51821ad5a306d646d880de6da24be58d0d2d46",
+          "mode": "line_delta"
+        },
+        {
+          "path": "immersive_ui.py",
+          "remote": "updates/releases/30.13/immersive_ui.py.json",
+          "sha256": "94c3af0638bae1e5b64dfc1cb8c4f4140cc36601db93ae75e38dda06f8da7cd9",
+          "mode": "line_delta"
+        },
+        {
+          "path": "connected_update.py",
+          "remote": "updates/releases/30.13/connected_update.py",
+          "sha256": "c43a89f6ac6786e5fbf17e73f538ed62a85a17d1dd83a146b2bd533e36895039",
+          "mode": "full"
+        }
+      ],
+      "notes": "Interface correction: remove repeated nested scenery, use readable dark teal surfaces, wider padded buttons, simplified gold trim, compact character creation and laptop sizing, two-column gameplay tabs, and illustrated New Adventure choices. Gameplay and saves unchanged."
     }
   ]
 }
