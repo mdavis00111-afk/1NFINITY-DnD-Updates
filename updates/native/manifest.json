@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "edition": "native-godot",
+  "releases": [
+    {
+      "version": "32.0.1",
+      "from_versions": [
+        "32.0.0"
+      ],
+      "commit": "923be4fcb72b12927d19b953e9baf9012d5e7cec",
+      "notes": "Native GDScript alpha: title-screen connection marker. Tests the separate Godot-native update channel; no mechanics or local save changes.",
+      "files": [
+        {
+          "path": "client/release.json",
+          "remote": "updates/native/releases/32.0.1/release.json",
+          "sha256": "7e0bdb8a5f25a458ed035e6ede55d8651a99a4be9c40a5e3825ddd8934b27749"
+        }
+      ]
+    }
+  ]
+}
