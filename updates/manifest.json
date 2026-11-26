@@ -1,8 +1,9 @@
 {
   "schema": 1,
   "channel": "development",
-  "status": "initializing",
-  "version": "30.7",
-  "patches": [],
-  "notes": "Update channel initialized. No installable update yet."
+  "status": "ready",
+  "version": "30.8",
+  "from_versions": [],
+  "files": [],
+  "notes": "Connected Edition baseline. Install v30.8 once on each PC. No later patch available yet."
 }
