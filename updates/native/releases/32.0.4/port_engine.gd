@@ -3,7 +3,7 @@ extends "res://combat_engine.gd"
 const HEAL_DICE={"Cure Wounds":8,"Healing Word":4,"Mass Cure Wounds":8,"Mass Healing Word":4,"Prayer of Healing":8}
 const AREA_SPELLS=["Sleep","Acid Splash","Burning Hands","Cone of Cold","Fireball","Flame Strike","Ice Storm","Lightning Bolt","Shatter","Thunderwave","Mass Cure Wounds","Mass Healing Word","Prayer of Healing"]
 const UPCAST={"Burning Hands":[1],"Cone of Cold":[1],"Fireball":[1],"Guiding Bolt":[1],"Inflict Wounds":[1],"Ice Storm":[1,0],"Lightning Bolt":[1],"Shatter":[1],"Thunderwave":[1]}
-const TIMED={"Mage Armor":28800,"Comprehend Languages":3600,"Detect Magic":600,"Guidance":60}
+const TIMED={"Mage Armor":28800,"Comprehend Languages":3600,"Detect Magic":600}
 const TEMPERAMENTS={
 	"good":["kind","kind","compassionate","compassionate","generous","exceptionally benevolent"],
 	"friendly":["neutral","polite","pleasant","friendly","warm","exceptionally welcoming"],
@@ -22,7 +22,7 @@ func role_category(n: Dictionary) -> String:
 	return "neutral"
 
 func record_temperament(n: Dictionary, fresh: bool):
-	if n.has("temperament_roll"): return
+	if int(n.get("temperament_roll",0) if n.get("temperament_roll")!=null else 0) in [1,2,3,4,5,6]: return
 	var group=role_category(n)
 	var seed=(str(state.get("campaign_name",""))+"|"+str(state.get("player",{}).get("name",""))+"|"+str(n.id)).sha256_text()
 	var result=1+posmod(seed.left(7).hex_to_int(),6)
@@ -63,7 +63,12 @@ func call_ai(system: String, context: Dictionary, temperature: float=0.0) -> Dic
 	return await super.call_ai(system+extra,context,temperature)
 
 func apply_world(plan: Dictionary, action: String, allow_position: bool) -> String:
+	var previous=str(state.location)
 	var result=super.apply_world(plan,action,allow_position)
+	if previous!=str(state.location):
+		for id in state.npcs:
+			var companion=state.npcs[id]
+			if companion.get("companion",false) and not companion.dead and companion.location==previous:companion.location=state.location
 	var changes=plan.get("attitude_changes",{})
 	if changes is Dictionary:
 		for id in changes:
@@ -90,7 +95,89 @@ func apply_world(plan: Dictionary, action: String, allow_position: bool) -> Stri
 			n.companion=true;n.combat_control="assisted"
 	return result
 
+func snapshot(s: Dictionary,id: String) -> Dictionary:
+	var out=super.snapshot(s,id)
+	out.effects=s.get("effects",[])
+	return out
+
+func legacy_player(p: Dictionary) -> bool:
+	for key in ["name","race","char_class","background","level","hp","max_hp","ac","gold","attributes","inventory","equipped","slots","cantrips","spellbook","prepared","skill_profs","save_profs","expertise","conditions","used_features","speed"]:
+		if not p.has(key):return false
+	if not book.classes.has(str(p.char_class)) or not book.races.has(str(p.race)) or not book.backgrounds.has(str(p.background)):return false
+	if not p.attributes is Dictionary or not p.equipped is Dictionary:return false
+	for a in ATTRS:
+		if not p.attributes.has(a) or not (p.attributes[a] is int or p.attributes[a] is float):return false
+	for key in ["inventory","slots","cantrips","spellbook","prepared","skill_profs","save_profs","expertise","conditions","used_features"]:
+		if not p[key] is Array:return false
+	if int(p.hp)<0 or int(p.max_hp)<1 or int(p.hp)>int(p.max_hp) or int(p.level)<1 or int(p.level)>20:return false
+	for item_data in p.inventory:
+		if not item_data is Dictionary or not item_data.has("name") or not item_data.has("qty") or not item_data.has("place") or not item_data.has("weight_lb"):return false
+	for slot in p.slots:
+		if not slot is Dictionary or not slot.has("level") or not slot.has("used") or not slot.has("total") or int(slot.used)<0 or int(slot.used)>int(slot.total):return false
+	for name in p.cantrips+p.spellbook+p.prepared:
+		if spell_info(str(name)).is_empty():return false
+	p.dead=bool(p.get("dead",false)) or int(p.hp)==0
+	if p.dead:p.hp=0
+	for key in ["description","gender","portrait","fighting_style"]:
+		if not p.has(key):p[key]=""
+	for key in ["traits","languages","tool_profs"]:
+		if not p.has(key):p[key]=[]
+	if not p.has("hit_dice_spent"):p.hit_dice_spent=0
+	if not p.has("xp"):p.xp=0
+	return true
+
+func import_legacy(path: String) -> Dictionary:
+	if not path.to_lower().ends_with(".json") or not FileAccess.file_exists(path):return error("Choose an existing JSON save file.")
+	var f=FileAccess.open(path,FileAccess.READ)
+	if f==null:return error("Cannot open source save.")
+	if f.get_length()>16*1024*1024:f.close();return error("Source exceeds 16 MB.")
+	var raw=JSON.parse_string(f.get_as_text());f.close()
+	if not raw is Dictionary:return error("Not a recognised JSON save.")
+	if raw.has("player"):
+		if raw.get("pending_roll")!=null or raw.get("combat")!=null or raw.get("narration_retry")!=null or not raw.get("effects",[]).is_empty():return error("Finish combat, pending rolls and active effects in the old game before importing.")
+		var p=raw.player
+		if not p is Dictionary or not legacy_player(p):return error("Unsupported legacy character.")
+		for key in ["campaign_name","world_seconds","places","npcs","location","history","opened","turn"]:
+			if not raw.has(key):return error("Legacy save missing "+key+".")
+		if not raw.places is Dictionary or not raw.npcs is Dictionary or not raw.history is Array:return error("Unsupported legacy world data.")
+		for id in raw.npcs:
+			var n=raw.npcs[id]
+			if not n is Dictionary or not safe_id(str(id)) or str(n.get("id",""))!=str(id) or n.get("hp")==null or n.get("max_hp")==null or n.get("ac")==null or not monsters.has(str(n.get("monster","")).to_lower()):return error("Legacy NPC has unresolved statistics: "+str(id))
+		var converted=new_state(p,str(raw.campaign_name),str(raw.get("starting_place","City")),str(raw.get("content","standard")))
+		for key in converted:
+			if key in raw and key not in ["native_schema","schema_version","pending_roll","combat","effects","narration_retry"]:converted[key]=raw[key]
+		converted.native_schema=1
+		converted.schema_version=2
+		if converted.journal.is_empty():
+			for entry in converted.history:
+				if entry is Dictionary:converted.journal.append({"action":str(entry.get("player_input","")),"result":str(entry.get("outcome",""))})
+		if converted.journal.is_empty() and str(converted.last_narration)!="":converted.journal.append({"action":"","result":str(converted.last_narration)})
+		if raw.get("last_long_rest")!=null:converted.player.last_long_rest=int(raw.last_long_rest)
+		var id=unique_id(str(converted.campaign_name),root.path_join("saves"),"/state.json")
+		if not write_json(campaign_path(id),converted):return error("Could not write the imported copy.")
+		return {"imported":"campaign","slug":id}
+	if not legacy_player(raw):return error("Unrecognised or unsupported character file.")
+	var id=unique_id(str(raw.name),root.path_join("characters"),".json")
+	if not write_json(character_path(id),raw):return error("Could not write imported character.")
+	return {"imported":"character","slug":id}
+
 func dispatch(op: String,q: Dictionary) -> Dictionary:
+	if op=="import_legacy":return import_legacy(str(q.get("path","")))
+	if op=="appearance" or op=="key":
+		var backup=cfg.duplicate(true)
+		if op=="appearance":
+			var bg=str(q.get("background","varied"))
+			if not bg in ["varied","castle","forest","lake","ruins"]:return error("Unknown background.")
+			cfg.background=bg;cfg.journal_size=clampi(int(q.get("journal_size",18)),14,24)
+		else:
+			var key=str(q.get("key","")).strip_edges()
+			var model=str(q.get("model","")).strip_edges()
+			if model=="":return error("Enter a model name.")
+			if key!="":cfg.key=key
+			if str(cfg.get("key",""))=="":return error("Enter a Gemini key.")
+			cfg.model=model
+		if not write_json(root.path_join("settings.json"),cfg):cfg=backup;return error("Settings could not be saved.")
+		return {"connected":str(cfg.get("key",""))!="","model":cfg.get("model","gemini-3.5-flash-lite")}
 	if op=="diagnostics":
 		return {"version":read_json("res://release.json",{}).get("version","unknown"),"native":true,"configured":str(cfg.get("key",""))!="","model":cfg.get("model",""),"rules":book.classes.size(),"spells":spells.size(),"monsters":monsters.size(),"save_folder":root}
 	if op=="companion_action":
@@ -177,7 +264,12 @@ func adjudicate(action: String,opening: bool=false) -> Dictionary:
 	if opening:return await super.adjudicate(action,true)
 	if state.player.dead or state.pending_roll!=null:return error("Finish the current action first.")
 	if state.combat!=null and (str(state.combat.get("awaiting_companion",""))!="" or str(state.combat.initiative[int(state.combat.turn)])!="player"):return error("It is not your turn.")
-	if incapacitated(state.player):return error("You are incapacitated. Use End turn to let time pass.") if action.to_lower().strip_edges()!="i end my turn" else commit_action(state.duplicate(true),action,enemy_turns(true),6)
+	if incapacitated(state.player):
+		var incapacitated_action=action.to_lower().strip_edges()
+		if incapacitated_action=="i end my turn" and state.combat!=null:return commit_action(state.duplicate(true),action,enemy_turns(true),6)
+		if incapacitated_action.begins_with("i wait") and state.combat==null:
+			return commit_action(state.duplicate(true),action,"Time passes while you are incapacitated.",wait_seconds(action))
+		return error("You are incapacitated. End your turn or wait outside combat.")
 	var low=action.to_lower().strip_edges()
 	if low.begins_with("i take a short rest") or low.begins_with("short rest"):
 		if "recover" in low:return arcane_rest(action)
@@ -455,6 +547,7 @@ func resolve_pending() -> Dictionary:
 			for component in components:total+=typed_damage(id,floori(int(component.total)/2.0) if half else int(component.total),str(component.type))
 			facts.append(damage_actor(id,total))
 	if pool>=0:state.player.slots[pool].used=int(state.player.slots[pool].used)+1
+	expire_effects(int(state.world_seconds))
 	if pending.bonus_action:spend_bonus()
 	state.pending_roll=null
 	var living: Array=[]
@@ -466,7 +559,17 @@ func resolve_pending() -> Dictionary:
 	elif state.combat!=null and not pending.bonus_action:facts.append(enemy_turns(true))
 	end_if_finished()
 	var advance=600 if pending.ritual or name=="Prayer of Healing" else 0 if pending.bonus_action and state.combat!=null else 6
-	return commit_action(backup,action,"\n".join(facts),advance)
+	var resolved=commit_action(backup,action,"\n".join(facts),advance)
+	if resolved.has("error"):return resolved
+	var narration=await narrator(action,"\n".join(facts))
+	if narration!="\n".join(facts):
+		state.last_narration=narration
+		state.journal[-1].result="\n".join(facts)+"\n\n"+narration
+		state.history[-1].outcome=state.journal[-1].result.left(2000)
+		save_state()
+		resolved=snapshot(state,active)
+		resolved.result=state.journal[-1].result
+	return resolved
 
 func begin_combat(ids: Array) -> String:
 	if state.combat!=null:return ""
@@ -555,7 +658,7 @@ func enemy_turns(advance_player: bool) -> String:
 					c.zones[id]="engaged";selected=attack;break
 				if attack.get("ranged",false):
 					var rd=attack.get("range")
-					if rd is Array and not rd.is_empty() and can_reach(id,"player",int(rd[0])):selected=attack
+					if rd is Array and not rd.is_empty() and can_reach(id,"player",int(rd[0])) and int({"engaged":5,"near":30,"far":60}.get(c.zones.get(id,"near"),60))<=int(rd[0]):selected=attack
 			if selected.is_empty():lines.append(str(n.name)+" cannot make a confirmed attack from its position.")
 			else:
 				var adv="disadvantage" if c.player_dodging else "normal"
@@ -568,7 +671,7 @@ func retreat(action: String,low: String) -> Dictionary:
 	var c=state.combat
 	var backup=state.duplicate(true)
 	if int(c.get("movement_round",0))==int(c.round):return error("Movement already used this round.")
-	if int(state.player.speed)<25:return error("Insufficient movement to leave the current distance zone.")
+	if int(state.player.speed)*(2 if low=="i dash away" else 1)<25:return error("Insufficient movement to leave the current distance zone.")
 	for condition in state.player.conditions:
 		if str(condition).to_lower() in ["grappled","restrained","paralyzed","stunned","unconscious"]:return error("Your condition prevents movement.")
 	var lines: Array=[]
