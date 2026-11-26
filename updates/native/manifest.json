@@ -16,6 +16,31 @@
           "sha256": "7e0bdb8a5f25a458ed035e6ede55d8651a99a4be9c40a5e3825ddd8934b27749"
         }
       ]
+    },
+    {
+      "version": "32.0.2",
+      "from_versions": [
+        "32.0.1"
+      ],
+      "commit": "c4fc2a036e1bbdc4cc1a3a4be9c4946783574793",
+      "notes": "Four-stage native character creator: identity, abilities and skills, equipment, spellbook. Class-aware capped checkbox choices, racial bonuses, standard array and point buy, kit previews, portrait, character summary, fixed navigation. Centered settings and opaque input controls. Native mechanics unchanged; rolled attributes and gold purchase not yet ported.",
+      "files": [
+        {
+          "path": "client/character_ui.gd",
+          "remote": "updates/native/releases/32.0.2/character_ui.gd",
+          "sha256": "5d134747a24c447a494952bb471f79e93c1cb56c65a81c1310c640b8c0163c45"
+        },
+        {
+          "path": "client/main.tscn",
+          "remote": "updates/native/releases/32.0.2/main.tscn",
+          "sha256": "054b38b029bd0306577e1c1c7d236d43522b01083169db5048b82e750c71b626"
+        },
+        {
+          "path": "client/release.json",
+          "remote": "updates/native/releases/32.0.2/release.json",
+          "sha256": "3ed97c902c94585268367f60db49f806701c52dc3b2184ab28d2e84c035aac00"
+        }
+      ]
     }
   ]
 }
