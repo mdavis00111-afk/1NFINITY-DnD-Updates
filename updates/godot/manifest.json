@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "edition": "godot",
+  "releases": [
+    {
+      "version": "31.1.1",
+      "from_versions": [
+        "31.1"
+      ],
+      "commit": "40eb4eb33fa2ab31d1d9d43211a02ec1783b8f2b",
+      "notes": "First connected Godot maintenance release. Updates the title-screen edition label to confirm the separate update channel and restart path. No game or save changes.",
+      "files": [
+        {
+          "path": "client/release.json",
+          "remote": "updates/godot/releases/31.1.1/release.json",
+          "sha256": "caccb690fa9805a57e3d5f4473010ca3a2020d183baefdc0799d77191d55bebd"
+        }
+      ]
+    }
+  ]
+}
