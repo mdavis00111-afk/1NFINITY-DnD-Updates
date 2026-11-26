@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "channel": "development",
+  "status": "initializing",
+  "version": "30.7",
+  "patches": [],
+  "notes": "Update channel initialized. No installable update yet."
+}
