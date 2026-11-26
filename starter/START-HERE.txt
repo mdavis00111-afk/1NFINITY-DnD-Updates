@@ -1,0 +1,18 @@
+1NFINITY D&D | Hybrid IV | v0.0.1 foundation
+
+1. Extract the entire ZIP into a normal writable folder (not Program Files).
+2. Double-click Launch.cmd. On first run it downloads the current game source
+   from the public hybrid4-godot branch, verifies each file against GitHub's
+   Git blob hash, and runs the included Godot executable. Internet required.
+3. Use Check for Updates in the main menu. Confirm newer versions to install.
+   The launcher closes the game, stages files and restarts it.
+4. If needed, close the game and double-click Rollback.cmd to swap to the
+   previous installed game payload. The launcher log records errors.
+
+New/Continue/Load Campaign and Settings are intentionally disabled in v0.0.1.
+Godot user:// is outside the install folder; never put saves or API keys in game/.
+This development package uses the user-supplied Godot.exe, not a native export.
+The updater replaces game/ only, not the Godot executable or launcher itself.
+No signature verification is implemented; trust the repository owner and HTTPS.
+Windows runtime and live update have not been tested in the build environment.
+Source: https://github.com/mdavis00111-afk/1NFINITY-DnD-Updates/tree/hybrid4-godot
