@@ -170,6 +170,7 @@ func import_legacy(path: String) -> Dictionary:
 
 func dispatch(op: String,q: Dictionary) -> Dictionary:
 	if op=="import_legacy":return import_legacy(str(q.get("path","")))
+	if op=="approach":return approach_target(q)
 	if op=="dm_guidance":
 		return {"guidance":read_json(root.path_join("dm_prompts.json"),{})}
 	if op=="save_guidance":
@@ -220,7 +221,28 @@ func dispatch(op: String,q: Dictionary) -> Dictionary:
 		return out
 	return await super.dispatch(op,q)
 
+func approach_target(q: Dictionary) -> Dictionary:
+	if state.is_empty() or active!=str(q.get("slug","")) or state.combat==null or state.player.dead or state.pending_roll!=null:return error("No movement action available.")
+	var c=state.combat
+	if str(c.initiative[int(c.turn)])!="player" or str(c.get("awaiting_companion",""))!="":return error("Wait for your turn.")
+	if int(c.get("movement_round",0))==int(c.round):return error("Movement already used this round.")
+	if incapacitated(state.player):return error("You cannot move.")
+	for condition in state.player.conditions:
+		if str(condition).to_lower() in ["grappled","restrained"]:return error("Your condition prevents movement.")
+	var id=str(q.get("target",""))
+	if not c.zones.has(id) or actor(id).get("dead",true):return error("Choose a living enemy.")
+	var zone=str(c.zones[id])
+	if zone=="engaged":return error("Already in melee reach.")
+	if not can_reach("player",id,5):return error("Cannot approach across the recorded elevation difference.")
+	var speed=int(state.player.speed)
+	if speed<25:return error("Insufficient movement to cross the current distance zone.")
+	var backup=state.duplicate(true)
+	c.zones[id]="engaged" if zone=="near" or speed>=55 else "near"
+	c.movement_round=int(c.round)
+	return commit_action(backup,"I approach "+str(actor(id).name),"You move "+("into melee reach of " if c.zones[id]=="engaged" else "nearer to ")+str(actor(id).name)+". Your action remains available.",0)
+
 func native_self_checks() -> Dictionary:
+	var saved_rng=rng.state
 	var results: Dictionary={}
 	results["Ability modifiers"]=mod(9)==-1 and mod(18)==4
 	results["Proficiency"]=prof({"level":1})==2 and prof({"level":5})==3
@@ -235,6 +257,7 @@ func native_self_checks() -> Dictionary:
 	results["Cantrip scaling"]=spell_damage_expression(spell_info("Fire Bolt"),{"expr":"1d10"},0,0)=="2d10+0"
 	results["Fireball upcast"]=spell_damage_expression(spell_info("Fireball"),{"expr":"8d6"},0,4)=="9d6+0"
 	state=previous
+	rng.state=saved_rng
 	return results
 
 func commit_action(backup: Dictionary,action: String,facts: String,seconds: int) -> Dictionary:
@@ -365,6 +388,7 @@ func port_spell(action: String,sp: Dictionary) -> Dictionary:
 	if name=="Prayer of Healing" and state.combat!=null:return error("This spell takes ten minutes to cast.")
 	var bonus_action="bonus action" in str(sp.casting_time)
 	if bonus_action and not bonus_available():return error("Bonus action already spent.")
+	if state.combat!=null and int(state.combat.get("bonus_spell_round",0))==int(state.combat.round) and base_level>0:return error("After a bonus-action spell, only an action cantrip may be cast this turn.")
 	var slot_level=base_level
 	var re=RegEx.new();re.compile("(?i)(?:at|using|with) (?:a )?(?:level ([1-9])|([1-9])(?:st|nd|rd|th)[ -]level)")
 	var chosen=re.search(action)
@@ -579,7 +603,9 @@ func resolve_pending() -> Dictionary:
 			facts.append(damage_actor(id,total))
 	if pool>=0:state.player.slots[pool].used=int(state.player.slots[pool].used)+1
 	expire_effects(int(state.world_seconds))
-	if pending.bonus_action:spend_bonus()
+	if pending.bonus_action:
+		spend_bonus()
+		if state.combat!=null:state.combat.bonus_spell_round=int(state.combat.round)
 	state.pending_roll=null
 	var living: Array=[]
 	for id in hostile:
