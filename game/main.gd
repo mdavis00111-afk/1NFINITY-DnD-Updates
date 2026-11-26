@@ -26,18 +26,11 @@ func _ready() -> void:
 	center.add_child(menu)
 	var heading = label("1NFINITY D&D", 48, GOLD)
 	menu.add_child(heading)
-	menu.add_child(label("FANTASY SANDBOX  /  HYBRID IV", 16, MUTED))
+	menu.add_child(label("HYBRID IV", 16, MUTED))
 	menu.add_child(HSeparator.new())
-	for caption in ["New Campaign", "Continue Campaign", "Load Campaign", "Settings"]:
-		var b = menu_button(caption)
-		b.disabled = true
-		menu.add_child(b)
 	check_button = menu_button("Check for Updates")
 	menu.add_child(check_button)
 	check_button.pressed.connect(check_updates)
-	var exit_button = menu_button("Exit Game")
-	menu.add_child(exit_button)
-	exit_button.pressed.connect(func(): get_tree().quit())
 	status = label("Development build  |  v" + version, 15, MUTED)
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	menu.add_child(status)
