@@ -1,0 +1,1 @@
+{"base_sha256":"dde49c91a0916ce105c834ad753a22df07252e53191ff1cca5c27c8f4922fa36","result_sha256":"8c31976d7b4c8fcbe9946355cdc0d4080d45311e3c6ededa60cf2e850b34130d","edits":[[21,21,"    import temperament\n"],[22,22,"        temperament.initialise(state,n)\n"],[23,23,"        blob += \"; \" + temperament.line(n)\n"]]}
