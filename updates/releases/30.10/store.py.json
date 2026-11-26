@@ -1,1 +1,0 @@
-{"base_sha256":"b405d3de1fca7218c0caad9313e1910f1b6c189886010f03d5477d4fb6e6f0c8","result_sha256":"2a3ae4fb2afcd9267be6f3548dc72743f0eb0982acfcc788bab0fbfdc2d46102","edits":[[79,80,"        import mortality, temperament\n        for npc in state.npcs.values():temperament.initialise(state,npc)\n"]]}
