@@ -101,6 +101,31 @@
           "sha256": "3750cc20cd49758d937be0f77c42d989fd929894acebdd9fc98394cffc719a82"
         }
       ]
+    },
+    {
+      "version": "32.0.5",
+      "from_versions": [
+        "32.0.4"
+      ],
+      "commit": "5cd8efffb079d9e3fc67f1669a04e4d184430704",
+      "notes": "Settings → DM prompts & content: editable shared DO/DON'T lists, Family/Standard/Mature narration profiles and per-layer guidance. Saves locally in dm_prompts.json, preserves existing guidance, applies on subsequent AI requests; native mechanics, provider safeguards and API configuration unchanged. Windows execution not yet tested.",
+      "files": [
+        {
+          "path": "client/port_engine.gd",
+          "remote": "updates/native/releases/32.0.5/port_engine.gd",
+          "sha256": "e35b46b66b80d980452839edca7cc1acd705b59a6fd32e86344a22265858ba4b"
+        },
+        {
+          "path": "client/port_ui.gd",
+          "remote": "updates/native/releases/32.0.5/port_ui.gd",
+          "sha256": "dd68ef9a88397fb2b59f2f272421785af5a578c6637e4a5db3a9b6b545ac53fd"
+        },
+        {
+          "path": "client/release.json",
+          "remote": "updates/native/releases/32.0.5/release.json",
+          "sha256": "bb252ddb94302863bc1c124f558431727eadef73aa30b84700ed5d180b6a2910"
+        }
+      ]
     }
   ]
 }
