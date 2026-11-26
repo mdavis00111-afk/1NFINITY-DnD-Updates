@@ -202,6 +202,31 @@
         }
       ],
       "notes": "Physical continuity: persistent vertical positions, enemy melee reach checks before rolls, conservative aimed-attack roll validation, authoritative character gender/pronouns, bounded waiting and event interruption. Earlier releases retained. Existing saves migrate with optional position fields. No automatic resurrection; full line-of-sight, movement and surprise adjudication still depend on the DM."
+    },
+    {
+      "schema": 1,
+      "channel": "development",
+      "status": "ready",
+      "version": "30.15",
+      "from_versions": [
+        "30.14"
+      ],
+      "commit": "ac234300161b3316d149e762b95dc9432c33d5c3",
+      "files": [
+        {
+          "path": "connected_update.py",
+          "remote": "updates/releases/30.15/connected_update.py",
+          "sha256": "783c04064d40f4896b06cfffd966e667e7ddc17648d9526350836aafa97cd2b0",
+          "mode": "full"
+        },
+        {
+          "path": "update_ui.py",
+          "remote": "updates/releases/30.15/update_ui.py",
+          "sha256": "e966398e618d149acd3196648429bbc30cb83f11878178d7428eb41a93d294ea",
+          "mode": "full"
+        }
+      ],
+      "notes": "Select compatible versions in Update Centre; refresh without installing. No gameplay changes."
     }
   ]
 }
