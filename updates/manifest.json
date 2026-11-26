@@ -87,6 +87,29 @@
         }
       ],
       "notes": "Complete NPC temperament release and cumulative updater. Includes persistent role-based temperaments in rules and narration. Accepts already updated temperament source files without rerolling NPCs."
+    },
+    {
+      "schema": 1,
+      "channel": "development",
+      "status": "ready",
+      "version": "30.12",
+      "from_versions": [
+        "30.11.1"
+      ],
+      "commit": "1e7ecf919139c5dd9fe00a5743cdc17f8a6fe7a8",
+      "files": [
+        {
+          "path": "ui_preferences.py",
+          "remote": "updates/releases/30.12/ui_preferences.py",
+          "sha256": "d85d8dfca97a9abcba9e02e64932d1c1e7d054707f4b454a31aa0163446c41cd"
+        },
+        {
+          "path": "connected_update.py",
+          "remote": "updates/releases/30.12/connected_update.py",
+          "sha256": "e686ab87ecaddac3c27ef589b29acaecba3b27918e087d39014fbe860ad1c63f"
+        }
+      ],
+      "notes": "Fullscreen by default; F11 toggles fullscreen and Esc returns to windowed mode. Remembers your choice locally. All prior releases retained."
     }
   ]
 }
