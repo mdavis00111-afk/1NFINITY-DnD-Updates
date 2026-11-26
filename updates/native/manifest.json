@@ -71,6 +71,36 @@
           "sha256": "6869b6fc1c1deaa809213b09254f99981b7929d122f0c37df12d232385b60630"
         }
       ]
+    },
+    {
+      "version": "32.0.4",
+      "from_versions": [
+        "32.0.3"
+      ],
+      "commit": "412dad92e0fef0953efdf0b45e87f602930f1d41",
+      "notes": "Expanded native port preview: distance-zone movement and opportunity attacks, short/long rests, Second Wind and limited Arcane Recovery, healing, area damage, Sleep, selected utility spells, upcasting and rituals with saved resolution, NPC role temperaments and relevant memory, recruitment and basic companion combat, spell/rest pickers, compact combat and campaign cards, dice animation, appearance settings, local DM guidance, diagnostics and copy-only compatible legacy import. Experimental: full 5e feature parity and Windows execution not yet verified.",
+      "files": [
+        {
+          "path": "client/port_engine.gd",
+          "remote": "updates/native/releases/32.0.4/port_engine.gd",
+          "sha256": "820aece25bd24e687dcf167815b9b3a4ab7191cdf2a6598c1cba74e05f0a57d2"
+        },
+        {
+          "path": "client/port_ui.gd",
+          "remote": "updates/native/releases/32.0.4/port_ui.gd",
+          "sha256": "5b9740b9ce8c5f57f976915cce85262a352c01876cec74c1cd4cf357027dae3d"
+        },
+        {
+          "path": "client/main.tscn",
+          "remote": "updates/native/releases/32.0.4/main.tscn",
+          "sha256": "d180a6258dd57bfe7b23c599f1c959ffc6efbc6e68cf179436885658c52444f5"
+        },
+        {
+          "path": "client/release.json",
+          "remote": "updates/native/releases/32.0.4/release.json",
+          "sha256": "3750cc20cd49758d937be0f77c42d989fd929894acebdd9fc98394cffc719a82"
+        }
+      ]
     }
   ]
 }
