@@ -41,6 +41,7 @@ func set_backdrop(kind: String):
 	if is_instance_valid(native):preferred=str(native.cfg.get("background","varied"))
 	super.set_backdrop(kind if preferred=="varied" else preferred)
 	backdrop.modulate=Color(0.86,0.86,0.86,1)
+	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	backdrop.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	for child in get_children():
 		if child is ColorRect:
@@ -61,6 +62,8 @@ func menu():
 	col.add_theme_constant_override("separation",9)
 	backdrop.texture=load("res://art/castle.jpg")
 	backdrop.modulate=Color.WHITE
+	backdrop.anchor_left=0.38
+	backdrop.offset_left=0
 	for child in get_children():
 		if child is ColorRect:
 			child.color=Color(0.015,0.045,0.06,0.12)
