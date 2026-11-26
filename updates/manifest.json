@@ -153,6 +153,55 @@
         }
       ],
       "notes": "Interface correction: remove repeated nested scenery, use readable dark teal surfaces, wider padded buttons, simplified gold trim, compact character creation and laptop sizing, two-column gameplay tabs, and illustrated New Adventure choices. Gameplay and saves unchanged."
+    },
+    {
+      "schema": 1,
+      "channel": "development",
+      "status": "ready",
+      "version": "30.14",
+      "from_versions": [
+        "30.13"
+      ],
+      "commit": "b0c9beb143802f58c49a8a2bff677f3af1262cec",
+      "files": [
+        {
+          "path": "engine.py",
+          "remote": "updates/releases/30.14/engine.py.json",
+          "sha256": "feab8b83df3651cbf19e23dcdb0b252a5cc4f1fbc3a85d748bf14c8ac2589b06",
+          "mode": "line_delta"
+        },
+        {
+          "path": "mechanics.py",
+          "remote": "updates/releases/30.14/mechanics.py.json",
+          "sha256": "7b8a07e74b812c96b9917651344c9e731bd05767372039ae46074bf927b3f737",
+          "mode": "line_delta"
+        },
+        {
+          "path": "schemas.py",
+          "remote": "updates/releases/30.14/schemas.py.json",
+          "sha256": "ed23dedc8c031b773e47ff2974a843a2778c0bf174788ad22798589871a8c7bc",
+          "mode": "line_delta"
+        },
+        {
+          "path": "world.py",
+          "remote": "updates/releases/30.14/world.py.json",
+          "sha256": "7e6098a2b3cc32bd23981e2ae5904309b012134ac455775ae62df4934db5737f",
+          "mode": "line_delta"
+        },
+        {
+          "path": "physical.py",
+          "remote": "updates/releases/30.14/physical.py",
+          "sha256": "9cb343f241a870d587af2ad168e968023714ad9cd6e52516f41ed0925d3fe0df",
+          "mode": "full"
+        },
+        {
+          "path": "connected_update.py",
+          "remote": "updates/releases/30.14/connected_update.py",
+          "sha256": "544e7264e614c1dcee8a46a6948c59a96280bf937f8e4f19d56b102f7f62531d",
+          "mode": "full"
+        }
+      ],
+      "notes": "Physical continuity: persistent vertical positions, enemy melee reach checks before rolls, conservative aimed-attack roll validation, authoritative character gender/pronouns, bounded waiting and event interruption. Earlier releases retained. Existing saves migrate with optional position fields. No automatic resurrection; full line-of-sight, movement and surprise adjudication still depend on the DM."
     }
   ]
 }
