@@ -344,3 +344,7 @@ Lead authorized Task 06; reviewed e9de0354d5778d0e2e89180a127d94c53f59e9d9. Live
 
 ## C7 owner-authorized experimental alpha (2026-11-27)
 Owner explicitly authorizes v0.0.25 alpha publication for personal Windows playtesting, not stable certification. Production manager binds existing semantic controller after opening, closes it on render/exit, retains read-only fallback on binding failure. Native compilation, 14 suites, Windows migration/updater, live Gemini and latency remain unexecuted; updater import/startup gates retained. Back up shared profile offline before testing; version rollback alone does not restore saves. Full combat and broader RAW remain outstanding. C6 live coordination reconciled; staged foundation superseded, never published separately.
+
+
+## v0.0.26 diagnostic alpha
+Preserve provider failure detail and stage, remove unnecessary additionalProperties schema keyword, normalize DM display blank lines. No mechanical validation removed. Native tests not executed. Missing response root cause, synchronous SQLite, full GUI redraw and original prompt parity remain unresolved; this is a diagnostic patch, not full repair.

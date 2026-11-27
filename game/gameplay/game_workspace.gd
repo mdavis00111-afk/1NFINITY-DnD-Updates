@@ -732,7 +732,12 @@ func build_center(parent: VBoxContainer) -> void:
 		picture(entry,actor_portrait() if role=="Player" else glyph("diamond" if role=="System" else "initiative"),Vector2(30,30))
 		var words = vbox(entry,2)
 		one_line(words,role+"  ·  Turn "+number(event.get("turn")),17,GOLD)
-		label(words,str(event.get("text","")),17,IVORY)
+		var prose = str(event.get("text","")).replace("\r\n","\n")
+		if role=="DM":
+			while prose.contains("\n\n"):
+				prose=prose.replace("\n\n","\n")
+		var event_label=label(words,prose,17,IVORY)
+		event_label.add_theme_constant_override("line_spacing",0)
 		var divider = HSeparator.new()
 		log_list.add_child(divider)
 	if view.get("events",[]).is_empty():

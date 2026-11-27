@@ -743,11 +743,11 @@ func retire_attempt() -> void:
 	if not previous.is_empty():
 		semantic_cancelled.emit(previous)
 
-func provider_failed(identity: Dictionary) -> Dictionary:
+func provider_failed(identity: Dictionary,detail: String = "Provider request unavailable.") -> Dictionary:
 	if closed or notifying or not reload() or identity!=inflight or identity!=active().get("attempt"):
 		return failure("Stale provider failure ignored.")
 	retire_attempt()
-	stop("retry","Semantic service unavailable. Retry the saved request.")
+	stop("retry",str(identity.get("stage","AI"))+": "+detail.left(600)+" Retry the saved request.")
 	return {"ok":true}
 
 func block_view(message: String) -> void:

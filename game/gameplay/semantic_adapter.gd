@@ -66,7 +66,7 @@ func current() -> bool:
 
 func schema() -> Dictionary:
 	# JSON object transport; exact stage and registry schemas validated locally.
-	return {"type":"object","additionalProperties":true}
+	return {"type":"object"}
 
 func instruction(stage: String) -> String:
 	match stage:
@@ -99,11 +99,11 @@ func send() -> void:
 	if not current():
 		return
 	if calls>=MAX_CALLS:
-		failed()
+		failed("Provider retry limit reached.")
 		return
 	var input=prompt()
 	if input.length()>MAX_CONTEXT:
-		failed()
+		failed("AI context exceeds packet limit.")
 		return
 	retire()
 	calls+=1
@@ -125,7 +125,7 @@ func received(epoch: int,clock: int,ok: bool,message: String) -> void:
 	metrics=metrics.slice(maxi(0,metrics.size()-64))
 	retire()
 	if not ok:
-		failed()
+		failed(message)
 		return
 	if identity["stage"]=="narrate":
 		deliver({"text":message})
@@ -210,8 +210,8 @@ func deliver(value: Dictionary) -> void:
 	else:
 		controller.receive(id,value)
 
-func failed() -> void:
+func failed(detail: String = "Provider request unavailable.") -> void:
 	if current():
-		controller.provider_failed(identity.duplicate(true))
+		controller.provider_failed(identity.duplicate(true),detail)
 	retire()
 	identity={}
