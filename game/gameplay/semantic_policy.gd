@@ -42,7 +42,7 @@ func review(req: Dictionary,scope: Dictionary,intent: Dictionary) -> Dictionary:
 		# independent contextual resolution, not an invented numeric DC.
 		var actor=state["actor"]
 		var source=controller.registry.session.source(state,req["args"]["source_event_id"])
-		if actor.get("class_id")=="fighter" and actor.get("race_id")=="human" and controller.registry.session.public_source(source) and controller.registry.source_valid(state,int(req["args"]["source_event_id"])):
+		if actor.get("class_id")=="fighter" and actor.get("race_id")=="human" and str(actor.get("subrace_id","")).is_empty() and actor.get("feat_ids",[]).is_empty() and controller.registry.session.public_source(source) and controller.registry.source_valid(state,int(req["args"]["source_event_id"])):
 			out["accepted"]=true
 			out["ruling"]={"seconds":null,"establish_clock":false,"optional_features_resolved":true,"verified_circumstances":[],"effect_dc":null}
 			out["reason"]="Matching contextual difficulty proposal, local public source and simple actor; RAW resolution in C3."

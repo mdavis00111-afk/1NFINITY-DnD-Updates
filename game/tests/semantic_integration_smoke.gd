@@ -125,7 +125,8 @@ func prompt_fixture() -> void:
 	if not expect(exported.get("ok",false),"Prompt-only export"):
 		return
 	var read=SHARE.read_file(exported["path"])
-	expect(read.get("ok",false) and not FileAccess.get_file_as_string(exported["path"]).contains("fixture-local-key-not-shared"),"Export schema and no key")
+	if not expect(read.get("ok",false) and not FileAccess.get_file_as_string(exported["path"]).contains("fixture-local-key-not-shared"),"Export schema and no key"):
+		return
 	var remote=read["bundle"].duplicate(true)
 	remote["kind"]="shared"
 	remote["source_commit"]="1111111111111111111111111111111111111111"
@@ -298,6 +299,7 @@ func run() -> void:
 	expect(session.settlement(id,sub_id).get("status")=="committed","Dependent action committed once")
 	expect(players.load_record(master)==original and base.gameplay_view(b["id"])==sibling,"Master and sibling isolation")
 	expect(not ctrl.adapter.metrics.is_empty(),"Mock call timing instrumentation")
+	expect(not ctrl.timing_samples.is_empty(),"Controller context timing instrumentation")
 	ctrl.close_session()
 	workspace.queue_free()
 	ctrl.queue_free()

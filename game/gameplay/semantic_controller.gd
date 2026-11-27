@@ -6,6 +6,10 @@ const DISCOVERY=["define_official","define_custom","actor_generate","loot_discov
 const NARRATABLE=["equip","quick_equip","swap","unequip","attune","unattune","item_use","item_drop","item_transfer","currency_transfer","loot_pickup","loot_take_all","spell_cast","spell_prepare","spell_unprepare","resource_use","rest","object_interact","reconcile_legacy_slots","party_membership"]
 var policy=POLICY.new()
 var adapter: Node
+# Session-local monotonic timing only. No text, IDs, keys or campaign data
+# are included in the samples. Restarted jobs have no fabricated durations.
+var timing: Dictionary={}
+var timing_samples: Array=[]
 
 func bind_ai(id: String,context_reviewer: Callable=Callable(),prose_reviewer: Callable=Callable(),transport_factory: Callable=Callable()) -> Dictionary:
 	if not is_inside_tree() or is_instance_valid(adapter):
@@ -23,6 +27,12 @@ func matches(identity: Dictionary,stage: String) -> bool:
 	return not closed and not running and not notifying and reload() and not active().is_empty() and identity==inflight and identity==active().get("attempt") and identity.get("stage")==stage and active().get("stage")==stage and identity.get("revision")==data["state"]["revision"]
 
 func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
+	var rid=job["intent"]["request_id"]
+	var clock=Time.get_ticks_msec()
+	if timing.has(rid) and not timing[rid].has("first_stage"):
+		timing[rid]["first_stage"]=clock
+		if timing[rid].get("queued",false):
+			sample("queue_wait",clock-int(timing[rid]["accepted"]))
 	var expanded=payload.duplicate(true)
 	var state=data["state"]
 	var snap=BASE.new().gameplay_view(campaign_id)
@@ -68,6 +78,7 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 		for key in ["selected_context","recent_events","story","inventory","public_actors"]:
 			if expanded.get(key) is Array:
 				expanded[key]=expanded[key].slice(0,8)
+	sample("context_build",Time.get_ticks_msec()-clock)
 	super.ask(stage,job,expanded)
 
 func receive_interpretation(identity: Dictionary,result: Dictionary,selected: Array) -> Dictionary:
@@ -310,6 +321,22 @@ func process_story() -> void:
 		args["source_event_id"]=job["narration_event_id"]
 		if entry["kind"]=="actor_generate":
 			args["generation_key"]=registry.session.make_id()
+			# B4 may already have created the descriptive identity from the same
+			# narration. Upgrade that actual scoped actor rather than duplicate it.
+			if args.get("existing_actor_id")==null and args.get("name") is String:
+				var found=enquiry("actors",{"location_id":args["location_id"]},64)
+				if not found.get("ok",false) or found.get("data",{}).get("truncated",true):
+					stop("retry","Actor identity enquiry incomplete.")
+					return
+				var matches_found: Array=[]
+				for individual in found["data"].get("actors",[]):
+					if str(individual.get("name","")).strip_edges().to_lower()==str(args["name"]).strip_edges().to_lower():
+						matches_found.append(individual)
+				if matches_found.size()>1 or (matches_found.size()==1 and (matches_found[0].get("occupation")!=args["occupation"] or matches_found[0].get("kind")!=args["kind"])):
+					stop("retry","Actor identity ambiguous; preserve established actor.")
+					return
+				if matches_found.size()==1:
+					args["existing_actor_id"]=matches_found[0]["actor_id"]
 		if entry["kind"]=="loot_discover":
 			for item in args["items"]:
 				if item["definition_id"].begins_with("@"):
@@ -377,11 +404,40 @@ func finish(status_code: String,message: String) -> void:
 	if status_code!="committed" and not job.get("completed_steps",[]).is_empty():
 		message="Earlier ordered steps remain committed. Remaining action stopped. "+message
 	super.finish(status_code,message)
+	var rid=job["intent"]["request_id"]
+	if timing.has(rid) and data.get("work",{}).get("last",{}).get("request_id")==rid:
+		var completed=Time.get_ticks_msec()
+		sample("input_to_terminal",completed-int(timing[rid]["accepted"]))
+		if timing[rid].has("preview"):
+			sample("preview_to_terminal",completed-int(timing[rid]["preview"]))
+		timing.erase(rid)
 
 func preview_text(job: Dictionary,state: Dictionary) -> String:
+	var text=super.preview_text(job,state)
 	if standalone(job) and job.get("critical_verified",false) and job.get("narration_event_id")==null:
-		return str(job.get("candidate",{}).get("text",""))
-	return super.preview_text(job,state)
+		text=str(job.get("candidate",{}).get("text",""))
+	if not text.is_empty():
+		var rid=job.get("intent",{}).get("request_id","")
+		if timing.has(rid) and not timing[rid].has("preview"):
+			var now=Time.get_ticks_msec()
+			timing[rid]["preview"]=now
+			sample("input_to_reviewed_preview",now-int(timing[rid]["accepted"]))
+			if timing[rid].has("first_stage"):
+				sample("critical_path",now-int(timing[rid]["first_stage"]))
+	return text
+
+func submit(intent: Dictionary) -> Dictionary:
+	var clock=Time.get_ticks_msec()
+	var was_busy=not active().is_empty()
+	var result=super.submit(intent)
+	sample("submit_ack",Time.get_ticks_msec()-clock)
+	if result.get("ok",false):
+		timing[intent["request_id"]]={"accepted":clock,"queued":was_busy}
+	return result
+
+func sample(stage: String,elapsed: int) -> void:
+	timing_samples.append({"stage":stage,"elapsed_ms":maxi(0,elapsed)})
+	timing_samples=timing_samples.slice(maxi(0,timing_samples.size()-128))
 
 # Explicit recovery path: retain the committed mechanical result when the
 # semantic service cannot safely reconcile prose. Never erase a visible preview
