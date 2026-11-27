@@ -593,3 +593,5 @@ Active fixture covers reported village identity, unknown coordinates, route and 
 
 ## v0.0.27 checkpoint 3b.3c.2b — deterministic discovery binding
 Shared controller reconstruction used by policy and execution/recovery. Definition references resolve through recorded exact committed requests, not definition_refs. Actor generation key bound to request ID. Legacy pending discoveries without receipt provenance fail closed. Native and negative regression execution outstanding; no release.
+
+3b.3c.2b follow-up: corrected reconstruction helper indentation and dictionary failure returns after source readback. Runtime still unexecuted.

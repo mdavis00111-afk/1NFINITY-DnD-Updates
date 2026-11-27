@@ -413,25 +413,20 @@ func discovery_arguments(job: Dictionary,state: Dictionary,index: int,request_id
 	args["source_event_id"]=event_id
 	if entry["kind"]=="actor_generate":
 		args["generation_key"]=request_id
-		# B4 may already have created the descriptive identity from the same
-		# narration. Upgrade that actual scoped actor rather than duplicate it.
 		if args.get("existing_actor_id")==null and args.get("name") is String:
-		var found=enquiry("actors",{"location_id":args["location_id"]},64)
-		if not found.get("ok",false) or found.get("data",{}).get("truncated",true):
-			stop("retry","Actor identity enquiry incomplete.")
-			return
-		var matches_found: Array=[]
-		for individual in found["data"].get("actors",[]):
-			if str(individual.get("name","")).strip_edges().to_lower()==str(args["name"]).strip_edges().to_lower():
-			matches_found.append(individual)
-		if matches_found.size()>1 or (matches_found.size()==1 and (matches_found[0].get("occupation")!=args["occupation"] or matches_found[0].get("kind")!=args["kind"])):
-			stop("retry","Actor identity ambiguous; preserve established actor.")
-			return
-		if matches_found.size()==1:
-			args["existing_actor_id"]=matches_found[0]["actor_id"]
+			var found=enquiry("actors",{"location_id":args["location_id"]},64)
+			if not found.get("ok",false) or found.get("data",{}).get("truncated",true):
+				return {}
+			var matches_found: Array=[]
+			for individual in found["data"].get("actors",[]):
+				if str(individual.get("name","")).strip_edges().to_lower()==str(args["name"]).strip_edges().to_lower():
+					matches_found.append(individual)
+			if matches_found.size()>1 or (matches_found.size()==1 and (matches_found[0].get("occupation")!=args["occupation"] or matches_found[0].get("kind")!=args["kind"])):
+				return {}
+			if matches_found.size()==1:
+				args["existing_actor_id"]=matches_found[0]["actor_id"]
 				if not recovered.is_empty() and recovered.get("result",{}).get("actor_id")==args["existing_actor_id"] and recovered.get("request",{}).get("args",{}).get("existing_actor_id")==null:
 					args["existing_actor_id"]=null
-
 	if entry["kind"]=="loot_discover":
 		for item in args["items"]:
 			if item["definition_id"].begins_with("@"):
