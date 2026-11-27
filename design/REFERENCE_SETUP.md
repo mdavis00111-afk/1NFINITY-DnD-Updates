@@ -15,4 +15,15 @@ The five approved images and seven baseline screenshots were imported from the t
 
 The supplied database matched the pinned SHA-256 `197734c2a4a58078e08894d9cb5d3392c4d4ba42ff02e351a10c55e3585a08b0`. The validator confirmed integrity and foreign keys, all 1,327 declared physical pages, 44 no-text and 11 sparse pages, 2,701 outline entries, 88 non-positive Player's Handbook outline destinations, and 50 linked FTS5 hits for the probe. The original PDFs were unavailable for separate hash comparison. The structured catalogue, spell-class associations and reference links match the packaged core and do not expand structured mechanics coverage.
 
-Git access to the proposed `mdavis00111-afk/1NFINITY-DnD-References` repository returned repository not found, and GitHub API access was forbidden. Repository visibility and durable access remain unverified. The database was validated from a restricted local copy. A fresh development task must retrieve it from the authorized private repository and repeat validation before GUI implementation proceeds.
+The owner authorized the private GitHub repository `mdavis00111-afk/1NFINITY-DnD-References` and confirmed its private visibility. It stores `private_rules.db` at commit `c1e38e7cf13dcaec2eb2ed1e762c06e5f85908c1` on `main`. Two independent cloud clones made after upload retrieved and validated the pinned database. GitHub API access remained blocked in the cloud, so repository visibility was established by the owner's confirmation. The public repository and updater do not fetch this database.
+
+From the public development checkout, authorized sessions can retrieve and validate the reference in a restricted directory:
+
+```bash
+umask 077
+reference_dir=$(mktemp -d) || exit 1
+git clone --quiet --single-branch --branch main \
+  https://github.com/mdavis00111-afk/1NFINITY-DnD-References.git "$reference_dir/repo" || exit 1
+git -C "$reference_dir/repo" checkout --quiet --detach c1e38e7cf13dcaec2eb2ed1e762c06e5f85908c1 || exit 1
+python3 design/tools/validate_private_reference.py "$reference_dir/repo/private_rules.db"
+```
