@@ -14,6 +14,11 @@ const CORNER = preload("res://themes/parts/corner.png")
 const ATLAS = preload("res://themes/parts/icons.png")
 const FONT = preload("res://themes/fonts/EBGaramond.ttf")
 const DOLL = preload("res://gameplay/paper_doll.svg")
+const COMPASS = preload("res://gameplay/reference_compass.png")
+const EMPTY_PARTY = preload("res://gameplay/reference_party.png")
+const SHORTSWORD = preload("res://gameplay/reference_shortsword.png")
+const BACKPACK = preload("res://gameplay/reference_backpack.png")
+const PORTRAIT_FRAME = preload("res://themes/parts/portrait_empty.png")
 const GOLD = Color("#ffd989")
 const IVORY = Color("#fff0cf")
 const ABILITIES = ["str","dex","con","int","wis","cha"]
@@ -78,9 +83,9 @@ func _ready() -> void:
 	var left = frame(body,27.0,true)
 	var center = frame(body,43.0,true)
 	var right = frame(body,29.0,true)
-	left_panel = left.get_parent()
-	center_panel = center.get_parent()
-	right_panel = right.get_parent()
+	left_panel = left.get_parent() as PanelContainer
+	center_panel = center.get_parent() as PanelContainer
+	right_panel = right.get_parent() as PanelContainer
 	left_panel.custom_minimum_size.x = 310
 	center_panel.custom_minimum_size.x = 430
 	right_panel.custom_minimum_size.x = 340
@@ -88,13 +93,13 @@ func _ready() -> void:
 	build_center(center)
 	build_right(right)
 
-func box_style(lit: bool = false, margin: int = 6) -> StyleBoxTexture:
+func box_style(lit: bool = false, margin: int = 6, opacity: float = 0.94) -> StyleBoxTexture:
 	var style = StyleBoxTexture.new()
 	style.texture = ACTIVE if lit else FRAME
 	for side in [SIDE_LEFT,SIDE_RIGHT,SIDE_TOP,SIDE_BOTTOM]:
 		style.set_texture_margin(side,22)
 		style.set_content_margin(side,margin)
-	style.modulate_color = Color(1,1,1,0.94)
+	style.modulate_color = Color(1,1,1,opacity)
 	return style
 
 func hbox(parent: Node, gap: int = 5) -> HBoxContainer:
@@ -113,7 +118,7 @@ func vbox(parent: Node, gap: int = 4) -> VBoxContainer:
 
 func frame(parent: Node, ratio: float = 1.0, ornate: bool = false, lit: bool = false, padding: int = 6) -> VBoxContainer:
 	var panel = PanelContainer.new()
-	panel.add_theme_stylebox_override("panel",box_style(lit,padding))
+	panel.add_theme_stylebox_override("panel",box_style(lit,padding,0.80 if ornate else 0.87))
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.size_flags_stretch_ratio = ratio
 	parent.add_child(panel)
@@ -128,7 +133,6 @@ func frame(parent: Node, ratio: float = 1.0, ornate: bool = false, lit: bool = f
 			corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			var overlay = Control.new()
 			overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			overlay.set_as_top_level(false)
 			panel.add_child(overlay)
 			overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 			overlay.add_child(corner)
@@ -160,6 +164,9 @@ func one_line(parent: Node, value: String, px: int = 16, color: Color = IVORY, c
 	return out
 
 func glyph(key: String) -> Texture2D:
+	if key=="shortsword": return SHORTSWORD
+	if key=="backpack": return BACKPACK
+	if key=="compass": return COMPASS
 	if not icon_rects.has(key):
 		return null
 	var rect = icon_rects[key]
@@ -225,11 +232,13 @@ func actor_portrait() -> Texture2D:
 func build_header() -> void:
 	var header = frame(self,1.0,false,false,5)
 	var row = hbox(header,8)
+	var mark = picture(row,COMPASS,Vector2(42,42))
+	mark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var brand = vbox(row,0)
-	brand.custom_minimum_size.x = 252
+	brand.custom_minimum_size.x = 225
 	brand.size_flags_horizontal = Control.SIZE_FILL
-	one_line(brand,"✧  1NFINITY D&D",30,GOLD)
-	one_line(brand,"      AI DUNGEON MASTER (5e)",15,GOLD)
+	one_line(brand,"1NFINITY D&D",28,GOLD)
+	one_line(brand,"AI DUNGEON MASTER (5e)",15,GOLD)
 	nav_bar = hbox(row,4)
 	for caption in ["Game","Character","Inventory","Spells","Skills","Quest Log","Map","Campaign","Settings"]:
 		var name_value = caption
@@ -237,7 +246,6 @@ func build_header() -> void:
 		b.custom_minimum_size.y = 35
 		if caption=="Game":
 			b.add_theme_stylebox_override("normal",box_style(true,4))
-	one_line(header,str(campaign.get("title","Campaign")),14,GOLD)
 
 func navigate(destination: String) -> void:
 	match destination:
@@ -273,11 +281,21 @@ func stat(parent: Node, caption: String, value: String, icon_id: String = "", he
 
 func build_left(parent: VBoxContainer) -> void:
 	var top = hbox(parent,6)
-	var portrait_frame = frame(top,0.9,false,true,3)
-	portrait_frame.custom_minimum_size.x = 100
-	var image = picture(portrait_frame,actor_portrait(),Vector2(96,118),true)
-	image.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	image.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var portrait_frame = picture(top,PORTRAIT_FRAME,Vector2(117,149))
+	portrait_frame.size_flags_horizontal = Control.SIZE_FILL
+	portrait_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	portrait_frame.stretch_mode = TextureRect.STRETCH_SCALE
+	var image = picture(portrait_frame,actor_portrait(),Vector2.ZERO,true)
+	image.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	image.offset_left = 7
+	image.offset_right = -7
+	image.offset_top = 9
+	image.offset_bottom = -9
+	var mask = Shader.new()
+	mask.code = "shader_type canvas_item; void fragment(){ vec2 p=UV*2.0-1.0; COLOR.a*=1.0-smoothstep(0.94,1.0,length(p)); }"
+	var material_mask = ShaderMaterial.new()
+	material_mask.shader = mask
+	image.material = material_mask
 	var info = vbox(top,2)
 	info.size_flags_stretch_ratio = 1.7
 	one_line(info,str(actor.get("name","Character unavailable")),24,GOLD,true)
@@ -319,7 +337,7 @@ func build_left(parent: VBoxContainer) -> void:
 	var weapon_caption: PackedStringArray = []
 	for id in weapons:
 		weapon_caption.append(title_for("equipment",id))
-	var weapon = button(middle,"Weapon: "+(", ".join(weapon_caption) if not weapon_caption.is_empty() else "Empty"),func(): show_equipped_weapons(),14)
+	var weapon = button(middle,"Weapon: "+(", ".join(weapon_caption) if not weapon_caption.is_empty() else "Empty"),func(): show_equipped_weapons(),14,item_icon(str(weapons[0])) if weapons.size()==1 else "")
 	weapon.disabled = weapons.is_empty()
 	weapon.tooltip_text = ", ".join(weapon_caption) if not weapons.is_empty() else "No equipped weapon"
 	for slot in ["Neck","Ring","Accessory","Belt","Shield"]:
@@ -347,12 +365,26 @@ func show_equipped_weapons() -> void:
 
 func build_center(parent: VBoxContainer) -> void:
 	var scene = frame(parent,1.0,true,false,3)
-	one_line(scene,"✧   AI Dungeon Master",23,GOLD,true)
 	var location = view.get("location",{})
-	one_line(scene,str(location.get("name",campaign.get("location_name",campaign.get("start_name","Location unavailable")))),15,GOLD,true)
-	var scenery = picture(scene,STARTS.texture_for(str(campaign.get("thumbnail_id",campaign.get("start_id","road")))),Vector2(0,105),true)
+	var scenery = picture(scene,STARTS.texture_for(str(campaign.get("thumbnail_id",campaign.get("start_id","road")))),Vector2(0,143),true)
 	scenery.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scenery.clip_contents = true
 	scenery.tooltip_text = "Provisional bundled scene illustration"
+	var banner = frame(scenery,1.0,false,true,4)
+	var banner_panel = banner.get_parent() as PanelContainer
+	banner_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	banner_panel.offset_left = -123
+	banner_panel.offset_right = 123
+	banner_panel.offset_top = 0
+	banner_panel.offset_bottom = 34
+	var headline = hbox(banner,4)
+	picture(headline,COMPASS,Vector2(25,25))
+	one_line(headline,"AI Dungeon Master",21,GOLD,true)
+	var location_band = frame(scenery,1.0,false,false,3)
+	var band_panel = location_band.get_parent() as PanelContainer
+	band_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	band_panel.offset_top = -25
+	one_line(location_band,str(campaign.get("title","Campaign"))+"  ·  "+str(location.get("name",campaign.get("location_name",campaign.get("start_name","Location unavailable")))),15,GOLD,true)
 	var log = frame(parent,1.0,true,false,5)
 	log.get_parent().size_flags_vertical = Control.SIZE_EXPAND_FILL
 	log_scroll = scroll(log,120)
@@ -413,7 +445,22 @@ func build_center(parent: VBoxContainer) -> void:
 	roll_button.size_flags_horizontal = Control.SIZE_FILL
 	dice_result = one_line(controls,"Result: —",16)
 	dice_result.size_flags_stretch_ratio = 2.0
+	for tool in [["Log","initiative"],["Rules","focus"],["Clear","diamond"]]:
+		var target = str(tool[0])
+		var icon_button = button(controls,"",func(): dice_tool(target),14,str(tool[1]))
+		icon_button.size_flags_horizontal = Control.SIZE_FILL
+		icon_button.custom_minimum_size = Vector2(27,30)
+		icon_button.tooltip_text = "Scroll to latest log" if target=="Log" else ("Open rules reference" if target=="Rules" else "Clear manual dice result")
 	label(dice,"Manual only · not part of campaign resolution",12,GOLD)
+
+func dice_tool(target: String) -> void:
+	match target:
+		"Log": log_scroll.set_deferred("scroll_vertical",2147483647)
+		"Rules": show_reference_index("Rules (SRD)","rule-sections")
+		"Clear":
+			last_roll = {}
+			dice_result.text = "Result: —"
+			dice_result.tooltip_text = ""
 
 func show_status(message: String) -> void:
 	if is_instance_valid(status):
@@ -463,10 +510,18 @@ func build_right(parent: VBoxContainer) -> void:
 	one_line(card,str(actor.get("name","Player")),14,GOLD,true)
 	one_line(card,"Lv "+number(actor.get("level")),13,IVORY,true)
 	var c = actor.get("combat",{})
-	one_line(card,number(c.get("hp_current"))+" / "+number(c.get("hp_max")),14,IVORY,true)
+	var hp_strip = PanelContainer.new()
+	var red = StyleBoxFlat.new()
+	red.bg_color = Color("#801e24")
+	red.border_color = GOLD
+	red.set_border_width_all(1)
+	red.set_corner_radius_all(3)
+	hp_strip.add_theme_stylebox_override("panel",red)
+	card.add_child(hp_strip)
+	one_line(hp_strip,number(c.get("hp_current"))+" / "+number(c.get("hp_max")),14,IVORY,true)
 	for i in range(3):
 		var empty = frame(cards,1.0,false,false,3)
-		var silhouette = picture(empty,DOLL,Vector2(0,52))
+		var silhouette = picture(empty,EMPTY_PARTY,Vector2(0,52))
 		silhouette.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var add_slot = button(empty,"+ Add",func(): pass,14)
 		add_slot.disabled = true
@@ -493,6 +548,8 @@ func equipped(id: String) -> bool:
 	return id==str(gear.get("armor_id","")) or id==str(gear.get("shield_id","")) or id in gear.get("weapon_ids",[])
 
 func item_icon(id: String) -> String:
+	if id=="shortsword": return "shortsword"
+	if id=="backpack": return "backpack"
 	var rec = cat.get_record("equipment",id)
 	if str(rec.get("armor_category",""))=="Shield":
 		return "shield"
@@ -529,8 +586,12 @@ func build_inventory() -> void:
 		shown.append(item)
 		var name_value = title_for("equipment",id)
 		var caption = name_value+"\n×"+number(item.get("quantity"))+(" • E" if equipped(id) else "")
-		var cell = button(grid,caption,func(): select_item(id),12,item_icon(id))
+		var art_id = item_icon(id)
+		var visible_caption = ("×"+number(item.get("quantity"))+(" E" if equipped(id) else "")) if not art_id.is_empty() else caption
+		var cell = button(grid,visible_caption,func(): select_item(id),13,art_id)
 		cell.custom_minimum_size = Vector2(43,44)
+		cell.expand_icon = true
+		cell.add_theme_constant_override("icon_max_width",26)
 		cell.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		cell.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 		cell.tooltip_text = caption
@@ -569,8 +630,22 @@ func select_item(id: String) -> void:
 	else:
 		for key in ["equipment_category","weapon_category","armor_category","damage","properties","weight","cost"]:
 			if rec.has(key):
-				text.append(str(key).replace("_"," ").capitalize()+": "+cat.human(rec[key]))
+				text.append(str(key).replace("_"," ").capitalize()+": "+readable(rec[key]))
 	inventory_detail.text = "\n".join(text)
+
+func readable(value: Variant) -> String:
+	if value is Dictionary:
+		if value.has("name"): return str(value["name"])
+		var parts: PackedStringArray = []
+		for key in value:
+			if key not in ["index","url"]:
+				parts.append(str(key).replace("_"," ").capitalize()+": "+readable(value[key]))
+		return ", ".join(parts)
+	if value is Array:
+		var parts: PackedStringArray = []
+		for entry in value: parts.append(readable(entry))
+		return ", ".join(parts)
+	return number(value)
 
 func list_for_tab(caption: String) -> VBoxContainer:
 	one_line(right_content,caption,20,GOLD)
@@ -692,7 +767,14 @@ func show_reference_index(caption: String, table: String) -> void:
 		detail.text = "Select a reference entry." if list.item_count>0 else "No matching catalogue entries."
 	search.text_changed.connect(populate)
 	list.item_selected.connect(func(i: int): detail.text=cat.describe(table,str(list.get_item_metadata(i))))
-	populate.call("")
+	if caption in ["Actions","Combat"]:
+		search.text = caption
+		populate.call(caption)
+		if list.item_count==0:
+			search.text = ""
+			populate.call("")
+	else:
+		populate.call("")
 	popup.popup_centered(Vector2i(720,490))
 
 func show_character() -> void:

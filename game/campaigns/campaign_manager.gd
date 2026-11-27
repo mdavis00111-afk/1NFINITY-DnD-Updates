@@ -162,7 +162,7 @@ func render() -> void:
 		build_workspace(layout)
 		return
 	var root = column(layout,8)
-	var title = "Existing Campaigns" if mode=="library" else ("New Campaign" if mode=="new" else str(active.get("title","Campaign")))
+	var title = "Existing Campaigns" if mode=="library" else "New Campaign"
 	var title_label = text_label(title,34,true)
 	title_label.max_lines_visible=2
 	root.add_child(title_label)
@@ -170,7 +170,6 @@ func render() -> void:
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	match mode:
 		"new": build_new(body)
-		"workspace": build_workspace(body)
 		_: build_library(body)
 	note = text_label("",16)
 	note.max_lines_visible = 2
@@ -178,7 +177,7 @@ func render() -> void:
 	root.add_child(note)
 	var nav = row(root,8)
 	nav.alignment = BoxContainer.ALIGNMENT_BEGIN
-	action(nav,"Exit" if mode!="workspace" else "Save & Exit",leave)
+	action(nav,"Exit",leave)
 	if mode=="library":
 		resume_button = action(nav,"Resume",resume)
 		delete_button = action(nav,"Delete",confirm_delete)
@@ -195,11 +194,7 @@ func render() -> void:
 			show_note("Configure maturity profiles in Content Rules first.")
 		elif players.is_empty():
 			show_note("Create and finalize a ready character first.")
-	else:
-		if not active.get("opening_committed",false) and active.get("turn",0)==0:
-			opening_button = action(nav,"Generate Opening",request_opening)
-			opening_button.disabled = not pending_campaign.is_empty()
-		show_note("Generating opening… Saved campaign is safe." if pending_campaign==active.get("id") else "Opening workspace saved. Gameplay turn resolution is not implemented yet.")
+
 
 func show_note(value: String) -> void:
 	if mode=="workspace" and is_instance_valid(workspace):

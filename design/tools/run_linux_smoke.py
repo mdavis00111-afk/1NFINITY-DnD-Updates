@@ -58,7 +58,7 @@ def patch_copy(adapter):
     adapter.write_text(source[:execute_start] + command + source[execute_end:], encoding="utf-8")
 
 
-SUITES = ("sqlite", "character", "layout", "campaign", "ai_profile")
+SUITES = ("sqlite", "character", "layout", "campaign", "ai_profile", "gameplay")
 
 
 def run(suites):
