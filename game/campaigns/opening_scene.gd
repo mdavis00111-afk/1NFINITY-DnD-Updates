@@ -4,12 +4,32 @@ const STARTS = preload("res://campaigns/campaign_starts.gd")
 const NARRATOR = preload("res://campaigns/narrator_prompt.gd")
 const POPULATED = ["tavern","court","sea","market"]
 const KEYS = ["start_id","location_name","atmosphere","npcs","world_facts","thumbnail_id"]
-const RESPONSE = {"start_id":"exact engine start_id","location_name":"short proper name","atmosphere":"static description","npcs":[{"name":"unique local name","occupation":"ordinary role","attitude":0}],"world_facts":["durable descriptive local fact"],"thumbnail_id":"tavern, court, woods, sea, market, road or empty"}
+# The model is asked for this bounded JSON shape; validate() still owns acceptance.
+# Use the documented responseJsonSchema subset, not unsupported string length keywords.
+const NPC_KEYS = ["name","occupation","attitude"]
+const PHASE_RULES = "OPENING PROPOSAL ONLY. No player action has occurred. Name the existing location without changing its kind. Describe static surroundings only. Supply 1–4 ordinary named locals for tavern, court, sea or market; 0–4 for woods or road. Occupations are descriptive, not stat blocks. Attitude is an integer -5 to +5. Provide 1–4 durable descriptive local facts. No dialogue, player actions, threats requiring resolution, quests, destiny, combat, dice, rewards, inventory, time or movement. No new locations, coordinates, IDs or mechanics. Use existing artwork ID or empty. Return exactly one JSON object matching the schema, no extra keys or markdown. Plain single-line text: location/name/occupation <=80, atmosphere <=500, fact <=240 characters. This is a proposal for engine validation, not committed narration."
+
+static func response_schema(start_id: String) -> Dictionary:
+	if STARTS.find_start(start_id).is_empty():
+		return {}
+	var art_ids: Array = STARTS.ART.keys()
+	art_ids.append("")
+	var npc = {"type":"object","required":NPC_KEYS.duplicate(),"additionalProperties":false,"properties":{"name":{"type":"string"},"occupation":{"type":"string"},"attitude":{"type":"integer","minimum":-5,"maximum":5}}}
+	return {"type":"object","required":KEYS.duplicate(),"additionalProperties":false,"properties":{
+		"start_id":{"type":"string","enum":[start_id]},
+		"location_name":{"type":"string"},
+		"atmosphere":{"type":"string"},
+		"npcs":{"type":"array","minItems":1 if start_id in POPULATED else 0,"maxItems":4,"items":npc},
+		"world_facts":{"type":"array","minItems":1,"maxItems":4,"items":{"type":"string"}},
+		"thumbnail_id":{"type":"string","enum":art_ids}
+	}}
 
 static func prompt(record: Dictionary) -> String:
 	var start = STARTS.find_start(str(record.get("start_id","")))
-	var context = {"phase":"opening only; no player action has occurred","start_id":start.get("id",""),"location_kind":start.get("kind",""),"starting_circumstances":start.get("description",""),"campaign_title":record.get("title",""),"player_name":record.get("player_name",""),"constraints":"Name the existing location without changing its kind. Describe static surroundings only. Supply 1–4 ordinary named locals for tavern, court, sea or market; 0–4 for woods or road. Occupations are descriptive, not stat blocks. Attitude is an integer -5 to +5. Provide 1–4 durable descriptive local facts. No dialogue, player actions, threats requiring resolution, quests, destiny, combat, dice, rewards, inventory, time or movement. No new locations, coordinates or mechanics. Use existing artwork ID or empty. Return exactly the JSON object, no extra keys. Plain single-line text: name/occupation <=80, atmosphere <=500, fact <=240 characters."}
-	return NARRATOR.build(str(record.get("maturity_id","")),context,RESPONSE)
+	if start.is_empty():
+		return ""
+	var context = {"phase":"opening","start_id":start["id"],"location_kind":start["kind"],"starting_circumstances":start["description"],"campaign_title":record.get("title",""),"player_name":record.get("player_name","")}
+	return NARRATOR.build(str(record.get("maturity_id","")),context,response_schema(start["id"]),PHASE_RULES)
 
 static func exact_keys(value: Dictionary, keys: Array) -> bool:
 	if value.size()!=keys.size():
@@ -48,7 +68,7 @@ static func validate(raw: String, start_id: String) -> Dictionary:
 	var people: Array = []
 	var names: Dictionary = {}
 	for npc in npcs:
-		if not npc is Dictionary or not exact_keys(npc,["name","occupation","attitude"]):
+		if not npc is Dictionary or not exact_keys(npc,NPC_KEYS):
 			return {}
 		var npc_name = clean_text(npc["name"],80)
 		var occupation = clean_text(npc["occupation"],80)

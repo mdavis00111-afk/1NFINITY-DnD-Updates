@@ -172,7 +172,7 @@ func prepare_opening(id: String) -> Dictionary:
 	if not check.get("ok",false) or check["results"][0].is_empty():
 		last_error="Campaign is no longer in its original opening state."
 		return {}
-	return {"record":record,"previous":previous,"prompt":OPENING.prompt(record)}
+	return {"record":record,"previous":previous,"prompt":OPENING.prompt(record),"response_schema":OPENING.response_schema(str(record["start_id"]))}
 
 func commit_opening(id: String, previous: String, raw: String) -> String:
 	var prepared = prepare_opening(id)

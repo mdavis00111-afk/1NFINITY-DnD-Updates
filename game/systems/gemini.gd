@@ -50,7 +50,15 @@ func list_page(token: String) -> void:
 	if err != OK:
 		fail("Could not start model discovery.")
 
-func generate(prompt: String, key_override: String = "", model_override: String = "", require_complete: bool = false) -> void:
+# Only trusted engine callers supply a schema. Plain-prose callers keep their existing payload.
+static func request_payload(prompt: String, response_schema: Dictionary = {}) -> Dictionary:
+	var payload = {"contents":[{"role":"user","parts":[{"text":prompt}]}],"generationConfig":{"temperature":0.8,"maxOutputTokens":2048}}
+	if not response_schema.is_empty():
+		payload["generationConfig"]["responseMimeType"] = "application/json"
+		payload["generationConfig"]["responseJsonSchema"] = response_schema.duplicate(true)
+	return payload
+
+func generate(prompt: String, key_override: String = "", model_override: String = "", require_complete: bool = false, response_schema: Dictionary = {}) -> void:
 	if active:
 		return
 	var cfg = ConfigFile.new()
@@ -66,12 +74,12 @@ func generate(prompt: String, key_override: String = "", model_override: String 
 	if valid.search(model) == null:
 		completed.emit(false,"Enter a valid Gemini model ID in Settings.")
 		return
-	var payload = {"contents":[{"role":"user","parts":[{"text":prompt}]}],"generationConfig":{"temperature":0.8,"maxOutputTokens":2048}}
+	var payload = request_payload(prompt,response_schema)
 	active = true
 	mode = "generate"
 	current_key = key
 	current_model = model
-	complete_response_required = require_complete
+	complete_response_required = require_complete or not response_schema.is_empty()
 	var err = request.request(BASE+"models/"+model+":generateContent",PackedStringArray(["Content-Type: application/json","x-goog-api-key: "+key]),HTTPClient.METHOD_POST,JSON.stringify(payload))
 	if err != OK:
 		fail("Could not start Gemini request.")
@@ -152,8 +160,13 @@ func received(result: int, code: int, _headers: PackedStringArray, body: PackedB
 # never truncated into an apparently valid JSON prefix. Prose callers retain their cap.
 static func generation_text(data: Dictionary, require_complete: bool = false) -> Dictionary:
 	var failure = {"ok":false,"message":"Gemini did not return a complete usable response. Try again or choose another model."}
+	var feedback = data.get("promptFeedback",{})
+	if require_complete and (not feedback is Dictionary or (feedback.has("blockReason") and feedback["blockReason"] not in ["","BLOCK_REASON_UNSPECIFIED"])):
+		return failure
 	var candidates = data.get("candidates",[])
 	if not candidates is Array or candidates.is_empty() or not candidates[0] is Dictionary:
+		return failure
+	if require_complete and candidates.size()!=1:
 		return failure
 	var candidate: Dictionary = candidates[0]
 	if require_complete and candidate.get("finishReason","") != "STOP":
@@ -168,6 +181,16 @@ static func generation_text(data: Dictionary, require_complete: bool = false) ->
 	for part in parts:
 		if not part is Dictionary:
 			return failure
+		# Structured opening cannot contain a tool call, executable code or media.
+		# Thought text/signatures are not the response; never include them.
+		if require_complete:
+			if part.has("thought") and not part["thought"] is bool:
+				return failure
+			for key in ["functionCall","functionResponse","executableCode","codeExecutionResult","inlineData","fileData"]:
+				if part.has(key):
+					return failure
+			if not part.get("thought",false) and not part.has("text"):
+				return failure
 		if part.has("text") and not part.get("thought",false):
 			if not part["text"] is String:
 				return failure

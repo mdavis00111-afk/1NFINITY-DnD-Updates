@@ -2,6 +2,8 @@ extends SceneTree
 const MATURITY = preload("res://campaigns/maturity_profiles.gd")
 const NARRATOR = preload("res://campaigns/narrator_prompt.gd")
 const GEMINI = preload("res://systems/gemini.gd")
+const OPENING = preload("res://campaigns/opening_scene.gd")
+const STARTS = preload("res://campaigns/campaign_starts.gd")
 var failures: Array[String] = []
 
 func _initialize() -> void:
@@ -24,7 +26,9 @@ func run() -> void:
 	expect(MATURITY.needs_adult_confirmation("mature") and not MATURITY.needs_adult_confirmation("standard"),"Confirmation predicate")
 	var config = ConfigFile.new()
 	config.set_value("fixture","keep","unchanged")
-	config.set_value("prompts","NPC","NPC fixture")
+	for role in ["Scene","Interpreter","Brief","Write-back","NPC"]:
+		config.set_value("prompts",role,role+" fixture")
+	config.set_value("gemini","model","gemini-fixture-only")
 	expect(config.save(MATURITY.PATH)==OK,"Fixture config save")
 	expect(MATURITY.save_profiles([{"id":"legacy","name":"Legacy","instructions":"Legacy guidance"}]).is_empty(),"Legacy save")
 	expect(MATURITY.save_guidance("family","Custom family guidance").is_empty(),"Edit family")
@@ -41,6 +45,21 @@ func run() -> void:
 	expect(MATURITY.reset_guidance("family").is_empty() and MATURITY.resolve("family")["instructions"]==defaults[0]["instructions"],"Profile reset")
 	expect(NARRATOR.reset_prompt().is_empty() and NARRATOR.load_prompt()==NARRATOR.DEFAULT_PROMPT,"Narrator reset")
 	expect(config.load(MATURITY.PATH)==OK and config.get_value("fixture","keep")=="unchanged" and config.get_value("prompts","NPC")=="NPC fixture","Unrelated settings preserved")
+	for role in ["Scene","Interpreter","Brief","Write-back","NPC"]:
+		expect(config.get_value("prompts",role,"")==role+" fixture","Prompt setting lost: "+role)
+	expect(config.get_value("gemini","model","")=="gemini-fixture-only","Model setting lost")
+	var plain = GEMINI.request_payload("Prose fixture")
+	expect(not plain["generationConfig"].has("responseMimeType") and not plain["generationConfig"].has("responseJsonSchema"),"Prose request changed")
+	for start in STARTS.STARTS:
+		var start_id = str(start["id"])
+		var schema = OPENING.response_schema(start_id)
+		var properties = schema["properties"]
+		var packet = GEMINI.request_payload(OPENING.prompt({"start_id":start_id,"maturity_id":"family","title":"Fixture campaign"}),schema)
+		expect(schema["required"]==OPENING.KEYS and not schema["additionalProperties"] and properties["start_id"]["enum"]==[start_id],"Opening schema scope "+start_id)
+		expect(properties["npcs"]["minItems"]==(1 if start_id in OPENING.POPULATED else 0),"Opening schema NPC bounds "+start_id)
+		expect(packet["generationConfig"].get("responseMimeType")=="application/json" and packet["generationConfig"].get("responseJsonSchema")==schema and not packet.has("safetySettings"),"Structured request config "+start_id)
+		expect(str(packet["contents"][0]["parts"][0]["text"]).contains("ENGINE PHASE REQUIREMENTS") and str(packet["contents"][0]["parts"][0]["text"]).contains(OPENING.PHASE_RULES),"Opening phase not trusted instruction "+start_id)
+	expect(OPENING.response_schema("invalid").is_empty() and OPENING.prompt({"start_id":"invalid"}).is_empty(),"Invalid start built a request")
 	# Preserve the entire pre-existing legacy capacity after introducing the built-ins.
 	var legacy_profiles: Array = []
 	for i in range(MATURITY.MAX_LEGACY_PROFILES-1):
@@ -60,6 +79,16 @@ func run() -> void:
 	expect(not GEMINI.generation_text(response,true)["ok"],"Oversize structured envelope truncated and accepted")
 	expect(not GEMINI.generation_text({"candidates":[{"content":null}]},true)["ok"],"Null provider content accepted")
 	expect(not GEMINI.generation_text({"candidates":[{"finishReason":"STOP","content":{"parts":[null]}}]},true)["ok"],"Malformed provider part accepted")
+	var mixed = {"candidates":[{"finishReason":"STOP","content":{"parts":[{"thought":true,"text":"hidden reasoning"},{"text":"{}"}]}}]}
+	expect(GEMINI.generation_text(mixed,true)=={"ok":true,"message":"{}"},"Thought text leaked into JSON")
+	mixed["candidates"][0]["content"]["parts"].append({"functionCall":{"name":"unexpected"}})
+	expect(not GEMINI.generation_text(mixed,true)["ok"],"Tool call mixed into structured response")
+	mixed["candidates"][0]["content"]["parts"].pop_back()
+	mixed["promptFeedback"]={"blockReason":"SAFETY"}
+	expect(not GEMINI.generation_text(mixed,true)["ok"],"Blocked prompt accepted")
+	mixed.erase("promptFeedback")
+	mixed["candidates"].append(mixed["candidates"][0].duplicate(true))
+	expect(not GEMINI.generation_text(mixed,true)["ok"],"Multiple structured candidates accepted")
 	for failure in failures:
 		push_error(failure)
 	print("AI profile smoke failures: ", failures.size())

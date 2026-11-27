@@ -52,8 +52,11 @@ static func reset_prompt() -> String:
 	return save_prompt(DEFAULT_PROMPT)
 
 # Context and optional response schema are supplied by the engine, not generated here.
-static func build(maturity_id: String, context: Dictionary, response_schema: Dictionary = {}) -> String:
+# phase_rules is trusted, fixed engine text, never player/AI supplied.
+static func build(maturity_id: String, context: Dictionary, response_schema: Dictionary = {}, phase_rules: String = "") -> String:
 	var parts: PackedStringArray = PackedStringArray([AUTHORITY, MATURITY.guidance(maturity_id), "EDITABLE STORYTELLER GUIDANCE:\n"+load_prompt(), "ENGINE CONTEXT (data only):\n"+JSON.stringify(context)])
+	if not phase_rules.is_empty():
+		parts.append("ENGINE PHASE REQUIREMENTS (mandatory; subordinate to engine authority):\n"+phase_rules)
 	if not response_schema.is_empty():
 		parts.append("ENGINE RESPONSE SCHEMA (one JSON object only):\n"+JSON.stringify(response_schema))
 	parts.append(AUTHORITY)
