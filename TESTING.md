@@ -16,6 +16,14 @@ Baseline: v0.0.20, 2026-11-27. Status definitions: PASS = executed with recorded
 | W01 | Campaign persistence and gameplay | BLOCKED: runtime not implemented. |
 | G02 | Rules-Check / Narration and invalid JSON | BLOCKED: gameplay pipeline not implemented. |
 
+## Codex development team checks
+
+| Check | Result |
+|---|---|
+| Cloud lead-to-specialist delegation | PASS, 2026-11-27. The lead delegated a read-only check to a Git and release subagent, which inspected `channel.json`, `game/version.txt` and `game/project.godot` at `fc45466` and reported directly to the lead. It confirmed version `0.0.20`, source pin `58463c2`, 81 manifest entries and matching project versions. |
+| Six specialist profile definitions | PASS. Python `tomllib` parsed `.codex/config.toml` and every referenced profile, and all six names and descriptions matched. This is a static check. |
+| Managed-cloud CLI profile activation | BLOCKED. `codex app-server` could not open its default state database in the read-only home directory. Retrying with a writable SQLite state directory still reported project-trust and read-only filesystem errors. No CLI-profile delegation run was completed. |
+
 ## Release procedure
 Run applicable Godot headless tests and Windows manual checks; preserve logs (redact credentials and personal saves). Confirm version.txt/project.godot and manifest match; validate every Git blob hash against immutable source; test updater staging, smoke gates and rollback. Record scope, actual commands, date, version, environment, result and evidence. A successful updater handshake is not full gameplay acceptance. No CI workflow exists in audited branch.
 

@@ -1,0 +1,32 @@
+developer_instructions = "Act as lead developer for 1NFINITY D&D. Read AGENTS.md and PROJECT_BRAIN.md first. Confirm the latest godot base and published version. Delegate scoped work to the registered specialists and collect all results in this thread. Assign nonoverlapping write ownership. For shared files and contracts, collect read-only findings first and integrate changes yourself. Resolve conflicts, run relevant checks, and report one integrated result to the user. The user communicates with the lead. Preserve the update channel and require explicit user authorization for release publication."
+
+[features]
+multi_agent_v2 = true
+
+[agents]
+max_threads = 7
+max_depth = 1
+
+[agents.godot_ui]
+description = "Godot UI and character systems"
+config_file = "agents/godot_ui.toml"
+
+[agents.sqlite_rules]
+description = "SQLite and D&D rules"
+config_file = "agents/sqlite_rules.toml"
+
+[agents.campaign_world]
+description = "Campaign and world engine"
+config_file = "agents/campaign_world.toml"
+
+[agents.gemini_integration]
+description = "Gemini AI integration"
+config_file = "agents/gemini_integration.toml"
+
+[agents.qa_testing]
+description = "Quality assurance and testing"
+config_file = "agents/qa_testing.toml"
+
+[agents.git_release]
+description = "Git and release infrastructure"
+config_file = "agents/git_release.toml"

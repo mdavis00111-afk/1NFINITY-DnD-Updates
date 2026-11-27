@@ -5,6 +5,12 @@
 - Read root PROJECT_BRAIN.md before proposing or writing code. Read ROADMAP.md, TESTING.md and CHANGELOG.md as relevant. Inspect only the source files needed for the assigned task. Live code, schema and manifest take precedence over stale descriptions.
 - Confirm current published version, task scope and relevant existing behavior. Stop and report conflicting requirements or missing authoritative rules rather than guessing.
 
+## Team delegation
+- The main Codex agent leads development and is the user's point of contact. For each feature or gameplay issue, it scopes the work, delegates to the relevant specialists, collects their findings, resolves conflicts, integrates changes, runs applicable checks and prepares release evidence.
+- Use the role definitions in `.codex/agents/` when the trusted Codex CLI project loads them. In cloud sessions without active CLI profiles, use native subagents and pass the matching role instructions and exact task scope. Specialists report directly to the lead.
+- Assign disjoint write ownership. Use read-only assignments for overlapping files and shared contracts until the lead resolves them. The lead reviews changes and reconciles shared files before integration. Specialists do not independently merge, push or publish.
+- See PROJECT_BRAIN.md for role ownership and TESTING.md for verification evidence. Explicit user authorization is required to publish a release.
+
 ## Architecture and preservation
 - Godot 4.7.2 owns authoritative state, deterministic mechanics, dice, UI and transactions. SQLite stores structured rules and persistence. Gemini Rules-Check proposes structured action interpretations; Godot validates/resolves/commits; Gemini Narration describes verified results. Do not implement a second authority or let AI invent mechanical results.
 - Original 2014 D&D 5e RAW supplemented by 2018 Basic Rules; do not mix 2024 rules or invent missing rules. Preserve approved GUI designs, existing behavior, user saves, portraits, settings and campaigns.

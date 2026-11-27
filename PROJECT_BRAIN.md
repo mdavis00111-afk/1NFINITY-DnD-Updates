@@ -110,6 +110,23 @@ main.gd show_screen removes old screen, creates new anchored Control; creator/ma
 
 - Codex onboarding report (2026-11-27, user supplied): remote godot at 4ea43b7, clean existing checkout, Linux x86-64 Godot 4.7.2 headless startup and Python SQLite 3.53.1 integrity/FTS5 checks successful; stock Windows bridge and updater blocked, no game smoke suites executed. Root AGENTS.md defines scoped Codex development and review-before-release. See TESTING.md for evidence limits.
 
+## Development team and integration
+
+The main Codex agent leads the development team. It turns feature requests and gameplay feedback into scoped assignments, identifies shared contracts, resolves conflicts, integrates specialist results and runs the applicable checks before presenting one result to the user. The lead prepares release evidence under the existing updater and authorization rules.
+
+| Specialist | Responsibility |
+|---|---|
+| `godot_ui` | Godot scenes, themes, menus, character creation and character sheets. |
+| `sqlite_rules` | SQLite schemas and catalogue, transactional data access, and sourced 2014/2018 rules validation. |
+| `campaign_world` | Campaign persistence, world state and deterministic turn resolution. |
+| `gemini_integration` | Model discovery, prompts and typed responses. Godot retains mechanical and state authority. |
+| `qa_testing` | Independent regression checks, exact test evidence and platform-specific blockers. |
+| `git_release` | Branch and manifest checks, updater staging and rollback, and release readiness. |
+
+The lead assigns disjoint write scopes and uses read-only investigations for overlapping work before integrating changes to shared files or contracts. Specialists report findings, changes, checks and blockers to the lead. The lead resolves disagreements against the repository's architecture and available evidence, and preserves the automatic updater, player data and release gates.
+
+`.codex/config.toml` registers six reusable profiles for a trusted Codex CLI project. Where profile activation is unavailable, the lead delegates through cloud collaboration tools using the corresponding role instructions. The cloud test confirmed that a release specialist can return read-only findings directly to the lead. CLI profile activation remains unverified in the managed cloud environment. See TESTING.md for details.
+
 ## 7. STRICT RULES FOR AI UPDATES
 - Never break the in-game Git auto-updater. Only publish a release manifest after source commit is complete; ensure every managed game file has correct blob hash and immutable source_commit, synchronize project.godot/version.txt, preserve safe staging, handshakes, rollback and user://. Do not assume changes to root launcher/updater reach existing PCs.
 - Never corrupt .tscn UIDs/sub-resources when editing via Git. Preserve resource IDs, ext_resource/sub_resource references, load_steps and paths; import/smoke-test before release. Do not commit generated .godot cache.
