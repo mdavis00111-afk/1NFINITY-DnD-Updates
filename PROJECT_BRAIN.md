@@ -450,3 +450,6 @@ Base 6f90143e6fbc5f3abef75595be25ab7ee02b9c0c; added work_journal.gd and complet
 
 ## C4 stage 2 — recovery, deferred work and development workspace boundary
 Base 28c3f6908b2e4fd85e7e9106dde09390bc1d356a; refined durable queue/in-flight request identity, explicit local review original intention, output claim shape/evidence, post-narration C3 story operations with durable per-step ID and committed source, explicit optional skip and queue recovery; no post-receipt mechanics bypass. Mount boundary explicit, GUI implementation next. No runtime acceptance or publication.
+
+## C4 stage 3 — development GUI linkage
+Base 31fdcfc6e304d33b11de3d4159e2cd0836b70d87; explicit mount_workspace links real C2 snapshot/C3 controller to approved workspace without modifying production manager. Added World menu, disclosed actor sheet/loot selection and take-all/overview/history dialogs, explicit target, rest/preparation, route/pace, legacy-slot review and processing/queue controls; existing HUD rebuild from committed state, pending critically reviewed preview separate from log. No Gemini prompts, live activation or release. Native GUI verification pending.

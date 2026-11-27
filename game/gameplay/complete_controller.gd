@@ -137,6 +137,8 @@ func refresh() -> void:
 	ext["reviewed_preview"]=job.get("candidate",{}).get("text","") if job.get("critical_verified",false) else ""
 	ext["work_stage"]=job.get("stage","")
 	ext["last_terminal"]=last
+	ext["accepted_request_ids"]=[job.get("intent",{}).get("request_id"),work["queued"].get("intent",{}).get("request_id")]
+	ext["request_history"]=work["history"]
 	ext["queue_wait"]=queue_wait
 	ext["draft"]=work["draft"]
 	ext["local_binding"]=true
@@ -238,6 +240,9 @@ func tool_for(intent: Dictionary,state: Dictionary,kind: String,args: Dictionary
 # Deferred semantic adapter requests. Exact request/attempt/revision IDs are
 # persisted first. A new attempt invalidates every earlier reply.
 func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
+	if JSON.stringify(payload).length()>120000:
+		stop("retry","Semantic context exceeds the bounded packet budget.")
+		return
 	var state=data["state"]
 	var identity={"campaign_id":campaign_id,"actor_id":actor_id,"request_id":job["intent"]["request_id"],"attempt_id":registry.session.make_id(),"revision":state["revision"],"stage":stage}
 	job["stage"]=stage
@@ -384,7 +389,11 @@ func recover_active() -> void:
 	if not context.get("ok",false):
 		stop("retry","Narration context unavailable.")
 		return
-	var payload={"receipt":PACK.public_receipt(receipt),"player_text":result.get("player_text",""),"scene":context["scene"],"maturity_id":state["campaign"].get("maturity_id","standard"),"turn_id":job["turn_id"]}
+	var public_view=BASE.new().gameplay_view(campaign_id).get("interaction_extension",{})
+	if public_view.get("revision")!=state["revision"]:
+		stop("retry","Committed narration context changed.")
+		return
+	var payload={"receipt":PACK.public_receipt(receipt),"player_text":result.get("player_text",""),"scene":context["scene"],"maturity_id":state["campaign"].get("maturity_id","standard"),"turn_id":job["turn_id"],"public_actors":public_view.get("public_actors",[]),"public_quests":public_view.get("public_quests",[]),"story":public_view.get("story_records",[])}
 	if job.get("stage")=="reconcile":
 		reconcile(job,receipt,context["ids"])
 	elif job.get("candidate",{}).is_empty():
@@ -492,7 +501,7 @@ func retry() -> Dictionary:
 		job.erase("candidate")
 		job.erase("critical_verified")
 		job.erase("critical_claims")
-	job["stage"]="post_story" if job.get("narration_event_id")!=null else ("execute" if not job.get("tool",{}).is_empty() else "new")
+	job["stage"]="post_story" if job.get("narration_event_id")!=null else ("reconcile" if not job.get("geography",{}).is_empty() and job.get("critical_verified",false) else ("execute" if not job.get("tool",{}).is_empty() else "new"))
 	if not update_active(job):
 		return failure("Retry unconfirmed.")
 	advance.call_deferred()
@@ -664,3 +673,30 @@ func mount_workspace(workspace: Node,leave: Callable,settings: Callable) -> Dict
 	workspace.bind_development_controller(self)
 	view_changed.connect(workspace.apply_authoritative_view)
 	return {"ok":true}
+
+func routes_to(destination: String,revision: int) -> Dictionary:
+	var state=registry.session.token(campaign_id)
+	if not state.get("ok",false) or state["revision"]!=revision or not DTO.id_valid(destination):
+		return failure("Travel selection revision changed.")
+	var context=scene_context(state)
+	if not context.get("ok",false):
+		return context
+	var routes: Array=[]
+	for route in context["scene"]["routes"]:
+		if destination!=state["location_id"] and destination in [route["from_id"],route["to_id"]] and state["location_id"] in [route["from_id"],route["to_id"]]:
+			routes.append(route)
+	return {"ok":true,"routes":routes,"revision":revision}
+
+func request_status(id: String) -> Dictionary:
+	if not DTO.id_valid(id) or not reload():
+		return failure("Delivery lookup unavailable.")
+	for slot in ["active","queued"]:
+		if data["work"][slot].get("intent",{}).get("request_id")==id:
+			return {"ok":true,"recorded":true,"status":"accepted_pending"}
+	for row in data["work"]["history"]:
+		if row.get("request_id")==id:
+			return {"ok":true,"recorded":true,"status":row["status"]}
+	var prior=registry.session.settlement(campaign_id,id)
+	if not prior.get("ok",false):
+		return prior
+	return {"ok":true,"recorded":prior.get("found",false),"status":prior.get("status")}

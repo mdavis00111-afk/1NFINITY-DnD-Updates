@@ -35,6 +35,10 @@ var intent_buttons: Array = []
 var popup_status_labels: Array = []
 var inventory_actions: HBoxContainer
 var last_chat_request_id = ""
+var development_controller: Node
+var local_pending_id=""
+var local_pending_text=""
+var preview_note: Label
 var view: Dictionary = {}
 var actor: Dictionary = {}
 var campaign: Dictionary = {}
@@ -90,6 +94,8 @@ func _ready() -> void:
 	cat.initialize()
 	add_theme_constant_override("separation",5)
 	build_workspace()
+	if is_instance_valid(development_controller):
+		composer.text=str(extension().get("draft",""))
 
 func build_workspace() -> void:
 	build_header()
@@ -117,6 +123,13 @@ func apply_authoritative_view(snapshot: Dictionary) -> bool:
 		refresh_intent_controls()
 		return false
 	var draft = composer.text if is_instance_valid(composer) else ""
+	var focused=is_instance_valid(composer) and composer.has_focus()
+	var caret=composer.caret_column if is_instance_valid(composer) else 0
+	if is_instance_valid(development_controller):
+		var ext=snapshot.get("interaction_extension",{})
+		if not local_pending_id.is_empty() and (local_pending_id in ext.get("accepted_request_ids",[]) or ext.get("request_history",[]).any(func(row): return row.get("request_id")==local_pending_id)):
+			local_pending_id=""
+			local_pending_text=""
 	var previous_dice = last_roll.duplicate(true)
 	var previous_dice_text = dice_result.text if is_instance_valid(dice_result) else "Result: —"
 	var previous_dice_tip = dice_result.tooltip_text if is_instance_valid(dice_result) else ""
@@ -142,6 +155,9 @@ func apply_authoritative_view(snapshot: Dictionary) -> bool:
 	popup_status_labels.clear()
 	build_workspace()
 	composer.text = draft
+	composer.caret_column=mini(caret,draft.length())
+	if focused and composer.editable:
+		composer.grab_focus.call_deferred()
 	last_roll = previous_dice
 	dice_type.select(previous_die)
 	dice_count.value = previous_count
@@ -317,14 +333,20 @@ func navigate(destination: String) -> void:
 		"Settings": request_settings()
 
 func request_leave() -> void:
-	if not intents.outstanding_id.is_empty():
+	if is_instance_valid(development_controller) and not development_controller.save_draft(composer.text if is_instance_valid(composer) else "").get("ok",false):
+		show_status("Draft save unconfirmed; retry before leaving.")
+		return
+	if not intents.outstanding_id.is_empty() or not local_pending_id.is_empty():
 		show_status("A request needs reconciliation before leaving the workspace.")
 		return
 	if leave_action.is_valid():
 		leave_action.call()
 
 func request_settings() -> void:
-	if not intents.outstanding_id.is_empty():
+	if is_instance_valid(development_controller) and not development_controller.save_draft(composer.text if is_instance_valid(composer) else "").get("ok",false):
+		show_status("Draft save unconfirmed; retry before leaving.")
+		return
+	if not intents.outstanding_id.is_empty() or not local_pending_id.is_empty():
 		show_status("A request needs reconciliation before changing settings.")
 		return
 	if settings_action.is_valid():
@@ -461,6 +483,9 @@ func slot_card(parent: Node, slot: String, id: String) -> void:
 		var assigned = intents.instance(str(intents.interaction["slot_assignments"].get(slot_id,"")))
 		occupied = not assigned.is_empty()
 		caption = str(assigned["name"]) if occupied else "Empty"
+	if is_instance_valid(development_controller) and intents.interaction.is_empty():
+		caption=current_slot_text(slot_id)
+		occupied=caption not in ["Unresolved","Not established"]
 	var b = button(parent,caption,func(): show_slot(slot_id),12,"armor" if slot=="Body" and occupied else ("shield" if slot=="Shield" and occupied else ""))
 	b.custom_minimum_size.y = 40
 	b.tooltip_text = slot+" — "+caption+" · Inspect / choose owned equipment"
@@ -494,7 +519,7 @@ func show_equipped_weapons() -> void:
 
 func display_items() -> Array:
 	# Legacy stacks are for inspection only. C2 supplies actual stable IDs.
-	return intents.interaction["inventory_instances"] if not intents.interaction.is_empty() else items
+	return extension()["inventory_instances"] if is_instance_valid(development_controller) and extension().has("inventory_instances") else (intents.interaction["inventory_instances"] if not intents.interaction.is_empty() else items)
 
 func item_key(row: Dictionary) -> String:
 	return str(row.get("instance_id",row.get("item_id","")))
@@ -546,6 +571,11 @@ func slot_options(slot: String) -> Array:
 	return options
 
 func current_slot_text(slot: String) -> String:
+	if is_instance_valid(development_controller) and intents.interaction.is_empty():
+		for assignment in extension().get("known_slot_assignments",[]):
+			if assignment["slot"]==slot:
+				return item_name(display_item(assignment["instance_id"]))
+		return "Unresolved" if not extension().get("equipment_review",[]).is_empty() else "Not established"
 	if not intents.interaction.is_empty():
 		var row = intents.instance(str(intents.interaction["slot_assignments"].get(slot,"")))
 		return str(row.get("name","Empty"))
@@ -706,6 +736,9 @@ func build_center(parent: VBoxContainer) -> void:
 		log_list.add_child(divider)
 	if view.get("events",[]).is_empty():
 		label(log_list,"No committed adventure events available.",16)
+	if is_instance_valid(development_controller) and not str(extension().get("reviewed_preview","")).is_empty():
+		label(log_list,"DM · Critically reviewed preview — world reconciliation pending",15,GOLD)
+		label(log_list,str(extension()["reviewed_preview"]),17,IVORY)
 	if not data_error.is_empty():
 		label(log_list,data_error,16,GOLD)
 	log_scroll.set_deferred("scroll_vertical",2147483647)
@@ -714,8 +747,10 @@ func build_center(parent: VBoxContainer) -> void:
 		opening_button = button(actions,"Generate Opening",retry_action,15,"wand")
 		opening_button.disabled = pending or not data_error.is_empty()
 	button(actions,"Turn / Retry",show_turn_controls,15)
+	if is_instance_valid(development_controller):
+		button(actions,"World",show_world_menu,15)
 	var save_exit = button(actions,"Save & Exit",request_leave,15)
-	save_exit.tooltip_text = "Committed campaign data is already saved. Pending opening generation is canceled; manual dice are not saved."
+	save_exit.tooltip_text = "Committed campaign data and accepted work are saved. Manual dice are not saved." if is_instance_valid(development_controller) else "Committed campaign data is already saved. Pending opening generation is canceled; manual dice are not saved."
 	var status_text = str(intents.interaction.get("status_text","Turn controller pending — action submission unavailable."))
 	if not data_error.is_empty():
 		status_text = "Campaign data unavailable. Return to Campaign and reopen."
@@ -783,6 +818,12 @@ func show_status(message: String) -> void:
 		status.text = message
 
 func can_intent(kind: String) -> bool:
+	if is_instance_valid(development_controller):
+		if pending or not data_error.is_empty() or not local_pending_id.is_empty() or not intents.outstanding_id.is_empty():
+			return false
+		if kind=="chat":
+			return extension().get("phase")=="idle" or extension().get("can_queue",false)
+		return extension().get("phase")=="idle" and kind in extension().get("supported_intents",[])
 	return not pending and data_error.is_empty() and intents.available(kind)
 
 func intent_reason(kind: String) -> String:
@@ -820,14 +861,19 @@ func refresh_intent_controls() -> void:
 			live.append(binding)
 	intent_buttons = live
 	if is_instance_valid(composer):
-		composer.editable = can_intent("chat")
+		composer.editable = is_instance_valid(development_controller) or can_intent("chat")
 		composer.placeholder_text = "Type your action here…" if composer.editable else "Type your action here… (controller unavailable)"
 	if is_instance_valid(send_button):
 		send_button.disabled = not can_intent("chat")
-		send_button.tooltip_text = intent_reason("chat")
+		send_button.text="Queue" if is_instance_valid(development_controller) and extension().get("can_queue",false) else "Send"
+		send_button.tooltip_text = "One durable next action; resolves only after settlement." if is_instance_valid(development_controller) else intent_reason("chat")
 
 func request_intent(kind: String,args: Dictionary) -> Dictionary:
-	var reply = intents.request(kind,args) if can_intent(kind) else {"ok":false,"message":intent_reason(kind)}
+	var reply: Dictionary
+	if is_instance_valid(development_controller):
+		reply=dev_submit(kind,args,"1") if can_intent(kind) else {"ok":false,"message":"Action unavailable or previous work pending."}
+	else:
+		reply = intents.request(kind,args) if can_intent(kind) else {"ok":false,"message":intent_reason(kind)}
 	var message = str(reply.get("message","Request unavailable."))
 	show_status(message)
 	var live: Array = []
@@ -842,12 +888,19 @@ func request_intent(kind: String,args: Dictionary) -> Dictionary:
 func submit_chat() -> void:
 	if not is_instance_valid(composer):
 		return
-	request_intent("chat",{"text":composer.text})
+	var sent=request_intent("chat",{"text":composer.text})
+	if is_instance_valid(development_controller):
+		if sent.get("ok",false):
+			composer.clear() # Exact original text already persisted in journal.
+		return
 	if not intents.outstanding_id.is_empty():
 		last_chat_request_id = intents.outstanding_id
 	# Preserve original text until matching committed settlement.
 
 func show_turn_controls() -> void:
+	if is_instance_valid(development_controller):
+		show_processing()
+		return
 	var popup = popup_base("Turn status")
 	var col = vbox(popup,6)
 	col.custom_minimum_size.x = 470
@@ -976,6 +1029,8 @@ func show_tab(tab: String) -> void:
 		"Notes": build_notes()
 
 func equipped(id: String) -> bool:
+	if is_instance_valid(development_controller) and intents.interaction.is_empty():
+		return extension().get("known_slot_assignments",[]).any(func(row): return row["instance_id"]==id)
 	if not intents.interaction.is_empty():
 		return id in intents.interaction["slot_assignments"].values()
 	for item in items:
@@ -1115,15 +1170,26 @@ func item_quantity_popup(id: String,kind: String) -> void:
 	quantity.step = 1
 	quantity.value = 1
 	row.add_child(quantity)
+	var target: OptionButton
 	if kind=="item_use":
-		label(col,"Target not selected. The controller may request an explicit target or other decision.",14,GOLD)
+		if is_instance_valid(development_controller):
+			target=target_picker(col)
+			quantity.max_value=1
+		else:
+			label(col,"Target not selected. The controller may request an explicit target or other decision.",14,GOLD)
 	var confirm = button(col,"Submit "+("use" if kind=="item_use" else "drop")+" intention",func():
 		var args = {"instance_id":item.get("instance_id"),"quantity":int(quantity.value)}
 		if kind=="item_use":
-			args["target_id"] = null
+			args["target_id"] = selected_target(target)
+		if kind=="item_use" and is_instance_valid(development_controller) and args["target_id"]==null:
+			show_status("Select an explicit supported target.")
+			return
 		request_intent(kind,args)
 	,16)
-	track_intent(confirm,kind,item.has("instance_id"),"Stable owned instance required.")
+	var supported=item.has("instance_id")
+	if kind=="item_use" and is_instance_valid(development_controller):
+		supported=supported and item_definition(item) in ["magic:potion-of-healing-common","magic:potion-of-healing-greater","magic:potion-of-healing-superior","magic:potion-of-healing-supreme","rations-1-day"]
+	track_intent(confirm,kind,supported,"Stable owned instance and supported effect required.")
 	popup_status(col)
 	popup.popup_centered(Vector2i(490,320))
 
@@ -1225,7 +1291,12 @@ func show_spell(id: String) -> void:
 	var prep_row = hbox(col,4)
 	for kind in ["spell_prepare","spell_unprepare"]:
 		var offer = intents.preparation_option(id,kind)
-		intent_button(prep_row,"Prepare" if kind=="spell_prepare" else "Unprepare",kind,{"spell_id":id},offer.get("available",false),str(offer.get("warning","Preparation eligibility requires the handler.")))
+		if is_instance_valid(development_controller):
+			var prep_kind=kind
+			var action=button(prep_row,"Prepare" if kind=="spell_prepare" else "Unprepare",func(): popup.queue_free(); show_preparation(prep_kind,id),15)
+			action.disabled=not offer.get("available",false) or not can_choice(kind)
+		else:
+			intent_button(prep_row,"Prepare" if kind=="spell_prepare" else "Unprepare",kind,{"spell_id":id},offer.get("available",false),str(offer.get("warning","Preparation eligibility requires the handler.")))
 	var cast_row = hbox(col,4)
 	var cast_choices = OptionButton.new()
 	cast_choices.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1237,13 +1308,20 @@ func show_spell(id: String) -> void:
 			var text = str(opt["source"]).replace("_"," ").capitalize()+" · "+("Slotless" if opt["slot_level"]==0 else "Level "+str(opt["slot_level"]))
 			cast_choices.add_item(text)
 			cast_choices.set_item_disabled(cast_choices.item_count-1,not opt["available"])
-	var cast_note = label(col,"Target is unselected; controller resolves or asks for required choices.",14,GOLD)
+	var target: OptionButton
+	if is_instance_valid(development_controller):
+		target=target_picker(col)
+	var cast_note = label(col,"Select an explicit target; supported self healing only." if is_instance_valid(development_controller) else "Target is unselected; controller resolves or asks for required choices.",14,GOLD)
 	var cast = button(cast_row,"Cast",func():
 		var index = cast_choices.selected
 		if index<0 or index>=options.size():
 			return
 		var opt = options[index]
-		request_intent("spell_cast",{"spell_id":id,"source":opt["source"],"slot_level":opt["slot_level"],"target_id":null})
+		var target_id=selected_target(target)
+		if is_instance_valid(development_controller) and target_id==null:
+			show_status("Select the supported self target.")
+			return
+		request_intent("spell_cast",{"spell_id":id,"source":opt["source"],"slot_level":opt["slot_level"],"target_id":target_id})
 		if not intents.outstanding_id.is_empty():
 			popup.queue_free()
 	,16)
@@ -1342,8 +1420,20 @@ func show_resource(id: String) -> void:
 	quantity.max_value = maxi(1,remaining)
 	quantity.value = 1
 	col.add_child(quantity)
-	var use = button(col,"Request resource use",func(): request_intent("resource_use",{"resource_id":id,"quantity":int(quantity.value)}),16)
-	track_intent(use,"resource_use",known and remaining>0,"No available quantity established.")
+	var target: OptionButton
+	if is_instance_valid(development_controller):
+		target=target_picker(col)
+	var use = button(col,"Request resource use",func():
+		if is_instance_valid(development_controller):
+			var chosen=selected_target(target)
+			if chosen==null:
+				show_status("Choose self explicitly.")
+				return
+			dev_submit("resource_use",{"resource_id":id,"quantity":int(quantity.value),"target_id":chosen},"2")
+		else:
+			request_intent("resource_use",{"resource_id":id,"quantity":int(quantity.value)})
+	,16)
+	track_intent(use,"resource_use",known and remaining>0 and (not is_instance_valid(development_controller) or id in ["second_wind","lay_on_hands"]),"No available supported resource quantity established.")
 	label(col,"No manual counter adjustment; effects, timing and costs require resolution.",14,GOLD)
 	popup_status(col)
 	popup.popup_centered(Vector2i(470,250))
@@ -1353,8 +1443,12 @@ func show_character_actions() -> void:
 	var col = vbox(popup,5)
 	col.custom_minimum_size.x = 460
 	label(col,"Rest, recovery and advancement",19,GOLD)
-	intent_button(col,"Request short rest","rest",{"rest_kind":"short"})
-	intent_button(col,"Request long rest","rest",{"rest_kind":"long"})
+	if is_instance_valid(development_controller):
+		button(col,"Short rest · choose hit dice",func(): popup.queue_free(); show_rest("short"))
+		button(col,"Long rest · choose preparation",func(): popup.queue_free(); show_rest("long"))
+	else:
+		intent_button(col,"Request short rest","rest",{"rest_kind":"short"})
+		intent_button(col,"Request long rest","rest",{"rest_kind":"long"})
 	intent_button(col,"Review level-up eligibility","level_up",{})
 	label(col,"The controller validates time, safety, resources, class features and advancement. No manual HP, spell slot, XP or coin changes.",15)
 	popup_status(col)
@@ -1458,7 +1552,10 @@ func show_quests() -> void:
 	var col = vbox(popup,5)
 	col.custom_minimum_size = Vector2(630,0)
 	var rows: Array = []
-	if not intents.interaction.is_empty():
+	if is_instance_valid(development_controller):
+		rows=extension().get("public_quests",[])
+		label(col,"Disclosed campaign quests",19,GOLD)
+	elif not intents.interaction.is_empty():
 		rows = intents.interaction["public_quests"]
 		label(col,"Disclosed campaign quests",19,GOLD)
 	else:
@@ -1500,13 +1597,22 @@ func show_quests() -> void:
 	else:
 		list.select(0)
 		choose.call(0)
+	if is_instance_valid(development_controller):
+		button(col,"Selected quest history",func(): show_story_history(selection["id"]))
 	label(col,"Quest intentions never mark a quest complete or invent a reward.",14,GOLD)
 	popup_status(col)
 	popup.popup_centered(Vector2i(670,430))
 
 func map_intention(packet: Dictionary) -> Dictionary:
-	if not INTENTS.exact_keys(packet,["kind","campaign_id","expected_revision","destination_id"]) or packet.get("kind")!="travel_intention" or packet.get("campaign_id")!=intents.campaign_id or packet.get("expected_revision")!=intents.revision:
+	var revision=int(extension().get("revision",intents.revision)) if is_instance_valid(development_controller) else intents.revision
+	if not INTENTS.exact_keys(packet,["kind","campaign_id","expected_revision","destination_id"]) or packet.get("kind")!="travel_intention" or packet.get("campaign_id")!=intents.campaign_id or packet.get("expected_revision")!=revision:
 		return {"ok":false,"message":"Map and campaign revisions differ. Refresh the authoritative workspace before travel."}
+	if is_instance_valid(development_controller):
+		for child in get_children():
+			if child is Window and child.has_method("request_travel"):
+				child.queue_free()
+		show_travel.call_deferred(packet["destination_id"],revision)
+		return {"ok":false,"locked":false,"message":"Choose a known route and pace; no movement submitted."}
 	var result = request_intent("travel",{"destination_id":packet["destination_id"]})
 	result["locked"] = not intents.outstanding_id.is_empty()
 	return result
@@ -1515,7 +1621,340 @@ func show_map() -> void:
 	var popup = MAP_WINDOW.new()
 	# No live controller is passed by main. C4 must explicitly bind it.
 	var handler = Callable(self,"map_intention") if can_intent("travel") else Callable()
-	popup.configure(str(campaign.get("id","")),str(campaign.get("title","Campaign")),handler,intents.revision)
+	popup.configure(str(campaign.get("id","")),str(campaign.get("title","Campaign")),handler,int(extension().get("revision",intents.revision)) if is_instance_valid(development_controller) else intents.revision)
 	add_child(popup)
 	var extent = get_viewport().get_visible_rect().size
 	popup.popup_centered(Vector2i(maxf(940,extent.x-36),maxf(610,extent.y-36)))
+
+# C4 development-only interface. No production caller binds this Node.
+func bind_development_controller(controller: Node) -> void:
+	development_controller=controller
+
+func extension() -> Dictionary:
+	return view.get("interaction_extension",{})
+
+func can_choice(kind: String) -> bool:
+	return is_instance_valid(development_controller) and extension().get("phase")=="idle" and kind in extension().get("choice_tools",[]) and local_pending_id.is_empty()
+
+func dev_submit(kind: String,args: Dictionary,version: String="2") -> Dictionary:
+	if not is_instance_valid(development_controller) or not local_pending_id.is_empty() or (version=="2" and not can_choice(kind)):
+		return {"ok":false,"message":"Controller or choice unavailable."}
+	var rid=Crypto.new().generate_random_bytes(16).hex_encode()
+	var packet={"schema_version":version,"campaign_id":campaign["id"],"actor_id":actor["id"],"expected_revision":extension().get("revision"),"request_id":rid,"kind":kind,"args":args.duplicate(true)}
+	local_pending_id=rid
+	local_pending_text=str(args.get("text",""))
+	var reply=development_controller.submit(packet)
+	if not reply is Dictionary or reply.get("request_id")!=rid or not reply.get("ok") is bool:
+		show_status("Delivery unconfirmed. Recover in Turn / Retry.")
+		return {"ok":false,"message":"Delivery unconfirmed."}
+	if not reply["ok"]:
+		local_pending_id=""
+		local_pending_text=""
+	show_status(reply["message"])
+	refresh_intent_controls()
+	return reply
+
+func target_picker(parent: Node) -> OptionButton:
+	label(parent,"Target",15,GOLD)
+	var target=OptionButton.new()
+	target.add_item("Choose target…")
+	target.set_item_metadata(0,null)
+	target.add_item(str(actor.get("name","Character"))+" (self)")
+	target.set_item_metadata(1,actor["id"])
+	for individual in extension().get("public_actors",[]):
+		target.add_item(str(individual["name"])+" — other-target effects unsupported")
+		target.set_item_disabled(target.item_count-1,true)
+	target.select(0)
+	parent.add_child(target)
+	return target
+
+func selected_target(target: OptionButton) -> Variant:
+	return target.get_item_metadata(target.selected) if is_instance_valid(target) and target.selected>=0 else null
+
+func show_processing() -> void:
+	var popup=popup_base("Turn and processing")
+	var col=vbox(popup,6)
+	col.custom_minimum_size.x=530
+	label(col,str(extension().get("status_text","Controller ready.")),18,GOLD)
+	label(col,"Committed effects remain saved. Pending prose and deferred work are separate.",15)
+	var queued=str(extension().get("queued_text",""))
+	if not queued.is_empty():
+		label(col,"Saved next action: "+queued,16,GOLD)
+		button(col,"Resume queued action when settled",func(): development_controller.resume_queue(); popup.queue_free())
+		button(col,"Return queued text to draft",func():
+			var result=development_controller.discard_queue()
+			if result.get("ok",false):
+				composer.text=queued
+			popup.queue_free()
+		)
+	var last=extension().get("last_terminal",{})
+	if last.get("status") in ["rejected","cancelled"] and not str(last.get("text","")).is_empty():
+		button(col,"Restore last unresolved text",func(): composer.text=last["text"]; popup.queue_free())
+	button(col,"Retry / recover current request",func():
+		if not local_pending_id.is_empty():
+			var found=development_controller.request_status(local_pending_id)
+			if found.get("ok",false):
+				local_pending_id=""
+				local_pending_text=""
+				development_controller.refresh()
+		else:
+			var result=development_controller.retry()
+			if not result.get("ok",false):
+				show_status(str(result.get("error","Retry unavailable.")))
+		popup.queue_free()
+	)
+	button(col,"Cancel uncommitted request",func(): development_controller.cancel(); popup.queue_free())
+	button(col,"Skip optional deferred story proposals",func(): development_controller.skip_deferred(); popup.queue_free())
+	popup.popup_centered(Vector2i(580,420))
+
+func show_world_menu() -> void:
+	var popup=popup_base("Campaign records")
+	var col=vbox(popup,6)
+	col.custom_minimum_size.x=400
+	button(col,"NPCs and enemies",func(): popup.queue_free(); show_public_actors())
+	button(col,"Available loot",func(): popup.queue_free(); show_loot())
+	button(col,"Campaign overview and persistent factors",func(): popup.queue_free(); show_overview())
+	if not extension().get("equipment_review",[]).is_empty():
+		button(col,"Review legacy equipment assignments",func(): popup.queue_free(); show_legacy_review())
+	button(col,"Quest journal",func(): popup.queue_free(); show_quests())
+	popup.popup_centered(Vector2i(460,330))
+
+func show_public_actors() -> void:
+	var popup=popup_base("Disclosed NPCs and enemies")
+	var col=vbox(popup,5)
+	col.custom_minimum_size.x=590
+	var list=vbox(scroll(col,270),4)
+	for individual in extension().get("public_actors",[]):
+		var row=individual
+		button(list,str(row["name"])+" · "+str(row["kind"]).capitalize()+" · "+str(row["occupation"]),func():
+			var response=development_controller.enquiry("actor_sheet",{"actor_id":row["actor_id"]})
+			if not response.get("ok",false):
+				popup_text("Sheet unavailable",str(response.get("error","Not disclosed.")))
+				return
+			var actors=response.get("data",{}).get("actors",[])
+			if actors.size()!=1:
+				popup_text("Sheet unavailable","No disclosed sheet.")
+				return
+			var sheet=actors[0]
+			popup_text(str(sheet.get("name","Actor")),str(sheet.get("occupation",""))+"\n"+("Disclosed sheet:\n"+readable(sheet["sheet"]) if sheet.get("sheet") is Dictionary else "Descriptive identity only; mechanics not disclosed."))
+		,16)
+	if extension().get("public_actors",[]).is_empty():
+		label(list,"No disclosed local actors in this projection.")
+	popup.popup_centered(Vector2i(630,360))
+
+func show_loot() -> void:
+	var popup=popup_base("Available loot")
+	var col=vbox(popup,5)
+	col.custom_minimum_size.x=520
+	var list=vbox(scroll(col,240),4)
+	for container in extension().get("loot_containers",[]):
+		var row=container
+		button(list,str(row["name"])+" · "+str(row["source_kind"])+" · "+str(row["items"].size())+" item stacks",func(): popup.queue_free(); show_loot_container(row))
+	if extension().get("loot_containers",[]).is_empty():
+		label(list,"No disclosed eligible loot at the current location.")
+	popup.popup_centered(Vector2i(560,320))
+
+func show_loot_container(container: Dictionary) -> void:
+	var popup=popup_base(str(container["name"]))
+	var col=vbox(popup,5)
+	col.custom_minimum_size.x=580
+	label(col,"Source: "+str(container["source_kind"])+" · event "+number(container["source_event_id"]),15,GOLD)
+	var list=vbox(scroll(col,260),4)
+	var selected: Array=[]
+	for item in container["items"]:
+		var row=hbox(list,5)
+		label(row,item_name(item)+" · available "+number(item["quantity"]),16)
+		var amount=SpinBox.new()
+		amount.min_value=0
+		amount.max_value=int(item["quantity"])
+		amount.step=1
+		row.add_child(amount)
+		selected.append({"instance_id":item["instance_id"],"control":amount})
+	var money: Dictionary={}
+	for denom in ["cp","sp","ep","gp","pp"]:
+		var row=hbox(list,4)
+		label(row,denom.to_upper()+" · available "+number(container["coins"].get(denom)),15)
+		var amount=SpinBox.new()
+		amount.min_value=0
+		amount.max_value=int(container["coins"].get(denom,0))
+		amount.step=1
+		row.add_child(amount)
+		money[denom]=amount
+	var actions=hbox(col,4)
+	var take=button(actions,"Pick up selected",func():
+		var picks: Array=[]
+		var coins: Dictionary={}
+		for entry in selected:
+			if entry["control"].value>0:
+				picks.append({"instance_id":entry["instance_id"],"quantity":int(entry["control"].value)})
+		for denom in money:
+			coins[denom]=int(money[denom].value)
+		dev_submit("loot_pickup",{"container_id":container["container_id"],"source_event_id":container["source_event_id"],"items":picks,"coins":coins})
+	)
+	take.disabled=not can_choice("loot_pickup")
+	var all=button(actions,"Take all",func(): dev_submit("loot_take_all",{"container_id":container["container_id"],"source_event_id":container["source_event_id"]}))
+	all.disabled=not can_choice("loot_take_all")
+	label(col,"Transfers are atomic; capacity and eligibility are checked by C3.",14,GOLD)
+	popup.popup_centered(Vector2i(620,430))
+
+func show_overview() -> void:
+	var result=development_controller.enquiry("overview",{})
+	if not result.get("ok",false):
+		popup_text("Campaign overview unavailable",str(result.get("error","Refresh required.")))
+		return
+	var overview=result["data"]
+	var popup=popup_base("Campaign overview")
+	var col=vbox(popup,5)
+	col.custom_minimum_size.x=660
+	label(col,str(overview.get("title","Campaign"))+" · "+str(overview.get("current_location","Unknown")),20,GOLD)
+	var list=vbox(scroll(col,380),6)
+	for record in overview.get("overview",[]):
+		label(list,str(record["title"]),18,GOLD)
+		label(list,str(record["description"]),16)
+	label(list,"Persistent story factors",18,GOLD)
+	for record in overview.get("persistent_factors",[]):
+		var selected=record
+		button(list,str(record["kind"]).capitalize()+" · "+str(record["title"])+" · "+str(record["status"]),func(): show_story_history(selected["id"]))
+	label(list,"Recent committed events",18,GOLD)
+	for event in overview.get("recent_events",[]):
+		label(list,str(event.get("text","")),15)
+	popup.popup_centered(Vector2i(700,500))
+
+func show_story_history(id: String) -> void:
+	if id.is_empty():
+		return
+	var result=development_controller.enquiry("story_history",{"record_id":id})
+	if not result.get("ok",false):
+		popup_text("History unavailable",str(result.get("error","Not disclosed.")))
+		return
+	var lines: PackedStringArray=[]
+	for record in result["data"].get("history",[]):
+		lines.append("Event "+number(record["event_id"])+" · "+str(record["status"])+"\n"+str(record.get("title",""))+"\n"+str(record.get("description","")))
+	if result["data"].get("truncated",false):
+		lines.append("Older entries outside this bounded view.")
+	popup_text("Persistent history","\n\n".join(lines) if not lines.is_empty() else "No disclosed history recorded.")
+
+func preparation_choices(parent: Node,forced_kind: String="",spell_id: String="") -> Array:
+	var choices: Array=[]
+	var role=str(actor.get("class_id",""))
+	var sp=actor.get("spellcasting",{})
+	if not role in ["cleric","druid","wizard"]:
+		return choices
+	var list=vbox(scroll(parent,230),3)
+	for spell in cat.rows("spells"):
+		var id=str(spell.get("index",""))
+		var level=spell.get("level")
+		if not INTENTS.integer(level,1,9) or not role in cat.references(spell.get("classes",[])) or int(sp.get("slots",{}).get(str(int(level)),{}).get("maximum",0))<1 or id in sp.get("always_prepared_ids",[]) or (role=="wizard" and not id in sp.get("known_ids",[])):
+			continue
+		var check=CheckBox.new()
+		check.text=title_for("spells",id)+" · level "+str(int(level))
+		check.button_pressed=id in sp.get("prepared_ids",[])
+		if id==spell_id and not forced_kind.is_empty():
+			check.button_pressed=forced_kind=="spell_prepare"
+			check.disabled=true
+		list.add_child(check)
+		choices.append({"id":id,"control":check})
+	return choices
+
+func selected_preparation(choices: Array) -> Array:
+	var result: Array=[]
+	for row in choices:
+		if row["control"].button_pressed:
+			result.append(row["id"])
+	return result
+
+func show_preparation(kind: String,id: String) -> void:
+	var popup=popup_base("Complete prepared spell list")
+	var col=vbox(popup,4)
+	col.custom_minimum_size.x=490
+	label(col,"Choose all prepared spells. Requires verified immediate long-rest window.",15,GOLD)
+	var choices=preparation_choices(col,kind,id)
+	var confirm=button(col,"Submit complete list",func(): dev_submit(kind,{"spell_id":id,"prepared_ids":selected_preparation(choices)}))
+	confirm.disabled=choices.is_empty() or not can_choice(kind)
+	popup.popup_centered(Vector2i(530,400))
+
+func show_rest(kind: String) -> void:
+	var popup=popup_base(kind.capitalize()+" rest")
+	var col=vbox(popup,5)
+	col.custom_minimum_size.x=490
+	var combat=actor.get("combat",{})
+	var dice=SpinBox.new()
+	dice.min_value=0
+	dice.max_value=clampi(int(combat.get("hit_dice_total",0))-int(combat.get("hit_dice_spent",0)),0,1) if kind=="short" else 0
+	dice.step=1
+	label(col,"Hit dice to spend (supported level-one slice)",15,GOLD)
+	col.add_child(dice)
+	var prepare=CheckBox.new()
+	prepare.text="Choose a new complete prepared list"
+	var choices: Array=[]
+	if kind=="long" and actor.get("class_id") in ["cleric","druid","wizard"]:
+		col.add_child(prepare)
+		choices=preparation_choices(col)
+	var confirm=button(col,"Submit rest intention",func(): dev_submit("rest",{"rest_kind":kind,"hit_dice":int(dice.value),"prepared_ids":selected_preparation(choices) if prepare.button_pressed else null}))
+	confirm.disabled=not can_choice("rest")
+	label(col,"Safety, supplies, elapsed time and eligibility require trusted review.",14,GOLD)
+	popup.popup_centered(Vector2i(530,410 if not choices.is_empty() else 250))
+
+func show_travel(destination: String,revision: int) -> void:
+	if revision!=extension().get("revision"):
+		show_status("Map selection stale.")
+		return
+	var result=development_controller.routes_to(destination,revision)
+	if not result.get("ok",false) or result.get("routes",[]).is_empty():
+		popup_text("Travel unavailable","No established visible route to this destination. No movement has occurred.")
+		return
+	var popup=popup_base("Choose travel route")
+	var col=vbox(popup,6)
+	col.custom_minimum_size.x=480
+	var routes=OptionButton.new()
+	for route in result["routes"]:
+		routes.add_item(str(route["name"])+" · "+number(route.get("distance_miles"))+" miles")
+		routes.set_item_metadata(routes.item_count-1,route["id"])
+	routes.select(-1)
+	col.add_child(routes)
+	var pace=OptionButton.new()
+	for name_value in ["slow","normal","fast"]:
+		pace.add_item(name_value.capitalize())
+		pace.set_item_metadata(pace.item_count-1,name_value)
+	pace.select(-1)
+	col.add_child(pace)
+	var fast=CheckBox.new()
+	fast.text="Fast travel (requires prior actual traversal)"
+	col.add_child(fast)
+	var go=button(col,"Submit route intention",func():
+		if routes.selected<0 or pace.selected<0:
+			show_status("Choose route and pace explicitly.")
+			return
+		dev_submit("travel",{"route_id":routes.get_item_metadata(routes.selected),"destination_id":destination,"pace":pace.get_item_metadata(pace.selected),"fast_travel":fast.button_pressed,"text":"Travel to the selected destination."})
+	)
+	go.disabled=not can_choice("travel")
+	popup.popup_centered(Vector2i(520,300))
+
+func show_legacy_review() -> void:
+	var popup=popup_base("Review existing equipment assignments")
+	var col=vbox(popup,5)
+	col.custom_minimum_size.x=580
+	label(col,"Choose the recorded hand/slot for each already-equipped item. This is not new equipment.",15,GOLD)
+	var choices: Array=[]
+	for review in extension().get("equipment_review",[]):
+		var item=display_item(review["instance_id"])
+		label(col,item_name(item)+" · "+str(review.get("reason","")),15)
+		var picker=OptionButton.new()
+		for opt in item.get("equip_options",[]):
+			if opt["slot"] in ["body","shield","main_hand","off_hand"]:
+				picker.add_item(str(opt["slot"])+" / "+str(opt["grip"]))
+				picker.set_item_metadata(picker.item_count-1,{"instance_id":item["instance_id"],"slot":opt["slot"],"grip":opt["grip"]})
+		picker.select(-1)
+		col.add_child(picker)
+		choices.append(picker)
+	var confirm=button(col,"Reconcile all existing assignments",func():
+		var rows: Array=[]
+		for picker in choices:
+			if picker.selected<0:
+				show_status("Choose every unresolved assignment.")
+				return
+			rows.append(picker.get_item_metadata(picker.selected))
+		dev_submit("reconcile_legacy_slots",{"assignments":rows})
+	)
+	confirm.disabled=not can_choice("reconcile_legacy_slots") or choices.is_empty()
+	popup.popup_centered(Vector2i(630,390))
