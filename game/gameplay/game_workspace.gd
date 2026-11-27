@@ -10,6 +10,8 @@ const SHEET = preload("res://players/full_character_sheet.gd")
 const DICE = preload("res://gameplay/manual_dice.gd")
 const DISPLAY = preload("res://gameplay/display_values.gd")
 const INTENTS = preload("res://gameplay/ui_intents.gd")
+const WORLD = preload("res://world/world_store.gd")
+const MAP_WINDOW = preload("res://cartography/map_window.gd")
 const FRAME = preload("res://themes/parts/panel_gold.png")
 const ACTIVE = preload("res://themes/parts/panel_active.png")
 const CORNER = preload("res://themes/parts/corner.png")
@@ -674,6 +676,8 @@ func build_center(parent: VBoxContainer) -> void:
 	log_scroll = scroll(log,120)
 	log_list = vbox(log_scroll,6)
 	for event in view.get("events",[]):
+		if not event.get("kind") in ["campaign_created","narration","player_action","mechanical_summary"] or not event.get("text") is String:
+			continue
 		var role = "System" if event.get("kind") in ["campaign_created","mechanical_summary"] else ("Player" if event.get("kind")=="player_action" else "DM")
 		var entry = hbox(log_list,6)
 		picture(entry,actor_portrait() if role=="Player" else glyph("diamond" if role=="System" else "initiative"),Vector2(30,30))
@@ -1382,17 +1386,69 @@ func show_character() -> void:
 	popup.popup_centered(Vector2i(1040,610))
 
 func show_quests() -> void:
-	var lines: PackedStringArray = []
-	for quest in view.get("quests",[]):
-		var payload = quest.get("payload",{})
-		lines.append(str(payload.get("name",payload.get("title",quest["id"])))+" — "+str(quest["status"]))
-		if not payload.is_empty():
-			lines.append(cat.human(payload))
-	popup_text("Quest Log","\n\n".join(lines) if not lines.is_empty() else "No committed quests yet. Quest mechanics are pending.")
+	var popup = popup_base("Quest Log")
+	var col = vbox(popup,5)
+	col.custom_minimum_size = Vector2(630,0)
+	var rows: Array = []
+	if not intents.interaction.is_empty():
+		rows = intents.interaction["public_quests"]
+		label(col,"Disclosed campaign quests",19,GOLD)
+	else:
+		# The old gameplay_view includes raw quest payloads without a disclosure
+		# proof. Do not render them. B4 already offers verified local public rows.
+		var public_view = WORLD.new().public_context(str(campaign.get("id","")),[])
+		if public_view.get("ok",false) and public_view.get("campaign_id")==campaign.get("id"):
+			rows = public_view.get("local_quests",[])
+			label(col,"Disclosed local quests · legacy read model (bounded current location)",17,GOLD)
+		else:
+			label(col,"Public quest projection unavailable. No private quest data displayed.",16,GOLD)
+	var row_box = hbox(col,5)
+	row_box.custom_minimum_size.y = 260
+	var list = ItemList.new()
+	list.custom_minimum_size.x = 250
+	row_box.add_child(list)
+	var detail = TextEdit.new()
+	detail.editable = false
+	detail.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row_box.add_child(detail)
+	var selection = {"id":""}
+	var pursue = button(col,"Discuss / pursue selected quest",func():
+		request_intent("quest_interact",{"quest_id":selection["id"]})
+		if not intents.outstanding_id.is_empty():
+			popup.queue_free()
+	)
+	pursue.disabled = true
+	var choose = func(index: int):
+		var quest = rows[index]
+		selection["id"] = str(quest["id"])
+		detail.text = str(quest["title"])+"\n"+str(quest["status"]).capitalize()+"\n\n"+str(quest.get("description",""))+"\n\nSource event: "+number(quest.get("source_event_id"))
+		pursue.disabled = not can_intent("quest_interact")
+		pursue.tooltip_text = intent_reason("quest_interact")
+	for quest in rows:
+		list.add_item(str(quest["title"])+" · "+str(quest["status"]))
+	list.item_selected.connect(choose)
+	if rows.is_empty():
+		detail.text = "No disclosed quests in the available projection."
+	else:
+		list.select(0)
+		choose.call(0)
+	label(col,"Quest intentions never mark a quest complete or invent a reward.",14,GOLD)
+	popup_status(col)
+	popup.popup_centered(Vector2i(670,430))
+
+func map_intention(packet: Dictionary) -> Dictionary:
+	if not INTENTS.exact_keys(packet,["kind","campaign_id","expected_revision","destination_id"]) or packet.get("kind")!="travel_intention" or packet.get("campaign_id")!=intents.campaign_id or packet.get("expected_revision")!=intents.revision:
+		return {"ok":false,"message":"Map and campaign revisions differ. Refresh the authoritative workspace before travel."}
+	var result = request_intent("travel",{"destination_id":packet["destination_id"]})
+	result["locked"] = not intents.outstanding_id.is_empty()
+	return result
 
 func show_map() -> void:
-	var popup = preload("res://cartography/map_window.gd").new()
-	popup.configure(str(campaign.get("id","")),str(campaign.get("title","Campaign")))
+	var popup = MAP_WINDOW.new()
+	# No live controller is passed by main. C4 must explicitly bind it.
+	var handler = Callable(self,"map_intention") if can_intent("travel") else Callable()
+	popup.configure(str(campaign.get("id","")),str(campaign.get("title","Campaign")),handler,intents.revision)
 	add_child(popup)
 	var extent = get_viewport().get_visible_rect().size
 	popup.popup_centered(Vector2i(maxf(940,extent.x-36),maxf(610,extent.y-36)))

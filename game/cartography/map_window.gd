@@ -15,6 +15,8 @@ var art = ART.new()
 var campaign_id = ""
 var campaign_title = ""
 var intent_handler: Callable
+var intent_revision = -1
+var travel_locked = false
 var canvas
 var region_select: OptionButton
 var scope_label: Label
@@ -43,10 +45,11 @@ var normal_size = Vector2i(1100,650)
 var normal_position = Vector2i.ZERO
 var scope_sync = false
 
-func configure(id: String,title_value: String,handler: Callable = Callable()) -> void:
+func configure(id: String,title_value: String,handler: Callable = Callable(),expected_revision: int = -1) -> void:
 	campaign_id = id
 	campaign_title = title_value
 	intent_handler = handler
+	intent_revision = expected_revision
 
 func _ready() -> void:
 	title = "Adventurer's Cartography"
@@ -527,8 +530,8 @@ func select_location(id: String, switch_tab: bool = true) -> void:
 	note_button.disabled = false
 	open_region_button.disabled = not canvas.regions.has(row.get("region_id"))
 	var party = model.data.get("party_location")
-	travel_button.disabled = not intent_handler.is_valid() or not party is Dictionary or party.get("id")==id
-	travel_button.tooltip_text = "Submit destination intention only; movement requires turn resolution." if not travel_button.disabled else "Turn controller unavailable or already at this location."
+	travel_button.disabled = not travel_available(id)
+	travel_button.tooltip_text = "Submit destination intention only; movement requires turn resolution." if not travel_button.disabled else "Controller unavailable, revision changed, request pending, or already at this location."
 	if measure_mode:
 		measure_pick(id)
 
@@ -632,17 +635,24 @@ func populate_history() -> void:
 		lines.append(line)
 	history_box.text = "\n\n".join(lines) if not lines.is_empty() else "No committed journeys yet."
 
-func request_travel() -> void:
-	if not intent_handler.is_valid() or is_loading or not canvas.places.has(selected_id):
-		status("Turn controller unavailable; no travel intention submitted.")
-		return
+func travel_available(id: String) -> bool:
 	var party = model.data.get("party_location")
-	if not party is Dictionary or party.get("id")==selected_id:
+	return intent_handler.is_valid() and not travel_locked and not is_loading and intent_revision>=0 and model.revision==intent_revision and canvas.places.has(id) and party is Dictionary and party.get("id")!=id
+
+func request_travel() -> void:
+	if not travel_available(selected_id):
+		status("Travel unavailable; no intention submitted. Refresh the campaign if revisions differ.")
 		return
 	# Future controller must revalidate campaign, revision, actor and destination.
 	# This is not ActionSubmission, receipt, a route choice or resolved movement.
-	intent_handler.call({"kind":"travel_intention","campaign_id":campaign_id,"expected_revision":model.revision,"destination_id":selected_id})
-	status("Travel intention forwarded for controller validation. No map movement applied.")
+	var reply = intent_handler.call({"kind":"travel_intention","campaign_id":campaign_id,"expected_revision":model.revision,"destination_id":selected_id})
+	if not reply is Dictionary or not reply.get("ok") is bool or not reply.get("message") is String:
+		travel_locked = true
+		status("Travel acknowledgement unavailable; reconcile before retrying.")
+	else:
+		travel_locked = reply["ok"] or reply.get("locked",false)
+		status(reply["message"])
+	travel_button.disabled = not travel_available(selected_id)
 
 func toggle_fullscreen() -> void:
 	var root_size = Vector2i(get_parent().get_viewport().get_visible_rect().size) if get_parent() is Control else get_tree().root.size

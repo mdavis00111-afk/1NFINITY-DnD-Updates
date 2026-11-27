@@ -212,7 +212,10 @@ func run() -> void:
 		await settle()
 		var intentions: Array = []
 		var popup = ATLAS.new()
-		popup.configure(id,"Atlas fixture",func(intent): intentions.append(intent))
+		popup.configure(id,"Atlas fixture",func(intent):
+			intentions.append(intent)
+			return {"ok":true,"message":"Fixture accepted intention only."}
+		,model.revision)
 		root.add_child(popup)
 		popup.popup_centered(Vector2i(extent.x-36,extent.y-36))
 		for i in range(40):
