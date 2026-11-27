@@ -15,3 +15,5 @@ P2-01 second checkpoint: game/campaigns/campaign_manager.gd and game/main.gd wir
 P2-01 final source checkpoint: main.gd, campaign_manager.gd, campaign_starts.gd, campaign_store.gd, maturity_profiles.gd, tests/campaign_smoke.gd, Brain and subsystem docs. Includes preceding P0-03 polish. Pending: owner-supplied maturity definitions (no shipped presets), actual Godot import and campaign/layout smoke, Windows visuals, release authorization. Resume opens persisted opening workspace, not playable turn controller. No channel or game version change.
 
 Owner assigned combined v0.0.23 integration to Codex; see design/V023_INTEGRATION.md. Lead hands off write ownership on feature/p2-campaign-manager to Codex upon task start. Current code checkpoint 9e9515f2f3264d64bc2e7ae660496d96855bd502; no concurrent editing by ChatGPT. Maturity and narrator port, test and release candidate pending; no live publication authorized.
+
+Superseding assignment: no Codex. ChatGPT Project specialist 04 owns first task per design/V023_TASKS.md; subsequent specialists wait. Lead reads Git checkpoints. Live channel unchanged.

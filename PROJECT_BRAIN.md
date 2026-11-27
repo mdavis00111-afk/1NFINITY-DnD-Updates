@@ -164,3 +164,6 @@ P2-01 final source checkpoint: campaign wallpaper defaults to cropped approved c
 
 ## v0.0.23 integration handoff
 Owner provided legacy content_control.py and prompts.py. Port three audience profiles and Storyteller principles per design/V023_INTEGRATION.md; preserve provider safeguards, editable defaults and Godot authority. Assignment only; maturity defaults and Narrator integration not yet implemented. Existing campaign checkpoint and GUI polish retained. Codex optional lead plus one QA, no publication authorization.
+
+## ChatGPT-only specialist handoff
+Owner explicitly declined Codex. Sequential Project chats use design/V023_TASKS.md and shared feature branch; 00 coordinates and owner opens each specialist. 04 first, no overlapping writers. No release authorization.
