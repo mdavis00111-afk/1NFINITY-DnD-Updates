@@ -1,6 +1,7 @@
 extends Control
 ## Campaign creation, library and saved opening workspace. No turn adjudication yet.
 const STORE = preload("res://campaigns/campaign_store.gd")
+const WORKSPACE = preload("res://gameplay/game_workspace.gd")
 const PLAYERS = preload("res://players/character_store.gd")
 const STARTS = preload("res://campaigns/campaign_starts.gd")
 const MATURITY = preload("res://campaigns/maturity_profiles.gd")
@@ -35,11 +36,16 @@ var opening_button: Button
 var listing_error = ""
 var roster_buttons: Array[Button] = []
 var layout: MarginContainer
+var workspace: Control
+var workspace_settings_action: Callable
+var resume_id = ""
 
-func configure(initial_mode: String, on_exit: Callable, on_settings: Callable) -> void:
+func configure(initial_mode: String, on_exit: Callable, on_settings: Callable, on_workspace_settings: Callable = Callable(), campaign_id: String = "") -> void:
 	mode = initial_mode
 	exit_action = on_exit
 	settings_action = on_settings
+	workspace_settings_action = on_workspace_settings
+	resume_id = campaign_id
 
 func _ready() -> void:
 	var local_theme = load("res://themes/master_theme.tres").duplicate() as Theme
@@ -49,6 +55,9 @@ func _ready() -> void:
 	gemini = GEMINI.new()
 	add_child(gemini)
 	gemini.completed.connect(opening_received)
+	if not resume_id.is_empty():
+		active = store.load_campaign(resume_id)
+		mode = "workspace" if not active.is_empty() else "library"
 	render.call_deferred()
 
 func surface(opacity: float = 0.58) -> StyleBoxFlat:
@@ -146,7 +155,12 @@ func render() -> void:
 	add_child(layout)
 	layout.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for edge in ["left","right","top","bottom"]:
-		layout.add_theme_constant_override("margin_"+edge,12)
+		layout.add_theme_constant_override("margin_"+edge,6 if mode=="workspace" else 12)
+	workspace = null
+	opening_button = null
+	if mode=="workspace":
+		build_workspace(layout)
+		return
 	var root = column(layout,8)
 	var title = "Existing Campaigns" if mode=="library" else ("New Campaign" if mode=="new" else str(active.get("title","Campaign")))
 	var title_label = text_label(title,34,true)
@@ -188,6 +202,9 @@ func render() -> void:
 		show_note("Generating opening… Saved campaign is safe." if pending_campaign==active.get("id") else "Opening workspace saved. Gameplay turn resolution is not implemented yet.")
 
 func show_note(value: String) -> void:
+	if mode=="workspace" and is_instance_valid(workspace):
+		workspace.show_status(value)
+		return
 	if is_instance_valid(note):
 		note.text = value
 		note.visible = not value.is_empty()
@@ -404,24 +421,21 @@ func open_workspace() -> void:
 	render()
 
 func build_workspace(parent: Container) -> void:
-	var left = panel(parent,250,false)
-	var actor = store.actor_record(str(active["id"]))
-	left.add_child(text_label(str(active.get("player_name","Character")),25,true))
-	var picture = TextureRect.new()
-	picture.texture = PORTRAIT.texture_for(str(actor.get("portrait",actor.get("draft",{}).get("portrait",""))))
-	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	picture.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	left.add_child(picture)
-	left.add_child(text_label(str(active.get("location_name",active.get("start_name",""))),20,true))
-	var right = panel(parent)
-	right.add_child(text_label("Adventure Log",24,true))
-	synopsis = read_only_text(right,store.synopsis(str(active["id"])))
-	var profile = MATURITY.resolve(str(active.get("maturity_id","")))
-	if profile.is_empty():
-		right.add_child(text_label("Maturity profile missing. Restore it in Settings before gameplay.",17))
+	var snapshot = store.gameplay_view(str(active["id"]))
+	var error = store.last_error
+	workspace = WORKSPACE.new()
+	workspace.configure(snapshot,active,leave,open_workspace_settings,request_opening,not pending_campaign.is_empty(),error)
+	parent.add_child(workspace)
+	opening_button = workspace.opening_button
+
+func open_workspace_settings() -> void:
+	if not pending_campaign.is_empty():
+		show_note("Wait for the opening request to finish before opening Settings, or return to Campaign.")
+		return
+	if workspace_settings_action.is_valid():
+		workspace_settings_action.call(str(active["id"]))
 	else:
-		right.add_child(text_label("Maturity: "+str(profile["name"]),17))
+		show_note("Settings are available from the main menu; your campaign is already saved.")
 
 func confirm_delete() -> void:
 	if active.is_empty():
