@@ -581,3 +581,7 @@ Active fixture persists critical/background/adjudicate markers on committed conv
 
 ## v0.0.27 checkpoint 3b.3b.4 — mechanical authority and GUI regression
 Active fixture tests malformed combined mechanical patch and valid envelope with unauthorized prose claims; asserts actor/inventory/revision preservation and no automatic provider review. Workspace request_intent equipment toggle asserts zero calls, changed assignment, ownership, revision and reopen persistence. Prose correctness is not established by state integrity. Release blockers: native execution of all regressions, valid persisted candidate local reconciliation, unsettled legacy authorization rejection, descriptive world persistence and exact discovery binding. No release. Handover required before 3b.3c.
+
+
+## v0.0.27 checkpoint 3b.3c.1 — persistent NPC and location regression
+Active production fixture submits conversation and combined narration with a reported village and local descriptive NPC using existing geography schema. Asserts two transport calls, unchanged player actor/owned inventory, campaign-local SQLite rows, source links and stable IDs on independent reads. Existing sibling isolation assertion retained. Source anchors checked; native/mock execution and live Gemini unexecuted. No publication. Next 3b.3c.2 geography/discovery binding.

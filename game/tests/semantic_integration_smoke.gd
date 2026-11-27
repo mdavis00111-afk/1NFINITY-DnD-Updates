@@ -228,11 +228,57 @@ func run() -> void:
 	await legacy_recovery_cases(id)
 	await request_count_cases(id,shield)
 	await authority_cases(id,shield)
+	await persistent_npc_location(id)
 	expect(players.load_record(master)==original and base.gameplay_view(b["id"])==sibling,"Master and sibling isolation")
 	ctrl.close_session()
 	workspace.queue_free()
 	ctrl.queue_free()
 	finish()
+
+func persistent_npc_location(id: String) -> void:
+	var before=durable_snapshot(id)
+	var calls=outbound.size()
+	var input="I ask Mara about the nearby village and the people here."
+	workspace.composer.text=input
+	workspace.submit_chat()
+	if not await pump("interpret"):
+		return
+	reply({"kind":"conversation","args":{"text":input}})
+	if not await pump("narrate"):
+		return
+	var location_id=session.token(id)["location_id"]
+	var place_evidence="Mara describes Willowfen, a village."
+	var npc_evidence="Tessa, the weaver, is here."
+	var response=combined(place_evidence+" "+npc_evidence)
+	response["geography"]["facts"]=[
+		{"kind":"place","subject":{"id":null,"local_key":"willowfen"},"name":"Willowfen","place_kind":"village","parent":null,"region":null,"position":null,"precision":"provisional","uncertainty_miles":null,"elevation_feet":null,"terrain":null,"footprint":[],"population":null,"occupancy":"unknown","asset_id":null,"description":null,"visibility":"player","evidence":place_evidence},
+		{"kind":"npc_description","subject":{"id":null,"local_key":"tessa"},"location":{"id":location_id,"local_key":null},"name":"Tessa","occupation":"weaver","visibility":"player","evidence":npc_evidence}
+	]
+	reply(response)
+	if not await pump("idle"):
+		return
+	expect(outbound.size()-calls==2,"Persistent world turn exactly two provider requests")
+	var after=durable_snapshot(id)
+	expect(after["actor"]==before["actor"] and after["owned"]==before["owned"],"Descriptive world creation preserves player mechanics")
+	var statements=[
+		SQL.stmt("SELECT l.id,l.kind,w.source_event_id FROM locations l JOIN world_places w ON w.location_id=l.id WHERE l.name=?",["Willowfen"]),
+		SQL.stmt("SELECT a.id,a.location_id,a.payload,w.source_event_id FROM actors a JOIN world_links w ON w.actor_id=a.id WHERE a.kind='npc' AND json_extract(a.payload,'$.name')=?",["Tessa"])
+	]
+	var persisted=SQL.run(base.path_for(id),statements,true)
+	if not expect(persisted.get("ok",false),"Read campaign-local persisted world records"):
+		return
+	var results=persisted.get("results",[])
+	if not expect(results.size()==2,"World record query results"):
+		return
+	var places=results[0].get("rows",[])
+	var npcs=results[1].get("rows",[])
+	if not expect(places.size()==1 and npcs.size()==1,"Exactly one persisted village and NPC"):
+		return
+	expect(not str(places[0]["id"]).is_empty() and places[0]["kind"]=="village" and places[0]["source_event_id"]!=null,"Village stable identity and committed source")
+	expect(not str(npcs[0]["id"]).is_empty() and npcs[0]["location_id"]==location_id and npcs[0]["source_event_id"]!=null,"NPC stable identity and local campaign source")
+	var npc=JSON.parse_string(npcs[0]["payload"])
+	expect(npc is Dictionary and npc.get("id")==npcs[0]["id"] and npc.get("occupation")=="weaver","NPC persisted identity and occupation")
+	expect(SQL.run(base.path_for(id),statements,true)==persisted,"World identities stable on independent SQLite read")
 
 func wait_frames() -> void:
 	for i in range(12):
