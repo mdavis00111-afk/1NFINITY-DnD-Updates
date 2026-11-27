@@ -541,3 +541,7 @@ Manifest: 396 entries, five changed game files read back from immutable source 6
 
 ## v0.0.27 development checkpoint 1 — combined interpretation and contextual assessment
 The semantic adapter accepts an assessment alongside a typed action; the controller validates it using the existing policy and binds it to the exact durable request/revision/attempt. Existing independent interpretation and legacy adjudication fallback remain pending checkpoint 3; ordered dependent steps still require fresh state. No release or version change. Source anchor checks only; native Godot and live provider tests not run. NEXT_CHAT.md created at root because it did not exist on godot.
+
+
+## v0.0.27 checkpoint 2
+Narration now requests JSON prose plus geography/story/discoveries using existing storyteller prompt and world schema. Controller validates evidence and identity before durable staging; existing review gates remain until checkpoint 3. No release. Native/provider tests not run; source anchors checked.

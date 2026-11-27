@@ -85,7 +85,10 @@ func prompt() -> String:
 	if stage=="narrate":
 		var scene=payload.get("scene",{})
 		var context={"SCENE":scene,"ACTION THIS TURN":{"original":payload.get("player_text",""),"interpreted":payload.get("interpreted",{})},"OUTCOME":payload.get("receipt",payload.get("settlement",{})),"MEMORY":{"overview":payload.get("overview",{}),"persistent_factors":payload.get("story",[]),"selected_enquiries":payload.get("selected_context",[])},"CAMPAIGN LOG":payload.get("recent_events",scene.get("recent_events",[])),"PLOT HOOKS":payload.get("public_quests",[]),"COMBAT":{"supported":false},"RECENT OUTCOMES":payload.get("recent_outcomes",[]),"CHARACTER":payload.get("character",{}),"NPCS":payload.get("public_actors",[]),"RULES":payload.get("rules",[]),"CORRECTION":payload.get("correction",""),"PRIOR OUTCOME":payload.get("prior_outcome",{}),"PENDING CONSEQUENCE":payload.get("pending_for_narrator",{})}
-		return NARRATOR.build(str(payload.get("maturity_id","standard")),context,{},"Return natural storyteller prose, not JSON. Narrate only verified outcomes. Follow any correction in the context. Pending consequence is not yet completed. For a settled continuation narrate the new outcome without repeating the original turn or granting another effect. If proposing a new consequential effect, leave it unresolved for adjudication.")
+		var expected={"schema_version":"1","campaign_id":identity["campaign_id"],"actor_id":identity["actor_id"],"turn_id":payload["turn_id"],"request_id":identity["attempt_id"],"expected_revision":identity["revision"]}
+		context["WORLD UPDATE SCHEMA"]=PACK.geo_schema(expected)
+		context["WORLD TOOL CATALOGUE"]=controller.registry.catalogue()
+		return NARRATOR.build(str(payload.get("maturity_id","standard")),context,{},"Return one JSON object with text (natural storyteller prose), geography, story and discoveries. "+instruction("background")+" Extract from your own text. Narrate only verified outcomes. Follow any correction in the context. Pending consequence is not yet completed. For a settled continuation narrate the new outcome without repeating the original turn or granting another effect. If proposing a new consequential effect, leave it unresolved for adjudication.")
 	var data=payload.duplicate(true)
 	if stage=="background":
 		var expected={"schema_version":"1","campaign_id":identity["campaign_id"],"actor_id":identity["actor_id"],"turn_id":payload["turn_id"],"request_id":identity["attempt_id"],"expected_revision":identity["revision"]}
@@ -116,7 +119,7 @@ func send() -> void:
 	add_child(transport)
 	transport.completed.connect(func(ok: bool,message: String): received.call_deferred(epoch,clock,ok,message))
 	var prose=identity["stage"]=="narrate"
-	transport.generate(input,"","",true,{} if prose else schema(),12000 if prose else 65536,4096,0.8 if prose else 0.2)
+	transport.generate(input,"","",true,schema(),16000 if prose else 65536,4096,0.8 if prose else 0.2)
 
 func received(epoch: int,clock: int,ok: bool,message: String) -> void:
 	if epoch!=serial or not current():
@@ -127,9 +130,6 @@ func received(epoch: int,clock: int,ok: bool,message: String) -> void:
 	if not ok:
 		failed(message)
 		return
-	if identity["stage"]=="narrate":
-		deliver({"text":message})
-		return
 	var parsed=JSON.parse_string(message)
 	if not parsed is Dictionary:
 		repair("Return one complete JSON object.")
@@ -138,6 +138,10 @@ func received(epoch: int,clock: int,ok: bool,message: String) -> void:
 		query_batch(parsed)
 		return
 	match identity["stage"]:
+		"narrate":
+			if not DTO.exact_keys(parsed,["text","geography","story","discoveries"]) or not DTO.bounded_text(parsed["text"],12000):
+				failed("Invalid combined narration envelope.")
+				return
 		"interpret":
 			if parsed.has("steps"):
 				if not DTO.exact_keys(parsed,["steps"]) or not parsed["steps"] is Array or parsed["steps"].is_empty() or parsed["steps"].size()>4:

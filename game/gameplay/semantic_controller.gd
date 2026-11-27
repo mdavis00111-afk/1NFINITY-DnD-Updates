@@ -251,6 +251,15 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 	if not matches(identity,stage) or JSON.stringify(result).length()>65536:
 		return failure("Stale semantic response.")
 	var job=active().duplicate(true)
+	if stage=="narrate" and result.has("geography"):
+		var context=scene_context(data["state"])
+		if not DTO.exact_keys(result,["text","geography","story","discoveries"]) or not DTO.bounded_text(result["text"],12000) or not context.get("ok",false) or not PACK.valid_geography(result["geography"],PACK.identity(data["state"],job["turn_id"],identity["attempt_id"]),result["text"],context["ids"]) or not valid_story(result["story"],result["text"]) or not valid_discoveries(result["discoveries"],result["text"]):
+			stop("retry","Combined narration/world proposal failed validation.")
+			return failure(status)
+		job["combined_world"]={"geography":result["geography"],"story":result["story"],"discoveries":result["discoveries"]}
+		if not update_active(job):
+			return failure("Combined world proposal persistence unconfirmed.")
+		return super.receive(identity,{"text":result["text"]})
 	if stage=="adjudicate":
 		var review_req=job.get("review_request",{})
 		var checked=policy.validate_assessment(review_req,result,job,data["state"])
@@ -301,6 +310,15 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 		job["critical_claims"]=result["claims"].duplicate(true)
 		job["second_review"]=result.duplicate(true)
 		job["stage"]="background"
+		if job.has("combined_world"):
+			var world=job["combined_world"]
+			job["geography"]=world["geography"]
+			job["story"]=world["story"]
+			job["discoveries"]=world["discoveries"]
+			job["story_index"]=0
+			job["discovery_index"]=0
+			job["definition_refs"]={}
+			job["stage"]="reconcile"
 		job["attempt"]={}
 		inflight={}
 		if not update_active(job):
@@ -329,6 +347,7 @@ func correction(job: Dictionary,message: String) -> Dictionary:
 	job["correction_count"]=count+1
 	job["correction"]=message
 	job.erase("candidate")
+	job.erase("combined_world")
 	job.erase("critical_verified")
 	job.erase("critical_claims")
 	job.erase("first_review")
