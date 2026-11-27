@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.24",
-  "source_commit": "1cc6ea48e8d25a12586a4d1668dc5e7727e0222e",
-  "notes": "Windows playtest: reference-based three-column gameplay GUI, campaign-local HUD/inventory/spells/skills, committed DM log and scenery, manual Godot dice, navigation and structured Gemini openings. Seven independent SQL checks passed twice; new PNG bytes verified. Windows runtime/visual/API acceptance pending. Existing updater staging retained; back up shared saves separately. Turn controller not implemented yet.",
+  "version": "0.0.25",
+  "source_commit": "cf33e4db8c3c09ea8bc8576fef58551e3ea76944",
+  "notes": "Integrated foundation playtest candidate — persistent world, deterministic rules foundations, Gemini coordinator, map renderer. Composer and travel not activated. Native acceptance required before live promotion.",
   "files": [
     {
       "path": "art/arcane.svg",
@@ -46,7 +46,7 @@
     },
     {
       "path": "campaigns/campaign_store.gd",
-      "blob": "9ecb17819393575d90d500cff21703ac40fb6b0f"
+      "blob": "42b2b6dcf746705f0b11df347e24f8a6473f8293"
     },
     {
       "path": "campaigns/maturity_profiles.gd",
@@ -61,16 +61,1036 @@
       "blob": "96c72f47b4f64eefe733ae9a70fed53efb6b5b34"
     },
     {
-      "path": "data/2014/ATTRIBUTION.txt",
-      "blob": "a1250899a49f9d14a96e7641d3c73c3ecc9c2268"
+      "path": "cartography/art/adventure.abandoned_village.v1.svg",
+      "blob": "10173cd97b18bc9ade9ab4cf08bb2e4c6f595717"
     },
     {
-      "path": "data/2014/INDEX.json",
-      "blob": "df54d5578688e72f5558abe206b27ed214ee23de"
+      "path": "cartography/art/adventure.abandoned_village.v2.svg",
+      "blob": "6e3de6bc6d7857d48eb68cdd35b97c94f7f5c5ab"
+    },
+    {
+      "path": "cartography/art/adventure.adventurer_camp.v1.svg",
+      "blob": "7387b18a43f5f8f7e4e5e74588ba13d75275d6d7"
+    },
+    {
+      "path": "cartography/art/adventure.adventurer_camp.v2.svg",
+      "blob": "d6dd747e879c31cfa81545ce8e4fc5def47d72c3"
+    },
+    {
+      "path": "cartography/art/adventure.ancient_monument.v1.svg",
+      "blob": "348c8e957964705cf12b2fede0a210aabb33b53b"
+    },
+    {
+      "path": "cartography/art/adventure.ancient_monument.v2.svg",
+      "blob": "85d3c1218715af36da54529a6c015b923df7ff8a"
+    },
+    {
+      "path": "cartography/art/adventure.ancient_ruins.v1.svg",
+      "blob": "0f1bb12fef2669a0d79f7f449e8c81b2e0d40737"
+    },
+    {
+      "path": "cartography/art/adventure.ancient_ruins.v2.svg",
+      "blob": "95b03f1f482f882719c802622e781adb9d6cc2f0"
+    },
+    {
+      "path": "cartography/art/adventure.bandit_camp.v1.svg",
+      "blob": "6b8653cab71abcc605c9fbb8ce4e3e9843aedb65"
+    },
+    {
+      "path": "cartography/art/adventure.bandit_camp.v2.svg",
+      "blob": "61d9afc04ebdf55cf876b4f07062695f3209c343"
+    },
+    {
+      "path": "cartography/art/adventure.battlefield.v1.svg",
+      "blob": "05bc57e6d4c756a669c78cdc4aef72b97d0700d2"
+    },
+    {
+      "path": "cartography/art/adventure.battlefield.v2.svg",
+      "blob": "84dcd11a341b7690deaa2784a9ae3776ff05c99f"
+    },
+    {
+      "path": "cartography/art/adventure.camp.harvest.svg",
+      "blob": "9d2bd496761d72bdb0ed192a6e31db6791131773"
+    },
+    {
+      "path": "cartography/art/adventure.camp.v1.svg",
+      "blob": "96c3ef79e4bd574a7cbbe918399f97b153d57dd6"
+    },
+    {
+      "path": "cartography/art/adventure.camp.v2.svg",
+      "blob": "dab8fadd74fa5a5c33598f2e406a05ae97f5e09f"
+    },
+    {
+      "path": "cartography/art/adventure.cave.harvest.svg",
+      "blob": "44f6b3f9590acb36db066681bfb0e4fcdac222e8"
+    },
+    {
+      "path": "cartography/art/adventure.cave.v1.svg",
+      "blob": "85060f7d80d6437c1e5d296b56174edebb18d7c6"
+    },
+    {
+      "path": "cartography/art/adventure.cave.v2.svg",
+      "blob": "9bd9e78ab0c8bcf89505ffcef1fe5bb896f93574"
+    },
+    {
+      "path": "cartography/art/adventure.cavern.v1.svg",
+      "blob": "8289c2f88e4c4a5d0b802e8f960d4b4939ccace7"
+    },
+    {
+      "path": "cartography/art/adventure.cavern.v2.svg",
+      "blob": "86cc1fd20ef1d2fb799339aef7b49d6daa501b6d"
+    },
+    {
+      "path": "cartography/art/adventure.crypt.v1.svg",
+      "blob": "586a000eb373be3e6ca335f2e474ceb6b33d425f"
+    },
+    {
+      "path": "cartography/art/adventure.crypt.v2.svg",
+      "blob": "54f0701216c36d3157b1c9dbfac7c34d5d12fd58"
+    },
+    {
+      "path": "cartography/art/adventure.dungeon.v1.svg",
+      "blob": "c8e3b1e9dad8345a642f5f0bada9b6a99ea244ab"
+    },
+    {
+      "path": "cartography/art/adventure.dungeon.v2.svg",
+      "blob": "a8db1843188996f0df7c3ce3ff214282c7ec1cbc"
+    },
+    {
+      "path": "cartography/art/adventure.graveyard.v1.svg",
+      "blob": "0e6f44f9a1d6327d6b09393f1c079dac48703f66"
+    },
+    {
+      "path": "cartography/art/adventure.graveyard.v2.svg",
+      "blob": "96bc4d45f1a54b170a19e4e344e13d54e16b9640"
+    },
+    {
+      "path": "cartography/art/adventure.hidden_entrance.v1.svg",
+      "blob": "4e75225515bab89929b36593ff22d77d777aa23f"
+    },
+    {
+      "path": "cartography/art/adventure.hidden_entrance.v2.svg",
+      "blob": "b9c4dcd0d78ecf2241fdb8c17131e83d6feae692"
+    },
+    {
+      "path": "cartography/art/adventure.magical_portal.v1.svg",
+      "blob": "4b560020ca0c88d5c48588a8b03562b6a05fbad2"
+    },
+    {
+      "path": "cartography/art/adventure.magical_portal.v2.svg",
+      "blob": "51303de04e25813a1724a8eab85033bc6966eff7"
+    },
+    {
+      "path": "cartography/art/adventure.military_camp.symbol.svg",
+      "blob": "80ff631e20018d4520fb2f8e5b0875bd26a66558"
+    },
+    {
+      "path": "cartography/art/adventure.military_camp.v1.svg",
+      "blob": "5349ba9318a61859d82ff54b27c346c99ce013a0"
+    },
+    {
+      "path": "cartography/art/adventure.military_camp.v2.svg",
+      "blob": "75d5671a3e193f6b28c10531703d8ad7bf704fff"
+    },
+    {
+      "path": "cartography/art/adventure.mine.harvest.svg",
+      "blob": "7278c920d192a04c78c2e1dca6ff8f2d219995c3"
+    },
+    {
+      "path": "cartography/art/adventure.mine.v1.svg",
+      "blob": "9e549f08164842496093e0d1c4dae5e8ec0e57b7"
+    },
+    {
+      "path": "cartography/art/adventure.mine.v2.svg",
+      "blob": "3c4d0a804ab475391e9239ab4fbf36f293c0fbff"
+    },
+    {
+      "path": "cartography/art/adventure.monster_lair.v1.svg",
+      "blob": "382b8cc782e18aabadec866a55e621cc5d88dbf2"
+    },
+    {
+      "path": "cartography/art/adventure.monster_lair.v2.svg",
+      "blob": "a8cee9a89ce68e503642aadf7c33ab369f052905"
+    },
+    {
+      "path": "cartography/art/adventure.point_of_interest.harvest.svg",
+      "blob": "36c6662d7cc9e47a0f88e576ef74297f71a3b28e"
+    },
+    {
+      "path": "cartography/art/adventure.point_of_interest.v1.svg",
+      "blob": "9f8df95f21d917ddfefcbca48bf133c3847bc940"
+    },
+    {
+      "path": "cartography/art/adventure.point_of_interest.v2.svg",
+      "blob": "b6108b6a87fc7c9c6f6436fa57cb2800a3875c5c"
+    },
+    {
+      "path": "cartography/art/adventure.ruined_castle.v1.svg",
+      "blob": "3effb02da718025ce841efd13590a2542eb5decf"
+    },
+    {
+      "path": "cartography/art/adventure.ruined_castle.v2.svg",
+      "blob": "ccf25e893ae9647a3d564162be4bfd6a7693405d"
+    },
+    {
+      "path": "cartography/art/adventure.ruins.harvest.svg",
+      "blob": "59a78bfce52df76e2153f2e5c92155f3803ffca6"
+    },
+    {
+      "path": "cartography/art/adventure.ruins.v1.svg",
+      "blob": "65480fd8c479e1abe013719c5d0bf0c0ab214d5b"
+    },
+    {
+      "path": "cartography/art/adventure.ruins.v2.svg",
+      "blob": "ca360a8fe4b6ac0000b5cd231dd2ceb93ee05e81"
+    },
+    {
+      "path": "cartography/art/adventure.standing_stones.v1.svg",
+      "blob": "475502e6d4292a9b288c67a60ef4100af81bd050"
+    },
+    {
+      "path": "cartography/art/adventure.standing_stones.v2.svg",
+      "blob": "ffd785d3028e57dfc0865c65fe5d04bc34611f81"
+    },
+    {
+      "path": "cartography/art/adventure.stone_circle.v1.svg",
+      "blob": "fbc3221734e2107891e5ff2e9910fae8b8520f8d"
+    },
+    {
+      "path": "cartography/art/adventure.stone_circle.v2.svg",
+      "blob": "67c50961fc37a96aa650c430a257bb3470c1ae16"
+    },
+    {
+      "path": "cartography/art/adventure.tomb.v1.svg",
+      "blob": "6868025ed12127d84a1ce86a2ddb4a0f7aff4659"
+    },
+    {
+      "path": "cartography/art/adventure.tomb.v2.svg",
+      "blob": "f1834d5f3a31e709f57dfb55a6468bdf907f2e9f"
+    },
+    {
+      "path": "cartography/art/adventure.well.v1.svg",
+      "blob": "7e603c12b388303b11e43513104301a3fbebf49a"
+    },
+    {
+      "path": "cartography/art/adventure.well.v2.svg",
+      "blob": "b438041e97dab898e1e755c4f3e16996193751c2"
+    },
+    {
+      "path": "cartography/art/catalog.json",
+      "blob": "bbf280685e0a656b7a00bc5e387cc9ed5c48de08"
+    },
+    {
+      "path": "cartography/art/decor.compass.harvest.svg",
+      "blob": "733f8ac5080778a4ab8328e15c7d25b05d1c13b9"
+    },
+    {
+      "path": "cartography/art/decor.corner_bottom_left.harvest.svg",
+      "blob": "7f1946644cd39c05945d4a18244699e6bbab5c8e"
+    },
+    {
+      "path": "cartography/art/decor.corner_bottom_right.harvest.svg",
+      "blob": "40482cfcf41b5073a62124efc1fd5432499b0d7e"
+    },
+    {
+      "path": "cartography/art/decor.corner_top_left.harvest.svg",
+      "blob": "d0de7ba359459eb8021868a6a979c3419ea514f9"
+    },
+    {
+      "path": "cartography/art/decor.corner_top_right.harvest.svg",
+      "blob": "a69b05bb4ac17b6f95f79ff98028970368ae8f81"
+    },
+    {
+      "path": "cartography/art/decor.edge_bottom.harvest.svg",
+      "blob": "732234967e6831e85f7b602439e61c57c149a6c1"
+    },
+    {
+      "path": "cartography/art/decor.edge_left.harvest.svg",
+      "blob": "b9e2d00ce27425a25305efddb29a1735cebd49b0"
+    },
+    {
+      "path": "cartography/art/decor.edge_right.harvest.svg",
+      "blob": "7ba0e47949c421b1b739d9b4b8dcbc800c11b945"
+    },
+    {
+      "path": "cartography/art/decor.edge_top.harvest.svg",
+      "blob": "039e297a48281a33643a1c585214a9bfb2d6a729"
+    },
+    {
+      "path": "cartography/art/decor.fog_cloud.harvest.svg",
+      "blob": "c4b8bff01430141aff2fcf972e4724ef9222e3dc"
+    },
+    {
+      "path": "cartography/art/decor.fog_cloud.v1.svg",
+      "blob": "d608fc15c34997cd02dd84d69df4b51ce580d535"
+    },
+    {
+      "path": "cartography/art/decor.fog_cloud.v2.svg",
+      "blob": "710baece25f8a31c32d8b0ea544e91ab6dec9402"
+    },
+    {
+      "path": "cartography/art/decor.fog_hatch.harvest.svg",
+      "blob": "5b7bfbfcd0d5a9e879cd96a9b258bdad8f1e43c6"
+    },
+    {
+      "path": "cartography/art/decor.fog_hatch.v1.svg",
+      "blob": "c77ecdf697d579d057c35b31889de2694f16e504"
+    },
+    {
+      "path": "cartography/art/decor.fog_hatch.v2.svg",
+      "blob": "cfe65e6efb1a0a89bb56183211aa2b4ed4afce38"
+    },
+    {
+      "path": "cartography/art/decor.legend_frame.v1.svg",
+      "blob": "f9a150234a921b085fbb039bce126188116fb76f"
+    },
+    {
+      "path": "cartography/art/decor.parchment.v1.svg",
+      "blob": "796bff9a23f1a8c1c5415b0fe8a032f2d5f32848"
+    },
+    {
+      "path": "cartography/art/decor.parchment.v2.svg",
+      "blob": "84ddcc465a8c0e6a9dcf9c6a81573f53564bda70"
+    },
+    {
+      "path": "cartography/art/decor.quill.harvest.svg",
+      "blob": "c508937347c4a7fca852a7b77e522d71d5429811"
+    },
+    {
+      "path": "cartography/art/decor.scale_bar.v1.svg",
+      "blob": "be017d55dc7b631607c9ed3ab99765b805a56406"
+    },
+    {
+      "path": "cartography/art/decor.title_ribbon.v1.svg",
+      "blob": "66afaef1d319933a10f9acfe2ce71429cfa068a4"
+    },
+    {
+      "path": "cartography/art/markers.annotation.v1.svg",
+      "blob": "86ada2ae0dbeb82aa039c022df2e4ac475806e88"
+    },
+    {
+      "path": "cartography/art/markers.discovery_cross.v1.svg",
+      "blob": "7b51ea3917d656fae427c333d8dab4360d643915"
+    },
+    {
+      "path": "cartography/art/markers.party_position.v1.svg",
+      "blob": "29d51906c4be117ecfe4e3a189cea9718e23cb95"
+    },
+    {
+      "path": "cartography/art/markers.unknown.v1.svg",
+      "blob": "e8d6a5188698e5620a8d46493031a754a24b7fed"
+    },
+    {
+      "path": "cartography/art/markers.visited.v1.svg",
+      "blob": "66dd071830bf83ed1f730e51803303f4fe6c281d"
+    },
+    {
+      "path": "cartography/art/navigation_styles.json",
+      "blob": "007d16a67ccd81bad3aad0ec4fe895058e091417"
+    },
+    {
+      "path": "cartography/art/settlement.blacksmith.v1.svg",
+      "blob": "35ce221118c12de93a518564f8546fd47ffadc5d"
+    },
+    {
+      "path": "cartography/art/settlement.blacksmith.v2.svg",
+      "blob": "61f5751dc92cde6960044776db630b1a6663360b"
+    },
+    {
+      "path": "cartography/art/settlement.bridge.symbol.svg",
+      "blob": "d0a3044d66557f144c68a64af2cfe3f47e4d9488"
+    },
+    {
+      "path": "cartography/art/settlement.bridge.v1.svg",
+      "blob": "56bd470f247821cef18e4626a8b0152d9236958f"
+    },
+    {
+      "path": "cartography/art/settlement.bridge.v2.svg",
+      "blob": "55af8e01c0866f86ec9df1e93f01e146c5ddc129"
+    },
+    {
+      "path": "cartography/art/settlement.capital.harvest.svg",
+      "blob": "da794903d838c6e3cf6d0b1494a39f5fa3daba3d"
+    },
+    {
+      "path": "cartography/art/settlement.capital.v1.svg",
+      "blob": "c021438c4d59868539d873ba6a0d73ba30a59fbd"
+    },
+    {
+      "path": "cartography/art/settlement.capital.v2.svg",
+      "blob": "d4d795f796ffa8c45751ae1953ebbd9f2fd455fa"
+    },
+    {
+      "path": "cartography/art/settlement.castle.v1.svg",
+      "blob": "0df0f37341a8ac9953f53ca0db9ba27561e00f59"
+    },
+    {
+      "path": "cartography/art/settlement.castle.v2.svg",
+      "blob": "68e3902c40f82e5fab15827bf898bdcdbcd81108"
+    },
+    {
+      "path": "cartography/art/settlement.cathedral.v1.svg",
+      "blob": "7fcf0deee8eecd5434bc96ad977b0eb7b83ac08d"
+    },
+    {
+      "path": "cartography/art/settlement.cathedral.v2.svg",
+      "blob": "8bff092dbd09c0b3e75e1f8c746b7cdea360daca"
+    },
+    {
+      "path": "cartography/art/settlement.church.harvest.svg",
+      "blob": "0afd0e32ea052c3758428fb456158991c6feb993"
+    },
+    {
+      "path": "cartography/art/settlement.church.v1.svg",
+      "blob": "093f169a79e0eabe2c436a1494e3ce62667cb810"
+    },
+    {
+      "path": "cartography/art/settlement.church.v2.svg",
+      "blob": "15a8af68557031d36610d3e86adc3807401ddfa7"
+    },
+    {
+      "path": "cartography/art/settlement.city.harvest.svg",
+      "blob": "9793faa2d5b6a74566b9cd59e9182d8b627f6c11"
+    },
+    {
+      "path": "cartography/art/settlement.city.v1.svg",
+      "blob": "2a40d66002cec7a4a03289e88135917323d0d85d"
+    },
+    {
+      "path": "cartography/art/settlement.city.v2.svg",
+      "blob": "b6051b69f54ff83dd615eb985ddc53f7e30bf2a0"
+    },
+    {
+      "path": "cartography/art/settlement.cottage.v1.svg",
+      "blob": "9a99f1f58b14c40107a833b1c7c599953006705e"
+    },
+    {
+      "path": "cartography/art/settlement.cottage.v2.svg",
+      "blob": "31bb94b0c37a6866b1897e0264bb1306abcb8749"
+    },
+    {
+      "path": "cartography/art/settlement.dock.v1.svg",
+      "blob": "17499a163ea4b8a2313d826f4c713afebb18413b"
+    },
+    {
+      "path": "cartography/art/settlement.dock.v2.svg",
+      "blob": "3587e932354886a5bc396d62b2906e24b2603f76"
+    },
+    {
+      "path": "cartography/art/settlement.farm.v1.svg",
+      "blob": "ca94974189ad35400bfd488c5bd31e2176e0bd6c"
+    },
+    {
+      "path": "cartography/art/settlement.farm.v2.svg",
+      "blob": "9ca5de6fcddd6d8ec5e10bc87cd0e853d79ede10"
+    },
+    {
+      "path": "cartography/art/settlement.fields.v1.svg",
+      "blob": "e59e4e3410677bd5c74f9e7361f0a599062627d6"
+    },
+    {
+      "path": "cartography/art/settlement.fields.v2.svg",
+      "blob": "a9ee4c0f5abdf0c6bcda04bd301fcf019fe99626"
+    },
+    {
+      "path": "cartography/art/settlement.fortress.v1.svg",
+      "blob": "627d1a09087f0f4c6e15e69adeba41a46d72ff83"
+    },
+    {
+      "path": "cartography/art/settlement.fortress.v2.svg",
+      "blob": "81f2e9d64d3a1a49ecf4be9feb229c4d5270494b"
+    },
+    {
+      "path": "cartography/art/settlement.guard_post.v1.svg",
+      "blob": "1580e14e020e5db1e2b9c52c5fa0c7a84dc59e2e"
+    },
+    {
+      "path": "cartography/art/settlement.guard_post.v2.svg",
+      "blob": "6e11d66e6221906ef34d170e56f2fb37995ad16f"
+    },
+    {
+      "path": "cartography/art/settlement.hamlet.v1.svg",
+      "blob": "439f42e11e280fc722b3bfcebc68f2ed52fb8598"
+    },
+    {
+      "path": "cartography/art/settlement.hamlet.v2.svg",
+      "blob": "23d2f9b57348f2380269d62b3d01ebb78af4d754"
+    },
+    {
+      "path": "cartography/art/settlement.harbour.v1.svg",
+      "blob": "c03e75f53bec8382118dec9bf4b2e7c6dbf46050"
+    },
+    {
+      "path": "cartography/art/settlement.harbour.v2.svg",
+      "blob": "00040184d88283f250e2bc875bbc44f49b0a61aa"
+    },
+    {
+      "path": "cartography/art/settlement.house.v1.svg",
+      "blob": "1950051301959f98b1033af60b10e597346968dc"
+    },
+    {
+      "path": "cartography/art/settlement.house.v2.svg",
+      "blob": "e7bc80707bba2e1bdf24cd07dd94e6dd6b86ca9a"
+    },
+    {
+      "path": "cartography/art/settlement.inn.v1.svg",
+      "blob": "d22d8f789c9d842a4a5946685dc24bd942806eb3"
+    },
+    {
+      "path": "cartography/art/settlement.inn.v2.svg",
+      "blob": "6a6ec5c84d58d5b31d04f0667ebb2823fd8223b9"
+    },
+    {
+      "path": "cartography/art/settlement.keep.harvest.svg",
+      "blob": "4dd6dc79ccff52ebd4400287ebcb64626bd29bad"
+    },
+    {
+      "path": "cartography/art/settlement.keep.v1.svg",
+      "blob": "cfead7cc475bf0af487c54a00146fa6cea59a1d7"
+    },
+    {
+      "path": "cartography/art/settlement.keep.v2.svg",
+      "blob": "2c96380b9dabf2b81232654691b9b6fb46e84676"
+    },
+    {
+      "path": "cartography/art/settlement.lighthouse.v1.svg",
+      "blob": "5733938b7cb73c98446c2d75e34d9c3655e30f41"
+    },
+    {
+      "path": "cartography/art/settlement.lighthouse.v2.svg",
+      "blob": "c5c60fc836652e433893811b57151d6d367ccc96"
+    },
+    {
+      "path": "cartography/art/settlement.monastery.v1.svg",
+      "blob": "a46bcdea6b327c7ecd8a8a3592d05882083c2c18"
+    },
+    {
+      "path": "cartography/art/settlement.monastery.v2.svg",
+      "blob": "68ec172c6fabec83c6555c28092f8b8f02615171"
+    },
+    {
+      "path": "cartography/art/settlement.port.v1.svg",
+      "blob": "c2a0dd8f11d9c29df0a3c671f34b0698f780563b"
+    },
+    {
+      "path": "cartography/art/settlement.port.v2.svg",
+      "blob": "1e368028b599fe0c987d13f2876dc03c9f9dbd57"
+    },
+    {
+      "path": "cartography/art/settlement.shrine.v1.svg",
+      "blob": "cb0aeff73d6cf338e869726c4ffce8f1feba34b6"
+    },
+    {
+      "path": "cartography/art/settlement.shrine.v2.svg",
+      "blob": "0d449da90ecac5aa1e72e1b51c5392c0dcd3d0a0"
+    },
+    {
+      "path": "cartography/art/settlement.tavern.v1.svg",
+      "blob": "b572a413d6e95ee3317d8c95f2e4eb4edb89d6e7"
+    },
+    {
+      "path": "cartography/art/settlement.tavern.v2.svg",
+      "blob": "ce9279d8f4cf44d194c5f23f9bba5bed8c3654e8"
+    },
+    {
+      "path": "cartography/art/settlement.temple.v1.svg",
+      "blob": "7bb894ca0d8d15af81c8fec6044dc6c909497702"
+    },
+    {
+      "path": "cartography/art/settlement.temple.v2.svg",
+      "blob": "39b99f2831f3aa75da2952a55ab3b725ba9309c4"
+    },
+    {
+      "path": "cartography/art/settlement.town.harvest.svg",
+      "blob": "531e200091d3c8040045e774a0f3cd57c0669fc1"
+    },
+    {
+      "path": "cartography/art/settlement.town.v1.svg",
+      "blob": "b0398f9bbfa918da040450902783ef40cee6a800"
+    },
+    {
+      "path": "cartography/art/settlement.town.v2.svg",
+      "blob": "5eb03c670fc4d6d55b51d0f0cde93756924545bf"
+    },
+    {
+      "path": "cartography/art/settlement.trading_post.v1.svg",
+      "blob": "752066ea64aaa3b61818c3213b60672268b3f0c1"
+    },
+    {
+      "path": "cartography/art/settlement.trading_post.v2.svg",
+      "blob": "f0fb351adac8fc853cc0297b3cd8455f967ce6fc"
+    },
+    {
+      "path": "cartography/art/settlement.village.harvest.svg",
+      "blob": "21761c7255c6add880dad69f46a99839ae5d4b20"
+    },
+    {
+      "path": "cartography/art/settlement.village.v1.svg",
+      "blob": "c6f41d2d2eb06d6a850223436bf4ae917b6bb069"
+    },
+    {
+      "path": "cartography/art/settlement.village.v2.svg",
+      "blob": "2780f14c8d197e15302f6723721c508964cbb08b"
+    },
+    {
+      "path": "cartography/art/settlement.walled_town.v1.svg",
+      "blob": "1b21f9934a92cf80a7d0da428c71b1ce53cd3ea0"
+    },
+    {
+      "path": "cartography/art/settlement.walled_town.v2.svg",
+      "blob": "0632396d84fe63815dabeed9ec549294539f35db"
+    },
+    {
+      "path": "cartography/art/settlement.watchtower.v1.svg",
+      "blob": "7d628ea7d34107c3689b024df84b1ea9ed5debaa"
+    },
+    {
+      "path": "cartography/art/settlement.watchtower.v2.svg",
+      "blob": "324378ad475ef3426098bf526002c32d35e6ff4b"
+    },
+    {
+      "path": "cartography/art/settlement.watermill.v1.svg",
+      "blob": "72a0f56309b8f9902fd59378f09745694a16a27b"
+    },
+    {
+      "path": "cartography/art/settlement.watermill.v2.svg",
+      "blob": "f31c765ee1e25583e5e6f822c0b64b7f793f76b0"
+    },
+    {
+      "path": "cartography/art/settlement.windmill.harvest.svg",
+      "blob": "942449f2c7ca2dbd54f9d1999a014fa3e4660623"
+    },
+    {
+      "path": "cartography/art/settlement.windmill.v1.svg",
+      "blob": "3473ca7cee6017f2a5e68d02b89d68ba6f5c1cd3"
+    },
+    {
+      "path": "cartography/art/settlement.windmill.v2.svg",
+      "blob": "22db1239ae833206f54a6fdf954b3194c89603b4"
+    },
+    {
+      "path": "cartography/art/terrain.beach.v1.svg",
+      "blob": "c5d8df984af51bf3c21b2c6df76bacc86bc05146"
+    },
+    {
+      "path": "cartography/art/terrain.beach.v2.svg",
+      "blob": "71a0c97790ee6df3d9e25ceb3cd75d8eac074192"
+    },
+    {
+      "path": "cartography/art/terrain.canyon.v1.svg",
+      "blob": "00cc28b579c4b324e679fea57749abb05b97e2ed"
+    },
+    {
+      "path": "cartography/art/terrain.canyon.v2.svg",
+      "blob": "dc02ab2cdb07b79648d44ed71d908bd3b7237f12"
+    },
+    {
+      "path": "cartography/art/terrain.cliff.v1.svg",
+      "blob": "4f59ee7fb4342273f503cb457fa4300cbc8d1f93"
+    },
+    {
+      "path": "cartography/art/terrain.cliff.v2.svg",
+      "blob": "60280483899b2286eb3feebf747c1b25c3291e98"
+    },
+    {
+      "path": "cartography/art/terrain.dead_forest.v1.svg",
+      "blob": "c2a9b16a8c6ad5f43d797caf428653f121ac286b"
+    },
+    {
+      "path": "cartography/art/terrain.dead_forest.v2.svg",
+      "blob": "61fac9d39ad53de756d1c926f9a09ca422d4f930"
+    },
+    {
+      "path": "cartography/art/terrain.deciduous_forest.v1.svg",
+      "blob": "4c49228f2a5a9f171617b718dad64410ef88d2c0"
+    },
+    {
+      "path": "cartography/art/terrain.deciduous_forest.v2.svg",
+      "blob": "57fe2d2076702181c36066d8be4bc741f12edc2b"
+    },
+    {
+      "path": "cartography/art/terrain.dense_forest.v1.svg",
+      "blob": "0e8c7b47fa4560ec2f844bb7cd41bf24d1f2a7fd"
+    },
+    {
+      "path": "cartography/art/terrain.dense_forest.v2.svg",
+      "blob": "925a7b7ea007110cb67491c2bf10a6d16cc86e34"
+    },
+    {
+      "path": "cartography/art/terrain.desert.v1.svg",
+      "blob": "63213952bcbffe5ec9c639ce5aed06de023b34f5"
+    },
+    {
+      "path": "cartography/art/terrain.desert.v2.svg",
+      "blob": "f30a4eea9ceda5e6ca7452bd8d0e04abf59578de"
+    },
+    {
+      "path": "cartography/art/terrain.dunes.v1.svg",
+      "blob": "e445d45b7819d5b158f941110971d61d63a70e28"
+    },
+    {
+      "path": "cartography/art/terrain.dunes.v2.svg",
+      "blob": "99c9f1e4331001181850c7ff892bdc1af4b4fda6"
+    },
+    {
+      "path": "cartography/art/terrain.glacier.v1.svg",
+      "blob": "5ab762b8d56618bb123229bf58a6c69107a4fb8c"
+    },
+    {
+      "path": "cartography/art/terrain.glacier.v2.svg",
+      "blob": "a6fd0bf851c2bcd237b282a720d9c910cd6f0892"
+    },
+    {
+      "path": "cartography/art/terrain.grasslands.v1.svg",
+      "blob": "f996fe98abf3a201c41f133d947a9196bc3307d7"
+    },
+    {
+      "path": "cartography/art/terrain.grasslands.v2.svg",
+      "blob": "d270f136e6ca87098d930afed1ee84ca08d63c6c"
+    },
+    {
+      "path": "cartography/art/terrain.jungle.v1.svg",
+      "blob": "aaa5ba97ab3e1d451a083a3001c51bec7cd40a71"
+    },
+    {
+      "path": "cartography/art/terrain.jungle.v2.svg",
+      "blob": "2845c38ca2b1752ca00398d9bea6819289eecf23"
+    },
+    {
+      "path": "cartography/art/terrain.marsh.v1.svg",
+      "blob": "ece36ae8ef8a926587b8686018d93c2e83f62889"
+    },
+    {
+      "path": "cartography/art/terrain.marsh.v2.svg",
+      "blob": "c718cac6830f04de0794e11b6d9a85f086716592"
+    },
+    {
+      "path": "cartography/art/terrain.mountain_pass.v1.svg",
+      "blob": "94b55a9a162778df4040b03190da4d3525bb18de"
+    },
+    {
+      "path": "cartography/art/terrain.mountain_pass.v2.svg",
+      "blob": "5f03416019e1fc0944da200ff652bcdbb1f6cb42"
+    },
+    {
+      "path": "cartography/art/terrain.mountain_peak.v1.svg",
+      "blob": "175c44639716029d2a9ee9fcb2b00524e4548bc4"
+    },
+    {
+      "path": "cartography/art/terrain.mountain_peak.v2.svg",
+      "blob": "0af57b5d305dcd60dcddf4a32af43462750b65cc"
+    },
+    {
+      "path": "cartography/art/terrain.mountain_range.harvest.svg",
+      "blob": "da71f87e09c75c00d2adc0a33ea771d7e5365f5d"
+    },
+    {
+      "path": "cartography/art/terrain.mountain_range.v1.svg",
+      "blob": "60bd6a714e982560b7235f3b3ef1b559566b4b17"
+    },
+    {
+      "path": "cartography/art/terrain.mountain_range.v2.svg",
+      "blob": "a12a951e79e4374cd020bf48e62cffcc9aa783d6"
+    },
+    {
+      "path": "cartography/art/terrain.pine_forest.v1.svg",
+      "blob": "49739d37b39321c0755c8ece23d88d3201a0b9b6"
+    },
+    {
+      "path": "cartography/art/terrain.pine_forest.v2.svg",
+      "blob": "49d8dbaa28ecff45954815d9695c83103d9a57f9"
+    },
+    {
+      "path": "cartography/art/terrain.plains.v1.svg",
+      "blob": "920dcc4e1c1a07e968ee75a60bc22f689d74880f"
+    },
+    {
+      "path": "cartography/art/terrain.plains.v2.svg",
+      "blob": "8f01f76bb7921b54b16f6c7f3d5f46bec48b8f2b"
+    },
+    {
+      "path": "cartography/art/terrain.plateau.v1.svg",
+      "blob": "d09fa753a29d20e4d8196cae4667f40dbcfcde6f"
+    },
+    {
+      "path": "cartography/art/terrain.plateau.v2.svg",
+      "blob": "8fbf968c05e04a5125e0821cf2d1bddbdda7832d"
+    },
+    {
+      "path": "cartography/art/terrain.ravine.v1.svg",
+      "blob": "a40c18725378e3287c7a160b6bd902d7e9568506"
+    },
+    {
+      "path": "cartography/art/terrain.ravine.v2.svg",
+      "blob": "4ccd2be1a714b7a6b017e8624ae48138f704955d"
+    },
+    {
+      "path": "cartography/art/terrain.rocky_coast.v1.svg",
+      "blob": "3ac52e934bb9465a781e7500e0851377837e0411"
+    },
+    {
+      "path": "cartography/art/terrain.rocky_coast.v2.svg",
+      "blob": "aa928f62cb2c820adc2addeb18efc3ba54929cb8"
+    },
+    {
+      "path": "cartography/art/terrain.rolling_hills.v1.svg",
+      "blob": "ff902f93afd12fa0dca8d9f06c6134410a40b191"
+    },
+    {
+      "path": "cartography/art/terrain.rolling_hills.v2.svg",
+      "blob": "cefb805554c0f77a7cd1821a8f488f40dbc373d9"
+    },
+    {
+      "path": "cartography/art/terrain.snow_mountain.v1.svg",
+      "blob": "930d80dc28923994c1c0b5ec5d73cc17a3d6dde1"
+    },
+    {
+      "path": "cartography/art/terrain.snow_mountain.v2.svg",
+      "blob": "a55034f03b521f215befcc2989e283222e66d606"
+    },
+    {
+      "path": "cartography/art/terrain.swamp.v1.svg",
+      "blob": "80d2793d4ef70454859696a0a4dcbcac0c087103"
+    },
+    {
+      "path": "cartography/art/terrain.swamp.v2.svg",
+      "blob": "f3c5eb12e11bb64696c6f89f20fb740210025138"
+    },
+    {
+      "path": "cartography/art/terrain.tundra.v1.svg",
+      "blob": "55f44fb1f7c0bf18f784c9101e90f3956db61ee5"
+    },
+    {
+      "path": "cartography/art/terrain.tundra.v2.svg",
+      "blob": "710dc732f82c2bfc186edbb496febe06f5e268af"
+    },
+    {
+      "path": "cartography/art/terrain.valley.v1.svg",
+      "blob": "08f4527e42210a89cf4a9c0c1230832bcb1cdea2"
+    },
+    {
+      "path": "cartography/art/terrain.valley.v2.svg",
+      "blob": "5a00c2f1c3cb6cf1ea1afd814736d8d22939e09b"
+    },
+    {
+      "path": "cartography/art/terrain.volcano.v1.svg",
+      "blob": "1134b0cdb802f454e2f0b3854008838e88bbdd7a"
+    },
+    {
+      "path": "cartography/art/terrain.volcano.v2.svg",
+      "blob": "38ed5b9fad258ca5e45f317332f59e77a7ed38ae"
+    },
+    {
+      "path": "cartography/art/tool.erase.harvest.svg",
+      "blob": "23ed97e3967081709cd28f29492c8a1d57868a16"
+    },
+    {
+      "path": "cartography/art/tool.flag.harvest.svg",
+      "blob": "ad24f0140bf7416fb199fb180b82ea2a053c678d"
+    },
+    {
+      "path": "cartography/art/tool.measure.harvest.svg",
+      "blob": "2d90cab1558d61df0f08d61f21b2648d37bb5236"
+    },
+    {
+      "path": "cartography/art/tool.pan.harvest.svg",
+      "blob": "c187354b318b4ee183b54c86fdabf8052e83694e"
+    },
+    {
+      "path": "cartography/art/tool.pencil.harvest.svg",
+      "blob": "fc1eb96d8496be9d3323390198e5e4b0db4214ed"
+    },
+    {
+      "path": "cartography/art/tool.pin.harvest.svg",
+      "blob": "b0b47eb670e0974f769286228649d61971127cf4"
+    },
+    {
+      "path": "cartography/art/tool.zoom_in.harvest.svg",
+      "blob": "9ce4ace5f5c5452b3adcbe26acf02e241b1f702d"
+    },
+    {
+      "path": "cartography/art/tool.zoom_out.harvest.svg",
+      "blob": "2d268fa1ec63310a74e62210f870a77dd5b96f12"
+    },
+    {
+      "path": "cartography/art/tools.center.v1.svg",
+      "blob": "31c4d327597484463fe4595e00ace930e7c215e7"
+    },
+    {
+      "path": "cartography/art/tools.checkbox_checked.v1.svg",
+      "blob": "0e8878fa91de0a7ddd9e73876585e5d6f9bb147a"
+    },
+    {
+      "path": "cartography/art/tools.checkbox_empty.v1.svg",
+      "blob": "db20fb09afb91f82551ddbf43c46909adcefc86c"
+    },
+    {
+      "path": "cartography/art/tools.fullscreen.v1.svg",
+      "blob": "74d76babca96a737ec6f4a0616ab2cbc525897a8"
+    },
+    {
+      "path": "cartography/art/tools.history.v1.svg",
+      "blob": "98a44d4f3d5dae5a96b524b581fd0d063b058f78"
+    },
+    {
+      "path": "cartography/art/tools.info.v1.svg",
+      "blob": "4789902db0547b450175a3b03de2c9b2d2062eb3"
+    },
+    {
+      "path": "cartography/art/tools.layers.v1.svg",
+      "blob": "4d49351efa6c3451802b5ba32f5f9d7a21d15df1"
+    },
+    {
+      "path": "cartography/art/tools.overview.v1.svg",
+      "blob": "c5a2ca50a286c543f9f7328a0f552b0ab5654449"
+    },
+    {
+      "path": "cartography/art/tools.search.v1.svg",
+      "blob": "91ddd20dc343f5b699738ec7fdede39fe57c6a19"
+    },
+    {
+      "path": "cartography/art/water.archipelago.v1.svg",
+      "blob": "f3a50472ca1ead976ea6a57cffda34d9630e3885"
+    },
+    {
+      "path": "cartography/art/water.archipelago.v2.svg",
+      "blob": "771a616b07d88ea276fb273037346542340cae1b"
+    },
+    {
+      "path": "cartography/art/water.boat.v1.svg",
+      "blob": "dbdcb9795505295894cffaf7f1789ffd7cbda26a"
+    },
+    {
+      "path": "cartography/art/water.boat.v2.svg",
+      "blob": "15bc813950db938b44c74dc5a3169d7a2ae683bd"
+    },
+    {
+      "path": "cartography/art/water.island.v1.svg",
+      "blob": "9053663bb819228079eb891922a68705c1398f36"
+    },
+    {
+      "path": "cartography/art/water.island.v2.svg",
+      "blob": "c4b84a4addab83ac94225733cad6e728fcf937f6"
+    },
+    {
+      "path": "cartography/art/water.lake.v1.svg",
+      "blob": "8be81b38b95bfbfcf810c49fd22e1e0890718e87"
+    },
+    {
+      "path": "cartography/art/water.lake.v2.svg",
+      "blob": "6c52824ae05c420ededbf48a8e4d96b84f51b6b9"
+    },
+    {
+      "path": "cartography/art/water.ocean.v1.svg",
+      "blob": "c82430acdaed1dd4862e5eeec1f45b24799a0595"
+    },
+    {
+      "path": "cartography/art/water.ocean.v2.svg",
+      "blob": "78b75187d7043eb293ae76f7c8a605bb94fede4a"
+    },
+    {
+      "path": "cartography/art/water.pond.v1.svg",
+      "blob": "2a2bf505cdfa31578c80155120b8b4c540c19a2e"
+    },
+    {
+      "path": "cartography/art/water.pond.v2.svg",
+      "blob": "dce3b715928eedaccebcb655995a031719996a42"
+    },
+    {
+      "path": "cartography/art/water.reef.v1.svg",
+      "blob": "bd1cc158179e8596edd03e06622c93e396f791fd"
+    },
+    {
+      "path": "cartography/art/water.reef.v2.svg",
+      "blob": "13e510bb273dff47ba12e1f89fb1973e5c815cde"
+    },
+    {
+      "path": "cartography/art/water.river_crossing.v1.svg",
+      "blob": "6e5e9beafbd9655489eddc65d2d930834c083755"
+    },
+    {
+      "path": "cartography/art/water.river_crossing.v2.svg",
+      "blob": "96377fd952014e4bf9fbd7404a4477e4e4625bae"
+    },
+    {
+      "path": "cartography/art/water.river.v1.svg",
+      "blob": "4f317c7ae64f848878176d084b1c07b803273837"
+    },
+    {
+      "path": "cartography/art/water.river.v2.svg",
+      "blob": "aa17f2398e9d29b61db8a130ced079c2dc34e103"
+    },
+    {
+      "path": "cartography/art/water.sea.v1.svg",
+      "blob": "1141ac7a0ff00f6775a4141d4e76d4ca1dd94f3f"
+    },
+    {
+      "path": "cartography/art/water.sea.v2.svg",
+      "blob": "0fa26fafa825d0ac1edeb6f95674372833d8f580"
+    },
+    {
+      "path": "cartography/art/water.ship.v1.svg",
+      "blob": "5bcd85697eeebb2b8a91281cfa69a42df8b102f3"
+    },
+    {
+      "path": "cartography/art/water.ship.v2.svg",
+      "blob": "d90663a100d7d02b8a279ff94bdbb90123167ec7"
+    },
+    {
+      "path": "cartography/art/water.shipwreck.v1.svg",
+      "blob": "0a100d946e0cc60345047384169a561aa501d511"
+    },
+    {
+      "path": "cartography/art/water.shipwreck.v2.svg",
+      "blob": "808530c8726f0689888adfe3ae500e98c135fe45"
+    },
+    {
+      "path": "cartography/art/water.spring.v1.svg",
+      "blob": "4cb15ae3bec4127bda6c64591caf5e00ddfc176f"
+    },
+    {
+      "path": "cartography/art/water.spring.v2.svg",
+      "blob": "31346c7b7632dfa0669742a09e698595132071f9"
+    },
+    {
+      "path": "cartography/art/water.stream.v1.svg",
+      "blob": "cd07ce5233fbd6fdbc4a827518da0752fb8ca3fe"
+    },
+    {
+      "path": "cartography/art/water.stream.v2.svg",
+      "blob": "33e4acb7ad923d276154dc20bb4ef027526410cc"
+    },
+    {
+      "path": "cartography/art/water.waterfall.v1.svg",
+      "blob": "4ecf3a177a62b75fb827f40e6cfa10c578e13886"
+    },
+    {
+      "path": "cartography/art/water.waterfall.v2.svg",
+      "blob": "31b202331e113fef4c48f17a5fab79283d14df7f"
+    },
+    {
+      "path": "cartography/asset_catalog.gd",
+      "blob": "2764ebf43bde385ba11b74185a5d061b2c3a5761"
+    },
+    {
+      "path": "cartography/map_canvas.gd",
+      "blob": "1b618e93fe53bcf3767f54f4d0c890edd374c12d"
+    },
+    {
+      "path": "cartography/map_model.gd",
+      "blob": "245fe6195275fe1b9d4e055a804799fd0f207c41"
+    },
+    {
+      "path": "cartography/map_window.gd",
+      "blob": "dc2941831190769d69efc0dc23f58c1aa2447b28"
     },
     {
       "path": "data/2014/ability-scores.json",
       "blob": "50dd5029f0aed1354d89c8674cb6ce420aa87d74"
+    },
+    {
+      "path": "data/2014/ATTRIBUTION.txt",
+      "blob": "a1250899a49f9d14a96e7641d3c73c3ecc9c2268"
     },
     {
       "path": "data/2014/backgrounds.json",
@@ -103,6 +1123,10 @@
     {
       "path": "data/2014/features.json",
       "blob": "854afaed5e98d3f47a4da870a1c8af217e3f33ac"
+    },
+    {
+      "path": "data/2014/INDEX.json",
+      "blob": "df54d5578688e72f5558abe206b27ed214ee23de"
     },
     {
       "path": "data/2014/languages.json",
@@ -166,7 +1190,7 @@
     },
     {
       "path": "gameplay/game_workspace.gd",
-      "blob": "b9aaa97cbadcc0c870848c3a00f45646f165a7e0"
+      "blob": "2cab5dd14c2e35dd2b7589afef32b75a173f886e"
     },
     {
       "path": "gameplay/manual_dice.gd",
@@ -205,10 +1229,6 @@
       "blob": "e31f2d10cc1c617542e2e21fc01e4bd09561e7e6"
     },
     {
-      "path": "players/CHARACTER_SYSTEM.md",
-      "blob": "2912089d5d98f7eba9f120fece0d9c5f176fcf44"
-    },
-    {
       "path": "players/character_creator.gd",
       "blob": "f8292c4e7287c71e21a90471e816fbf1fca60a8d"
     },
@@ -225,6 +1245,10 @@
       "blob": "f019ec85291aa47ad0609f07dd091d79ec6c6abf"
     },
     {
+      "path": "players/CHARACTER_SYSTEM.md",
+      "blob": "2912089d5d98f7eba9f120fece0d9c5f176fcf44"
+    },
+    {
       "path": "players/full_character_sheet.gd",
       "blob": "9524e38914323bbc094f9cdf70910292fd7de1e5"
     },
@@ -234,35 +1258,19 @@
     },
     {
       "path": "project.godot",
-      "blob": "a1261202e6d3c2973441f917c95389a67b2c8f73"
-    },
-    {
-      "path": "rules/MASTER_REFERENCE.md",
-      "blob": "e40d949408961503eccd434967fdd50ee72256b3"
-    },
-    {
-      "path": "rules/PRIVATE_REFERENCE_POLICY.md",
-      "blob": "40cb5504b0a3e506e114d2f85940e6c7679d1853"
-    },
-    {
-      "path": "rules/README.md",
-      "blob": "49b8a50578b083f0a70023c8d243a9bc7e403fd1"
-    },
-    {
-      "path": "rules/REFERENCE_BATCHES.md",
-      "blob": "7179d64500a279a78d818466687958bd82be3620"
+      "blob": "f55d63ab91798b5028b05a777e8a09331d698adb"
     },
     {
       "path": "rules/batch_catalog.gd",
       "blob": "ba45a7fca47369ac043eb3ad535d41b1dd5c13ef"
     },
     {
-      "path": "rules/catalog.gd",
-      "blob": "abd5bafa1cefa0942aa83e3c6d27ff25ea31c0f7"
-    },
-    {
       "path": "rules/catalog_browser.gd",
       "blob": "35770489c4613aa42615526af10cfa6b9ff81f64"
+    },
+    {
+      "path": "rules/catalog.gd",
+      "blob": "abd5bafa1cefa0942aa83e3c6d27ff25ea31c0f7"
     },
     {
       "path": "rules/character_rules.gd",
@@ -277,8 +1285,24 @@
       "blob": "843b2de08848b38784e014ba50033ae13e6848e9"
     },
     {
+      "path": "rules/MASTER_REFERENCE.md",
+      "blob": "e40d949408961503eccd434967fdd50ee72256b3"
+    },
+    {
       "path": "rules/mechanics.gd",
       "blob": "785266cee39294f4b61cbcc63c8f7b5c6f9361dd"
+    },
+    {
+      "path": "rules/PRIVATE_REFERENCE_POLICY.md",
+      "blob": "40cb5504b0a3e506e114d2f85940e6c7679d1853"
+    },
+    {
+      "path": "rules/README.md",
+      "blob": "49b8a50578b083f0a70023c8d243a9bc7e403fd1"
+    },
+    {
+      "path": "rules/REFERENCE_BATCHES.md",
+      "blob": "7179d64500a279a78d818466687958bd82be3620"
     },
     {
       "path": "systems/asset_library.gd",
@@ -290,11 +1314,7 @@
     },
     {
       "path": "systems/gemini.gd",
-      "blob": "d2a8ba0f4db32d64cf28238353bae4db16bba342"
-    },
-    {
-      "path": "systems/sqlite.gd",
-      "blob": "4adae9e847fecd3e0a55a490275f3db3a98767ec"
+      "blob": "81668d8e412e3afb82cbfc864d081fb8f2b6f48c"
     },
     {
       "path": "systems/sqlite_bridge.cs",
@@ -303,6 +1323,10 @@
     {
       "path": "systems/sqlite_bridge.ps1",
       "blob": "32f343d787c0ac66b57b04a224ac41338678d114"
+    },
+    {
+      "path": "systems/sqlite.gd",
+      "blob": "4adae9e847fecd3e0a55a490275f3db3a98767ec"
     },
     {
       "path": "tests/ai_profile_smoke.gd",
@@ -317,8 +1341,20 @@
       "blob": "cdbc5ff410148204ffbde31f5537dcc84d59343a"
     },
     {
+      "path": "tests/cartography_assets_smoke.gd",
+      "blob": "bfdb4b79be306020b9226e15999a3b9f9a9859c0"
+    },
+    {
+      "path": "tests/cartography_renderer_smoke.gd",
+      "blob": "d0315303247adaf5aa0de1b67f1fbc740b986894"
+    },
+    {
       "path": "tests/character_smoke.gd",
       "blob": "5c431040eba2aa07efad37af2709efe2f7090abb"
+    },
+    {
+      "path": "tests/coordinator_smoke.gd",
+      "blob": "1f8ee282432bfcf170d2b4bb5af3b43de99901d9"
     },
     {
       "path": "tests/gameplay_smoke.gd",
@@ -333,8 +1369,16 @@
       "blob": "378c85212bd8ba5f7579c39de4b440d91b602703"
     },
     {
-      "path": "themes/TYPOGRAPHY.md",
-      "blob": "eac8bb8e11a693fbc6eff88c7cbd428c6cfadc2e"
+      "path": "tests/world_smoke.gd",
+      "blob": "7ea452bd5a92f2fb4ceee51d29df33c9fb827c48"
+    },
+    {
+      "path": "themes/fonts/arcane_atlas.png",
+      "blob": "9404512d0977a189bcb5e5c61b023387894cb217"
+    },
+    {
+      "path": "themes/fonts/arcane.fnt",
+      "blob": "7f6aba96ecb6966800d8ed59afeb9e20c9d7d92d"
     },
     {
       "path": "themes/fonts/EBGaramond-Italic.ttf",
@@ -345,24 +1389,16 @@
       "blob": "52d34b86ec20977f222ce37e8158e6b3002c0a31"
     },
     {
-      "path": "themes/fonts/OFL.txt",
-      "blob": "c1ec5e1818415eab6f8fca95a230af477d64eb61"
-    },
-    {
-      "path": "themes/fonts/arcane.fnt",
-      "blob": "7f6aba96ecb6966800d8ed59afeb9e20c9d7d92d"
-    },
-    {
-      "path": "themes/fonts/arcane_atlas.png",
-      "blob": "9404512d0977a189bcb5e5c61b023387894cb217"
+      "path": "themes/fonts/italic_atlas.png",
+      "blob": "9fa87df956ef24871e4436c2dfc522da5186a3a0"
     },
     {
       "path": "themes/fonts/italic.fnt",
       "blob": "5a10c74a38ed1847fed6d0294a3e3799f22496be"
     },
     {
-      "path": "themes/fonts/italic_atlas.png",
-      "blob": "9fa87df956ef24871e4436c2dfc522da5186a3a0"
+      "path": "themes/fonts/OFL.txt",
+      "blob": "c1ec5e1818415eab6f8fca95a230af477d64eb61"
     },
     {
       "path": "themes/gold_flourish.svg",
@@ -405,8 +1441,52 @@
       "blob": "6907eaee2e216df48d04b4b279010f948de0fa6a"
     },
     {
+      "path": "themes/TYPOGRAPHY.md",
+      "blob": "eac8bb8e11a693fbc6eff88c7cbd428c6cfadc2e"
+    },
+    {
+      "path": "turns/agent_packets.gd",
+      "blob": "bfe408f22fde4030d4f1ab265f836fc95541a915"
+    },
+    {
+      "path": "turns/raw_mechanics.gd",
+      "blob": "cd20c895bc4ceaa1291df741496cb15801765d7a"
+    },
+    {
+      "path": "turns/turn_coordinator.gd",
+      "blob": "3a71b1466c98a6f18a0bf0c9fb4dbcfe67a36afa"
+    },
+    {
+      "path": "turns/turn_resolver.gd",
+      "blob": "eb21bf99bfe1cc49df2a1dfbdab3272e4387269d"
+    },
+    {
+      "path": "turns/turn_store.gd",
+      "blob": "fe2bec9281853f7fcf677691765839ae40f30183"
+    },
+    {
       "path": "version.txt",
-      "blob": "b056f4120ed9bf09457f25b7a53776a97ff96807"
+      "blob": "2678ff8d63d55793d68f02e5110f51903c462ce2"
+    },
+    {
+      "path": "world/geography_reconciler.gd",
+      "blob": "f88c9c9766cce558494df0f605133a64664c3ac5"
+    },
+    {
+      "path": "world/world_dto.gd",
+      "blob": "54ca6d468fe503e36f08f66ad05719155a6f0b40"
+    },
+    {
+      "path": "world/world_migration.gd",
+      "blob": "3e76b4d5a7a29cf93d6ee75305759be8fa9c6d1a"
+    },
+    {
+      "path": "world/world_schema.sql",
+      "blob": "106b6d7fa146e1b71bf4753774050bc65e938e7e"
+    },
+    {
+      "path": "world/world_store.gd",
+      "blob": "a0c450c33dce14b85200436ac686583413d0d600"
     }
   ]
 }
