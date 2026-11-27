@@ -1,6 +1,6 @@
 extends VBoxContainer
-## Presentation only: reads committed campaign data. Future controller may connect
-## action_requested; composer stays disabled until an explicit controller binding.
+## Presentation only: reads committed campaign data. C1 uses ui_intents.gd
+## and an explicit trusted callback. Legacy signal retained but never emitted.
 signal action_requested(campaign_id: String, actor_id: String, text: String)
 
 const CAT = preload("res://rules/catalog.gd")
@@ -598,7 +598,7 @@ func show_slot(slot: String, preferred_id: String = "") -> void:
 		if not intents.outstanding_id.is_empty():
 			popup.queue_free()
 	,16)
-	equip_button.disabled = true
+	track_intent(equip_button,"equip",false,"Select an offered compatible instance.")
 	var current_id = intents.interaction.get("slot_assignments",{}).get(slot)
 	var unequip = intent_button(actions,"Unequip","unequip",{"instance_id":current_id,"slot":slot},current_id!=null,"Current instance assignment required.")
 	unequip.tooltip_text = "Unequip the current item via the controller. "+unequip.tooltip_text
@@ -610,7 +610,7 @@ func show_slot(slot: String, preferred_id: String = "") -> void:
 		var lines: PackedStringArray = [item_name(item),"Owned quantity: "+number(item.get("quantity")),item_description(item)]
 		if opt.is_empty():
 			lines.append("Legacy stack: grip, proficiency, attunement, hand conflicts and action timing require C2/C3. Inspection only.")
-			equip_button.disabled = true
+			track_intent(equip_button,"equip",false,"Legacy inventory stack; stable instance required.")
 			equip_button.text = "Equip / Swap"
 		else:
 			lines.append("Grip: "+str(opt["grip"]).replace("_"," "))
@@ -622,8 +622,7 @@ func show_slot(slot: String, preferred_id: String = "") -> void:
 			if not str(opt["warning"]).is_empty():
 				lines.append(str(opt["warning"]))
 			equip_button.text = "Swap" if candidate["kind"]=="swap" else "Equip"
-			equip_button.disabled = not opt["available"] or not can_intent(candidate["kind"])
-			equip_button.tooltip_text = str(opt["warning"]) if not opt["available"] else intent_reason(candidate["kind"])
+			track_intent(equip_button,candidate["kind"],opt["available"],str(opt["warning"]))
 		detail.text = "\n\n".join(lines)
 	for candidate in options:
 		var item = candidate["row"]
@@ -792,6 +791,12 @@ func intent_reason(kind: String) -> String:
 	return intents.reason(kind)
 
 func track_intent(control: Button,kind: String,local_allowed: bool = true,local_reason: String = "") -> void:
+	# A selection may change Equip to Swap, or change cast availability.
+	# Replace its previous binding rather than leave a stale enabled button.
+	for i in range(intent_buttons.size()-1,-1,-1):
+		var previous = intent_buttons[i]["button"]
+		if not is_instance_valid(previous) or previous==control:
+			intent_buttons.remove_at(i)
 	intent_buttons.append({"button":control,"kind":kind,"allowed":local_allowed,"reason":local_reason})
 	control.disabled = not local_allowed or not can_intent(kind)
 	control.tooltip_text = local_reason if not local_allowed else intent_reason(kind)
@@ -1244,13 +1249,12 @@ func show_spell(id: String) -> void:
 	,16)
 	var update = func(index: int):
 		if index<0 or index>=options.size():
-			cast.disabled = true
+			track_intent(cast,"spell_cast",false,"No authoritative cast options recorded.")
 			cast_note.text = "No authoritative cast options recorded."
 			return
 		var opt = options[index]
-		cast.disabled = not opt["available"] or not can_intent("spell_cast")
+		track_intent(cast,"spell_cast",opt["available"],str(opt["warning"]))
 		cast_note.text = str(opt["warning"]) if not str(opt["warning"]).is_empty() else "Target unselected; controller may request explicit targeting."
-		cast.tooltip_text = intent_reason("spell_cast")
 	cast_choices.item_selected.connect(update)
 	if options.is_empty():
 		cast_choices.add_item("Cast options unavailable")
@@ -1482,13 +1486,12 @@ func show_quests() -> void:
 		if not intents.outstanding_id.is_empty():
 			popup.queue_free()
 	)
-	pursue.disabled = true
+	track_intent(pursue,"quest_interact",false,"Select a disclosed quest.")
 	var choose = func(index: int):
 		var quest = rows[index]
 		selection["id"] = str(quest["id"])
 		detail.text = str(quest["title"])+"\n"+str(quest["status"]).capitalize()+"\n\n"+str(quest.get("description",""))+"\n\nSource event: "+number(quest.get("source_event_id"))
-		pursue.disabled = not can_intent("quest_interact")
-		pursue.tooltip_text = intent_reason("quest_interact")
+		track_intent(pursue,"quest_interact",not intents.interaction.is_empty(),"A current authoritative campaign quest view is required.")
 	for quest in rows:
 		list.add_item(str(quest["title"])+" · "+str(quest["status"]))
 	list.item_selected.connect(choose)

@@ -26,3 +26,6 @@ Full scope in design/WORLD_CARTOGRAPHY_SPEC.md. Reference JPEG available in Proj
 
 ## A2 world/regional atlas
 Map tab now opens modal parchment atlas backed solely by B1 player MapView v1. Separate map model, artwork catalogue, native Control canvas and journal window; world/region navigation, fog styling, known ink features, actual committed travel, layer controls, search, notes, distance, history and full-viewport mode. No mutation except B1 visible-location notes. Travel intention callback unbound, no direct movement. See design/cartography/A2_RENDERER.md and HANDOFF.md for actual static verification and native acceptance blockers. Existing gameplay GUI outside Map adapter unchanged. No publication.
+
+## Complete gameplay C1 interaction layer
+See design/C1_UI_CONTRACT.md and design/C1_CONTROL_CHECKLIST.md. Existing approved workspace art/layout retained, new equipment/instance/slot picker and inventory/spell/skill/resource/rest/quest/party/map/chat controls submit typed local intentions only through explicit adapter, production unbound. Same-transaction future view and actual mechanics required from 03/02, C4 links; no provider changes. Native GUI acceptance pending. Two original replacement map symbols remove vintage-derived files from candidate tree.
