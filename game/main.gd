@@ -25,6 +25,8 @@ const NAV = {
 	"Campaign Manager": ["Create New Campaign", "Resume Existing Campaign", "Delete Campaign", "Return to Main"]
 }
 const RULES = preload("res://rules/library.gd")
+const MASTER = preload("res://rules/master_reference.gd")
+var master = MASTER.new()
 const MECHANICS = preload("res://rules/mechanics.gd")
 const SHEET = preload("res://players/character_sheet.gd")
 var library = RULES.new()
@@ -49,11 +51,14 @@ func _ready() -> void:
 	theme.default_font = bitmap
 	version = FileAccess.get_file_as_string("res://version.txt").strip_edges()
 	config.load(CONFIG_PATH)
-	fullscreen = bool(config.get_value("display", "fullscreen", true))
+	fullscreen = bool(config.get_value("display", "fullscreen", false))
+	if OS.get_cmdline_user_args().has("recovery-windowed") or DisplayServer.get_name() == "headless":
+		fullscreen = false
 	if fullscreen:
 		get_window().mode = Window.MODE_FULLSCREEN
 	request = HTTPRequest.new()
 	request.timeout = 20.0
+	request.use_threads = true
 	add_child(request)
 	request.request_completed.connect(on_response)
 	dialog = ConfirmationDialog.new()
@@ -67,6 +72,8 @@ func _ready() -> void:
 	add_child(backdrop)
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	show_screen("Main")
+	await get_tree().process_frame
+	await get_tree().process_frame
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("ready="):
 			var token = arg.trim_prefix("ready=")
@@ -128,7 +135,7 @@ func show_screen(name: String) -> void:
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	margin.add_theme_constant_override("margin_left", 220 if painted_title else 120)
 	margin.add_theme_constant_override("margin_top", 226 if painted_title else 64)
-	margin.add_theme_constant_override("margin_right", 100 if name in ["Create New", "Generate Character", "Rules Library"] else 540)
+	margin.add_theme_constant_override("margin_right", 100 if name in ["Create New", "Generate Character", "Rules Library", "Master Reference"] else 540)
 	margin.add_theme_constant_override("margin_bottom", 44)
 	var scroll = ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -159,6 +166,8 @@ func show_screen(name: String) -> void:
 			menu.add_child(menu_button(caption, func(): navigate(item)))
 	elif name == "Rules Library":
 		rules_screen(menu)
+	elif name == "Master Reference":
+		master_screen(menu)
 	elif name in ["Generate Character", "Create New"]:
 		character_screen(menu, name == "Generate Character")
 	elif name == "Manage Players":
@@ -260,6 +269,7 @@ func rules_screen(menu: VBoxContainer) -> void:
 	screen.add_child(picker)
 	picker.file_selected.connect(func(path: String):
 		status_line.text = library.import_archive(path))
+	menu.add_child(menu_button("Master Reference - Both Editions", func(): show_screen("Master Reference")))
 	menu.add_child(menu_button("Import Personal Rules Library", func(): picker.popup_centered_ratio(0.75)))
 	var query = LineEdit.new()
 	query.placeholder_text = "Search exact rule text"
@@ -298,7 +308,41 @@ func character_screen(menu: VBoxContainer, quick: bool) -> void:
 	menu.add_child(menu_button("Use Standard Array", func():
 		sheet.display(MECHANICS.draft(race.get_item_text(race.selected), role.get_item_text(role.selected), gender.text, character_name.text, true))))
 	menu.add_child(sheet)
+	menu.add_child(menu_button("Character Rules Reference", func(): show_screen("Master Reference")))
 	menu.add_child(menu_button("Exit", func(): show_screen("Player Manager")))
+
+func master_screen(menu: VBoxContainer) -> void:
+	menu.add_child(make_label("2014/2018 mechanics remain active. Revised 2024 rules are reference only.", 19))
+	var edition = OptionButton.new()
+	edition.add_item("2018 Basic Rules - original 5e")
+	edition.add_item("SRD 5.2.1 - revised 5e")
+	menu.add_child(edition)
+	var section = OptionButton.new()
+	menu.add_child(section)
+	var search_text = LineEdit.new()
+	search_text.placeholder_text = "Name, term, or page number"
+	menu.add_child(search_text)
+	var output = TextEdit.new()
+	output.editable = false
+	output.custom_minimum_size = Vector2(300, 360)
+	output.add_theme_font_override("font", ThemeDB.fallback_font)
+	output.add_theme_font_size_override("font_size", 17)
+	var refresh = func():
+		section.clear()
+		var id = "2018" if edition.selected == 0 else "2024"
+		for category in master.categories(id):
+			section.add_item(category)
+		output.text = "Select a category and search. " + master.status()
+	edition.item_selected.connect(func(_index: int): refresh.call())
+	refresh.call()
+	menu.add_child(menu_button("Look Up Rules", func():
+		if section.selected < 0:
+			output.text = master.status()
+			return
+		var id = "2018" if edition.selected == 0 else "2024"
+		output.text = master.lookup(id, section.get_item_text(section.selected), search_text.text)))
+	menu.add_child(output)
+	menu.add_child(menu_button("Exit", func(): show_screen("Rules Library")))
 
 func install_root() -> String:
 	return ProjectSettings.globalize_path("res://").trim_suffix("/").trim_suffix("\\").get_base_dir()
@@ -366,6 +410,9 @@ func install_update() -> void:
 		status.text = "Updater missing. Use the original installation package."
 		return
 	var args = PackedStringArray(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, "-InstallRoot", root, "-ExpectedVersion", str(remote["version"]), "-GamePid", str(OS.get_process_id())])
+	if fullscreen:
+		get_window().mode = Window.MODE_WINDOWED
+	status.text = "Starting external updater. See update.log for details."
 	var pid = OS.create_process("powershell.exe", args, true)
 	if pid <= 0:
 		status.text = "Unable to start updater."
