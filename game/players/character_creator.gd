@@ -118,7 +118,7 @@ func frame_style(active: bool = false, margin: int = 9) -> StyleBoxTexture:
 
 func soft_style(lit: bool = false, field: bool = false) -> StyleBoxFlat:
 	var s = StyleBoxFlat.new()
-	s.bg_color = Color(0.08,0.14,0.23,0.86 if field else 0.57)
+	s.bg_color = Color(0.08,0.14,0.23,0.90 if field else 0.66)
 	s.border_color = Color("#ffe3a1") if lit else Color(0.73,0.53,0.27,0.72)
 	s.set_border_width_all(1)
 	s.set_corner_radius_all(5)
@@ -133,7 +133,7 @@ func score_tile(parent: Container) -> VBoxContainer:
 	var panel = PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var surface = StyleBoxFlat.new()
-	surface.bg_color = Color(0.06,0.11,0.19,0.24)
+	surface.bg_color = Color(0.06,0.11,0.19,0.31)
 	surface.border_color = Color(0.80,0.62,0.34,0.74)
 	surface.set_border_width_all(1)
 	surface.set_corner_radius_all(5)
@@ -258,7 +258,20 @@ func render(preserve_lists: bool = false) -> void:
 	title.add_theme_color_override("font_shadow_color",Color("#a65d14"))
 	title.add_theme_constant_override("shadow_offset_x",1)
 	title.add_theme_constant_override("shadow_offset_y",2)
-	root.add_child(title)
+	var title_row = row(root,8)
+	if existing.is_empty():
+		var random_button = action(title_row,"Random",request_random,true,19)
+		random_button.custom_minimum_size = Vector2(110,34)
+		random_button.disabled = gemini.active
+		random_button.tooltip_text = "Generate a complete level-one character for review. Nothing is saved automatically."
+	else:
+		var left_space = Control.new()
+		left_space.custom_minimum_size.x = 110
+		title_row.add_child(left_space)
+	title_row.add_child(title)
+	var right_space = Control.new()
+	right_space.custom_minimum_size.x = 110
+	title_row.add_child(right_space)
 	flourish(root)
 	var tabs = row(root,7)
 	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -1176,6 +1189,80 @@ func auto_fill(stage: int) -> void:
 			if answers.size() >= int(pending["count"]):
 				break
 		draft["answers"][pending["key"]]=answers
+
+func request_random() -> void:
+	if not existing.is_empty() or gemini.active:
+		return
+	if draft != rules.fresh():
+		var confirm = ConfirmationDialog.new()
+		confirm.title = "Replace unsaved character?"
+		confirm.dialog_text = "Random will replace the current unsaved draft. Saved characters are not affected."
+		confirm.get_ok_button().text = "Generate"
+		add_child(confirm)
+		confirm.confirmed.connect(func(): confirm.queue_free(); random_generate())
+		confirm.canceled.connect(confirm.queue_free)
+		confirm.popup_centered(Vector2i(480,180))
+	else:
+		random_generate()
+
+func random_generate() -> bool:
+	if not existing.is_empty() or (is_instance_valid(gemini) and gemini.active):
+		return false
+	if not rules.cat.initialize():
+		note.text = rules.cat.last_error
+		return false
+	var previous = draft.duplicate(true)
+	var races = rules.cat.rows("races")
+	var classes = rules.cat.rows("classes")
+	var backgrounds = rules.cat.rows("backgrounds")
+	if races.is_empty() or classes.is_empty() or backgrounds.is_empty():
+		note.text = "Required character catalogue entries are missing."
+		return false
+	for attempt in range(40):
+		draft = rules.fresh()
+		draft["name"] = ["Aerin","Talan","Mira","Corin","Seren","Riven"].pick_random()+" "+["Starbrook","Ashfield","Greywood","Stormvale","Dawnmere"].pick_random()
+		draft["race_id"] = races.pick_random()["index"]
+		draft["class_id"] = classes.pick_random()["index"]
+		draft["background_id"] = backgrounds.pick_random()["index"]
+		draft["sex"] = ["Female","Male","Nonbinary","Other / unspecified"].pick_random()
+		draft["alignment"] = ["Lawful Good","Neutral Good","Chaotic Good","Lawful Neutral","Neutral","Chaotic Neutral","Lawful Evil","Neutral Evil","Chaotic Evil"].pick_random()
+		var subs = rules.cat.filtered("subraces","race",str(draft["race_id"]))
+		if not subs.is_empty():
+			draft["subrace_id"] = subs.pick_random()["index"]
+		var role = str(draft["class_id"])
+		if int(RULES.SUBCLASS_AT.get(role,99)) == 1:
+			var choices = rules.cat.filtered("subclasses","class",role)
+			if choices.is_empty():
+				continue
+			draft["subclass_id"] = choices.pick_random()["index"]
+		draft["description"] = "A "+rules.cat.title("races",str(draft["race_id"]))+" "+rules.cat.title("classes",role)+" seeking a new life on the road."
+		draft["personality"] = ["Curious and observant.","Patient with strangers.","Practical and reserved."].pick_random()
+		draft["ideal"] = ["Earn trust through actions.","Keep promises.","Seek knowledge and understanding."].pick_random()
+		draft["bond"] = ["A promise to an old friend.","A treasured memory of home.","A debt of gratitude."].pick_random()
+		draft["flaw"] = ["Sometimes acts before thinking.","Finds it difficult to ask for help.","Takes criticism personally."].pick_random()
+		draft["backstory"] = "With a background as "+rules.cat.title("backgrounds",str(draft["background_id"]))+", this traveller left familiar surroundings in search of new opportunities."
+		rules.roll_scores(draft,"roll")
+		for stage in range(1,5):
+			auto_fill(stage)
+		var valid = true
+		for stage in range(1,5):
+			if not rules.validate_step(draft,stage).is_empty():
+				valid = false
+				break
+		if not valid:
+			continue
+		var record = rules.full_record(draft)
+		if not record.get("review_required",[]).is_empty():
+			continue
+		quick = false
+		step = 4
+		detail_text = ""
+		render()
+		note.text = "Random character generated. Review or edit, then save explicitly."
+		return true
+	draft = previous
+	note.text = "No fully supported combination found after 40 attempts. Your draft is unchanged; try again or create manually."
+	return false
 
 func quick_generate() -> void:
 	if str(draft.get("race_id","")).is_empty() or str(draft.get("class_id","")).is_empty():

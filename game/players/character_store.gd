@@ -125,7 +125,7 @@ func archive(id: String) -> String:
 
 func campaign_template(id: String) -> Dictionary:
 	var record = load_record(id)
-	if record.get("status") != "ready":
+	if record.get("status") != "ready" or record.get("id") != id or record.get("ruleset") != "5e-2014-2018" or not record.get("review_required",[]).is_empty():
 		return {}
 	var instance = record.duplicate(true)
 	instance["master_character_id"] = id

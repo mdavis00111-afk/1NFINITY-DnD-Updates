@@ -39,10 +39,19 @@ func roll_scores(d: Dictionary, method: String) -> void:
 	d["roll_history"] = history
 	d["answers"] = {}
 
+func whole_number(value: Variant, low: int, high: int) -> bool:
+	if not (value is int or value is float):
+		return false
+	var number = float(value)
+	return is_finite(number) and number == floor(number) and number >= low and number <= high
+
 func points_used(d: Dictionary) -> int:
 	var total = 0
 	for a in ABILITIES:
-		var score = int(d.get("base_scores",{}).get(a,0))
+		var value = d.get("base_scores",{}).get(a,0)
+		if not whole_number(value,8,15):
+			return 999
+		var score = int(value)
 		if not POINT_COST.has(score):
 			return 999
 		total += int(POINT_COST[score])
@@ -69,7 +78,8 @@ func base(d: Dictionary) -> Dictionary:
 	var duplicates: Array = []
 	for id in p:
 		if id in profs:
-			if id.begins_with("skill-"):
+			var proficiency = cat.get_record("proficiencies",id)
+			if id.begins_with("skill-") or proficiency.get("type","") in ["Artisan's Tools","Gaming Sets","Musical Instruments","Other","Vehicles"]:
 				duplicates.append(id)
 		else:
 			profs.append(id)
@@ -234,8 +244,13 @@ func groups(d: Dictionary,step: int) -> Array:
 		var all_skills: Array = []
 		for skill in cat.rows("skills"):
 			all_skills.append(option("proficiencies","skill-"+str(skill["index"])))
+		var all_tools: Array = []
+		for proficiency in cat.rows("proficiencies"):
+			if proficiency.get("type","") in ["Artisan's Tools","Gaming Sets","Musical Instruments","Other","Vehicles"]:
+				all_tools.append(option("proficiencies",str(proficiency["index"])))
 		for i in range(b["duplicates"].size()):
-			add_group(result,d,"replacement-"+str(i),"Replace overlapping skill proficiency","profs",1,all_skills,p)
+			var skill_duplicate = str(b["duplicates"][i]).begins_with("skill-")
+			add_group(result,d,"replacement-"+str(i),"Replace overlapping skill proficiency" if skill_duplicate else "Replace overlapping tool proficiency","profs",1,all_skills if skill_duplicate else all_tools,p)
 			p.append_array(selected_ids(d,result.back()))
 		var i = 0
 		for raw in role.get("proficiency_choices",[])+bg.get("proficiency_choices",[]):
@@ -326,7 +341,7 @@ func validate_step(d: Dictionary,step: int) -> String:
 		var b = base(d)
 		if b["race"].is_empty() or b["role"].is_empty() or b["bg"].is_empty():
 			return "Choose a race, class and background."
-		if not b["race"].get("subraces",[]).is_empty() and not d.get("subrace_id") in cat.references(b["race"]["subraces"]):
+		if (not b["race"].get("subraces",[]).is_empty() or not str(d.get("subrace_id","")).is_empty()) and not d.get("subrace_id") in cat.references(b["race"].get("subraces",[])):
 			return "Choose an eligible subrace."
 		if int(SUBCLASS_AT.get(d.get("class_id"),99)) == 1 and not d.get("subclass_id") in cat.references(b["role"].get("subclasses",[])):
 			return "Choose a level-one subclass."
@@ -342,7 +357,10 @@ func validate_step(d: Dictionary,step: int) -> String:
 		else:
 			var assigned: Array = []
 			for a in ABILITIES:
-				assigned.append(int(d.get("base_scores",{}).get(a,0)))
+				var value = d.get("base_scores",{}).get(a,0)
+				if not whole_number(value,3,18):
+					return "Invalid ability score."
+				assigned.append(int(value))
 			assigned.sort()
 			var pool = d.get("roll_pool",[]).duplicate()
 			pool.sort()
@@ -360,7 +378,7 @@ func validate_step(d: Dictionary,step: int) -> String:
 						return "Invalid dice history."
 					var dice = row.duplicate()
 					for v in dice:
-						if int(v)<1 or int(v)>6:
+						if not whole_number(v,1,6):
 							return "Invalid die value."
 					dice.sort()
 					totals.append(int(dice[1])+int(dice[2])+int(dice[3]))

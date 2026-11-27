@@ -35,3 +35,9 @@ This playtest covers the reconstructed creator and character sheet. Linux checks
 | 0.0.2 | e8f38e60 / f3bfef88 | One-page foundation and updater. |
 
 Only releases visible in the inspected branch history are listed; skipped version numbers are not inferred. For future releases record version, source commit, scope, migrations, known limitations and verification evidence; link TESTING.md. Manifest publication follows complete source commit. Documentation-only changes do not increment version.
+
+## 0.0.23 — Windows playtest
+- Character management polish and one-click Random character creation in the normal creator, with bounded retries, Godot dice and validation; no automatic save.
+- Campaign manager with six starting scenarios, isolated SQLite campaign records, roster thumbnails, log synopsis, resume and recoverable deletion.
+- Three editable maturity profiles, adult confirmation, editable Storyteller brief, validated optional AI-generated opening scene and persistent local NPCs/facts. No gameplay turn controller.
+- Scoped RAW/proficiency, stale-write, malformed AI response and profile compatibility fixes. QA SQL-level six-fixture tests passed; Godot/Windows/live API tests still outstanding. Owner-authorized playtest; updater gates retained.

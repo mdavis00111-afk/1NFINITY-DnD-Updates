@@ -144,9 +144,8 @@ func build_layout() -> void:
 	edit_button = button(toolbar,"Edit Character",func():
 		if not active.is_empty(): on_edit.call(active))
 	edit_button.custom_minimum_size.x = 148
-	archive_button = button(toolbar,"Archive",delete_selected)
+	archive_button = button(toolbar,"Delete",delete_selected)
 	archive_button.custom_minimum_size.x = 112
-	button(toolbar,"Rules Catalogue",func(): on_browser.call()).custom_minimum_size.x = 148
 	popup = AcceptDialog.new()
 	popup.title = "Reference"
 	popup.min_size = Vector2i(460,300)
@@ -172,7 +171,7 @@ func scrollbar_style(color: Color) -> StyleBoxFlat:
 
 func sheet_frame() -> StyleBoxFlat:
 	var frame = StyleBoxFlat.new()
-	frame.bg_color = Color("#0b1628")
+	frame.bg_color = Color(0.043,0.086,0.157,0.90)
 	frame.border_color = Color("#c39049")
 	frame.set_border_width_all(2)
 	frame.set_corner_radius_all(12)
@@ -304,13 +303,14 @@ func delete_selected() -> void:
 		return
 	var id = str(active["id"])
 	var dialog = ConfirmationDialog.new()
-	dialog.title = "Archive character?"
-	dialog.dialog_text = "Archive "+str(active.get("name","Unnamed"))+"? Its save will be retained."
+	dialog.title = "Delete character?"
+	dialog.dialog_text = "Delete "+str(active.get("name","Unnamed"))+" from saved characters? A recovery copy will be retained."
 	add_child(dialog)
+	dialog.get_ok_button().text = "Delete"
 	dialog.confirmed.connect(func():
 		var error = store.archive(id)
 		dialog.queue_free()
 		refresh()
-		set_note("Character archived." if error.is_empty() else error))
+		set_note("Character deleted." if error.is_empty() else error))
 	dialog.canceled.connect(dialog.queue_free)
 	dialog.popup_centered()
