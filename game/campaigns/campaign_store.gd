@@ -247,3 +247,62 @@ func actor_record(id: String) -> Dictionary:
 		return {}
 	var actor = JSON.parse_string(str(result["results"][0][0]["payload"]))
 	return actor if actor is Dictionary else {}
+
+# Read-only workspace projection. Inventory quantities come from normalized rows,
+# not the actor's original inventory snapshot. No master player access or writes.
+func gameplay_view(id: String) -> Dictionary:
+	var record = load_campaign(id)
+	if record.is_empty():
+		return {}
+	var actor_id = str(record.get("actor_id",""))
+	if not valid_id(actor_id):
+		last_error = "Invalid campaign player identifier."
+		return {}
+	var result = SQL.run(path_for(id),[
+		SQL.stmt("SELECT payload,location_id FROM actors WHERE id=? AND kind='player'",[actor_id]),
+		SQL.stmt("SELECT item_id,quantity,payload FROM inventory WHERE actor_id=? ORDER BY item_id",[actor_id]),
+		SQL.stmt("SELECT id,turn,kind,payload FROM events WHERE kind IN ('campaign_created','narration') ORDER BY id"),
+		SQL.stmt("SELECT id,name,kind,x,y,payload FROM locations ORDER BY name COLLATE NOCASE,id"),
+		SQL.stmt("SELECT id,status,payload FROM quests ORDER BY id")
+	],true)
+	if not result.get("ok",false):
+		last_error = result_error(result,"Cannot read campaign workspace.")
+		return {}
+	var sets: Array = result.get("results",[])
+	if sets.size()!=5 or sets[0].size()!=1:
+		last_error = "Campaign player data unavailable."
+		return {}
+	var actor = JSON.parse_string(str(sets[0][0]["payload"]))
+	if not actor is Dictionary or actor.get("id")!=actor_id:
+		last_error = "Invalid campaign player payload."
+		return {}
+	actor["location_id"] = sets[0][0]["location_id"]
+	var items: Array = []
+	for row in sets[1]:
+		var payload = JSON.parse_string(str(row["payload"]))
+		if not payload is Dictionary:
+			payload = {}
+		payload["item_id"] = str(row["item_id"])
+		payload["quantity"] = int(row["quantity"])
+		items.append(payload)
+	actor["inventory"] = items
+	var events: Array = []
+	for row in sets[2]:
+		var payload = JSON.parse_string(str(row["payload"]))
+		if payload is Dictionary and payload.get("text") is String:
+			events.append({"id":int(row["id"]),"turn":int(row["turn"]),"kind":str(row["kind"]),"text":payload["text"]})
+	var locations: Array = []
+	var current: Dictionary = {}
+	for row in sets[3]:
+		var payload = JSON.parse_string(str(row["payload"]))
+		if not payload is Dictionary:
+			payload = {}
+		var location = {"id":str(row["id"]),"name":str(row["name"]),"kind":str(row["kind"]),"x":row["x"],"y":row["y"],"payload":payload}
+		locations.append(location)
+		if location["id"]==actor["location_id"]:
+			current=location
+	var quests: Array = []
+	for row in sets[4]:
+		var payload = JSON.parse_string(str(row["payload"]))
+		quests.append({"id":str(row["id"]),"status":str(row["status"]),"payload":payload if payload is Dictionary else {}})
+	return {"campaign":record,"actor":actor,"inventory":items,"events":events,"locations":locations,"location":current,"quests":quests}
