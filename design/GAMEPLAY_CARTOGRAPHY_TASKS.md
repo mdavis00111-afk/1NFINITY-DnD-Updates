@@ -24,3 +24,5 @@ Base 5cb13970a6709cb18425696de1d742c6eb2e51f8. Independent disposable Python SQL
 
 ## B3 source checkpoint
 Starting 99abd7f7c81ddb2cc98f08348e50606746b9b317; staged commits 72be05e, cb45f2b, 5a5e030; final source checkpoint contains this entry. See design/B3_COORDINATOR_CONTRACT.md and HANDOFF.md. Typed provider pipeline, local approval gate, committed receipt/input readback, scoped world context, separate geography, retry/cancel and mock regression. No GUI activation, nonempty geography pending B4, actual Godot/provider not run. Independent SQL fixture 6/6. B4 READY. No publication.
+
+B3 implementation SHA f671ea4e7cd89cff42b77e69fc5e6741411be8c6; final documentation checkpoint records 36/36 literal dependencies, protected blob checks and SQL-level evidence. B4 ready. Runtime and actual model acceptance pending. No publication.
