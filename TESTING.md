@@ -21,3 +21,10 @@ Run applicable Godot headless tests and Windows manual checks; preserve logs (re
 
 ## New bug template
 ID / version / PC environment / reproduction / expected / actual / screenshot or log / severity / owner / fix commit / retest evidence. Do not mark fixed until relevant tests pass. No new runtime tests were executed by the assistant during documentation setup.
+
+## Codex cloud onboarding — 2026-11-27
+Evidence: user-pasted Codex report, baseline branch 4ea43b7 / live 0.0.20; not independently rerun in this chat.
+- REPORTED PASS: Linux x86-64 Godot 4.7.2 headless engine startup with writable XDG directories under /tmp. No game suite executed.
+- REPORTED PASS: Python SQLite 3.53.1 opened packaged DB in memory, PRAGMA integrity_check returned ok, 1,968 catalogue rows counted, FTS5 test table created. Standalone sqlite3 CLI absent. This does not validate Godot SQL integration.
+- BLOCKED in cloud: production Windows powershell.exe, .NET Framework C# and winsqlite3.dll bridge; stock database-backed smoke tests; Windows launcher/updater integration. Optional local reference assets required by assets smoke. Windows manual testing remains outstanding.
+- Codex reported no game files changed, committed, pushed or published. Exact command logs not supplied.

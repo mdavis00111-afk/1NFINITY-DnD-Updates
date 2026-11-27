@@ -108,6 +108,8 @@ main.gd show_screen removes old screen, creates new anchored Control; creator/ma
   2. Expand and validate structured reference batches (creatures/actions, missing legal character options, encounters/treasure/traps); use stable IDs, source/page provenance, deduplication and tests; keep licensed distribution separate from private book-page pack.
   3. Implement campaign persistence and turn controller using campaign_schema.sql with migrations/transactions; then wire typed Gemini Rules-Check proposal → deterministic Godot resolution → committed state → Narrator; add invalid-response and replay tests.
 
+- Codex onboarding report (2026-11-27, user supplied): remote godot at 4ea43b7, clean existing checkout, Linux x86-64 Godot 4.7.2 headless startup and Python SQLite 3.53.1 integrity/FTS5 checks successful; stock Windows bridge and updater blocked, no game smoke suites executed. Root AGENTS.md defines scoped Codex development and review-before-release. See TESTING.md for evidence limits.
+
 ## 7. STRICT RULES FOR AI UPDATES
 - Never break the in-game Git auto-updater. Only publish a release manifest after source commit is complete; ensure every managed game file has correct blob hash and immutable source_commit, synchronize project.godot/version.txt, preserve safe staging, handshakes, rollback and user://. Do not assume changes to root launcher/updater reach existing PCs.
 - Never corrupt .tscn UIDs/sub-resources when editing via Git. Preserve resource IDs, ext_resource/sub_resource references, load_steps and paths; import/smoke-test before release. Do not commit generated .godot cache.
