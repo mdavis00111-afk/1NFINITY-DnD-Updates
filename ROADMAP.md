@@ -1,9 +1,9 @@
 # 1NFINITY D&D — Roadmap
-Baseline: live godot v0.0.21, 2026-11-27. Proposed priorities; not delivery promises. PROJECT_BRAIN.md defines current architecture; TESTING.md defines evidence; CHANGELOG.md records releases.
+Baseline: v0.0.22 Windows playtest (channel authoritative), 2026-11-27. Proposed priorities; not delivery promises. PROJECT_BRAIN.md defines current architecture; TESTING.md defines evidence; CHANGELOG.md records releases.
 
 | Priority | Workstream | Workstream | Status / acceptance gate |
 |---|---|---|---|
-| P0 | Windows baseline and GUI fidelity | 01 / 05 | GUI reconstruction published as 0.0.21 playtest. Windows visual acceptance, production SQLite and updater validation pending. |
+| P0 | Windows baseline and GUI fidelity | 01 / 05 | GUI follow-up 0.0.22 playtest prepared on owner authorization. Windows visual acceptance, production SQLite and updater validation pending. |
 | P1 | Structured 2014 rules coverage | 02 | Partial: batch 001 core stats only. Add verified actions, traits, character options, encounters, treasure and traps with provenance and deduplication; distinguish licensed public data from private references. |
 | P2 | Campaign persistence | 03 | Schema only. Implement creation/load/archive, migrations, actor/location/inventory/event transactions and isolation from master characters. |
 | P3 | Turn resolution | 02 / 03 | Not implemented. Typed action contract, Godot deterministic checks/dice/state, reproducible tests; no AI write authority. |

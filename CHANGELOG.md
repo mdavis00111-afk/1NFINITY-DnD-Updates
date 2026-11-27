@@ -1,6 +1,12 @@
 # 1NFINITY D&D — Changelog
 Live channel: godot. Entries below are reconstructed from published Git commit messages, not evidence of runtime test success. Source commit and manifest commit prefixes are provided for traceability.
 
+## 0.0.22 Windows playtest
+- Fixed 70% centered sheet with left portrait roster and bottom-left controls; remove zoom controls.
+- Simplified identity fields, lighter surfaces, default sample portrait, pre-roll cards, compact searchable dropdowns and bounded tips.
+- AI fills six validated prose-only fields; existing Godot dice and save mechanics unchanged.
+- Owner authorized playtest; runtime testing blocked by Windows-only engine in Linux. Existing updater gates retained. See TESTING.md; channel.json pins release source.
+
 ## 0.0.21 Windows playtest
 
 This playtest covers the reconstructed creator and character sheet. Linux checks passed. Windows visual fidelity, the production SQLite adapter, upgrade and rollback remain open. The channel manifest records the immutable source commit.
