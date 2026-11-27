@@ -565,3 +565,7 @@ Base and standalone recovery regenerate narration from durable receipts instead 
 
 ## v0.0.27 checkpoint 3b.3a — transport count regression implementation
 Instrumented existing mock generate entry point; production controller/workspace/SQLite fixture now exercises conversation, equip, rejected equip, malformed response and deterministic refresh counts. Historical scenarios retained as inactive migration reference for 3b.3b/c, not passing coverage. Native execution unavailable; no simulated or live tests executed. Deterministic mutation zero-call case and exact once mechanical execution need stronger assertions in next checkpoint. Manifest unchanged.
+
+
+## v0.0.27 checkpoint 3b.3b.1 — interrupted consumption regression
+Added active production fixture case consuming one owned daily ration, capturing exact settlement and revision, closing during narration, reopening, rejecting interrupted identity and completing narration. Asserts one inventory decrement, unchanged mechanical settlement and revision on reopen, persisted narration and three transport attempts across interruption. Source anchors checked; native/mock runtime and live Gemini tests not executed. No release.

@@ -223,6 +223,7 @@ func run() -> void:
 	if not expect(not shield.is_empty(),"Owned shield"):
 		finish()
 		return
+	await interrupted_consumption(id)
 	await request_count_cases(id,shield)
 	expect(players.load_record(master)==original and base.gameplay_view(b["id"])==sibling,"Master and sibling isolation")
 	ctrl.close_session()
@@ -236,6 +237,55 @@ func wait_frames() -> void:
 
 func combined(text: String) -> Dictionary:
 	return {"text":text,"geography":geography(),"story":[],"discoveries":[]}
+
+func ration_quantity(id: String) -> int:
+	var owned=REG.new().noncombat.read_owned(session.token(id),ctrl.actor_id)
+	if not expect(owned.get("ok",false),"Read authoritative owned inventory"):
+		return -1
+	return int(REG.new().noncombat.aggregate(owned).get("rations-1-day",{}).get("quantity",0))
+
+func interrupted_consumption(id: String) -> void:
+	var instance=""
+	for item in ctrl.view["interaction_extension"]["inventory_instances"]:
+		if item["definition_id"]=="rations-1-day":
+			instance=item["instance_id"]
+			break
+	var initial=ration_quantity(id)
+	if not expect(initial>0 and not instance.is_empty(),"Initial ration available"):
+		return
+	var initial_revision=session.token(id)["revision"]
+	var start=outbound.size()
+	var text="I eat one of my daily rations."
+	workspace.composer.text=text
+	workspace.submit_chat()
+	if not await pump("interpret"):
+		return
+	reply({"kind":"item_use","args":{"instance_id":instance,"quantity":1,"target_id":ctrl.actor_id},"assessment":{"disposition":"supported","intent_evidence":text,"context":[],"ruling":{},"reason":"Explicit self consumption of owned ration."}})
+	if not await pump("narrate"):
+		return
+	var request=ctrl.active()["tool"].duplicate(true)
+	var rid=request["request_id"]
+	var settlement=session.settlement(id,rid)
+	var committed_revision=session.token(id)["revision"]
+	if not expect(settlement.get("status")=="committed" and settlement.get("request")==request and ration_quantity(id)==initial-1 and committed_revision>initial_revision,"Ration committed exactly once before narration"):
+		return
+	var old=ctrl.inflight.duplicate(true)
+	ctrl.close_session()
+	workspace.queue_free()
+	ctrl.queue_free()
+	await process_frame
+	if not bind(id) or not await pump("narrate"):
+		return
+	expect(ctrl.active()["tool"]==request and session.settlement(id,rid)==settlement,"Recovery retains exact mechanical settlement")
+	expect(ration_quantity(id)==initial-1 and session.token(id)["revision"]==committed_revision,"Recovery does not consume again or advance mechanical revision")
+	expect(not ctrl.receive(old,{}).get("ok",false),"Interrupted transport identity rejected")
+	reply(combined("You finish your ration."))
+	if not await pump("idle"):
+		return
+	expect(ration_quantity(id)==initial-1,"Final inventory decreased exactly once")
+	expect(session.settlement(id,rid)==settlement,"Original mechanical settlement unchanged after narration")
+	expect(RECON.new().standalone_event(id,rid).get("found",false),"Recovered narration persisted")
+	expect(outbound.size()-start==3,"One interpretation and two narration attempts across interruption")
 
 func request_count_cases(id: String,shield: String) -> void:
 	var start=outbound.size()
