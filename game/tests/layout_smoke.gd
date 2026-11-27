@@ -8,6 +8,7 @@ const CATALOGUE = preload("res://rules/catalog.gd")
 const THEME = preload("res://themes/master_theme.tres")
 const SQL = preload("res://systems/sqlite.gd")
 const STORE = preload("res://players/character_store.gd")
+const PORTRAIT_ART = preload("res://players/portrait_art.gd")
 const RESOLUTIONS = [Vector2i(1280, 720), Vector2i(1920, 1080)]
 const LONG_NAME = "Aurelia Brightwater of the High Silverwood and the Northern Marches"
 const PROSE_LINE = "A line of narrative that should remain available in full. "
@@ -358,6 +359,8 @@ func run() -> void:
 		push_error("Layout smoke requires a populated rules catalogue: " + catalogue.last_error)
 		quit(1)
 		return
+	var default_art = PORTRAIT_ART.texture_for("")
+	expect(default_art is ImageTexture and default_art.get_width()>0 and default_art.get_height()>0,"Default sample portrait extraction failed")
 	seed(1001)
 	for resolution in RESOLUTIONS:
 		root.size = resolution

@@ -10,6 +10,10 @@ static func texture_for(path: String = "") -> Texture2D:
 			return ImageTexture.create_from_image(image)
 	if default_texture == null:
 		var source = SAMPLE.get_image()
+		if source == null or source.is_empty():
+			return preload("res://themes/parts/portrait_empty.png")
+		if source.is_compressed() and source.decompress() != OK:
+			return preload("res://themes/parts/portrait_empty.png")
 		# Coordinates are normalized against the inspected 1088 x 1406 sample artwork.
 		var extent = source.get_size()
 		var region = Rect2i(roundi(extent.x * 30.0/1088.0),roundi(extent.y * 102.0/1406.0),roundi(extent.x * 232.0/1088.0),roundi(extent.y * 374.0/1406.0))

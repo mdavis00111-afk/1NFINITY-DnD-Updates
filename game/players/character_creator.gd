@@ -118,7 +118,7 @@ func frame_style(active: bool = false, margin: int = 9) -> StyleBoxTexture:
 
 func soft_style(lit: bool = false, field: bool = false) -> StyleBoxFlat:
 	var s = StyleBoxFlat.new()
-	s.bg_color = Color(0.10,0.16,0.25,0.92 if field else 0.64)
+	s.bg_color = Color(0.08,0.14,0.23,0.86 if field else 0.57)
 	s.border_color = Color("#ffe3a1") if lit else Color(0.73,0.53,0.27,0.72)
 	s.set_border_width_all(1)
 	s.set_corner_radius_all(5)
@@ -128,6 +128,19 @@ func soft_style(lit: bool = false, field: bool = false) -> StyleBoxFlat:
 		s.shadow_color = Color(0.92,0.59,0.18,0.35)
 		s.shadow_size = 3
 	return s
+
+func score_tile(parent: Container) -> VBoxContainer:
+	var panel = PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var surface = StyleBoxFlat.new()
+	surface.bg_color = Color(0.06,0.11,0.19,0.24)
+	surface.border_color = Color(0.80,0.62,0.34,0.74)
+	surface.set_border_width_all(1)
+	surface.set_corner_radius_all(5)
+	for edge in [SIDE_LEFT,SIDE_RIGHT,SIDE_TOP,SIDE_BOTTOM]: surface.set_content_margin(edge,4)
+	panel.add_theme_stylebox_override("panel",surface)
+	parent.add_child(panel)
+	return column(panel,4)
 
 func heading(value: String, size_px: int = 22, color: Color = GOLD) -> Label:
 	var l = Label.new()
@@ -585,6 +598,8 @@ func choose_popup(caption: String, options: Array, callback: Callable, current: 
 			callback.call(str(opt["key"]))
 	list.item_selected.connect(select)
 	list.item_activated.connect(select)
+	list.item_clicked.connect(func(index: int, _position: Vector2, mouse_button: int):
+		if mouse_button == MOUSE_BUTTON_LEFT: select.call(index))
 	search.text_changed.connect(func(_value: String): refresh.call())
 	search.text_submitted.connect(func(_value: String):
 		if filtered.size()==1: select.call(0))
@@ -677,12 +692,8 @@ func identity() -> void:
 		["personality","Personality","focus"],["ideal","Ideal","star"],
 		["bond","Bond","diamond"],["flaw","Flaw","shield"],["backstory","Backstory","pack"]
 	]
-	var fields: HBoxContainer
-	for i in range(character_details.size()):
-		if i % 2 == 0:
-			fields = row(desc,7)
-		var pair: Array = character_details[i]
-		text_field(fields,pair[0],pair[1],false,34)
+	for pair in character_details:
+		text_field(desc,pair[0],pair[1],false,29)
 
 func generate_description() -> void:
 	var context: Dictionary = {}
@@ -724,10 +735,13 @@ func description_received(ok: bool, message: String) -> void:
 
 
 func stat_card(parent: Container, caption: String, value: String, image_id: String = "star") -> VBoxContainer:
-	var v = column(parent,3)
+	var v = score_tile(parent)
 	var h = row(v,3)
-	h.add_child(icon(image_id,16))
-	h.add_child(centered(caption,16))
+	h.add_child(icon(image_id,15))
+	var title = heading(caption,15)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.max_lines_visible = 2
+	h.add_child(title)
 	v.add_child(centered(value,25,IVORY))
 	return v
 
@@ -772,9 +786,11 @@ func abilities() -> void:
 	for a in RULES.ABILITIES:
 		var score = int(result.get(a,0))
 		var base = int(draft["base_scores"].get(a,0))
-		var card = column(cards,5)
+		var card = score_tile(cards)
 		var label = action(card,a.to_upper(),func(): show_detail(record_detail("ability-scores",a),rules.cat.title("ability-scores",a)),false,18)
 		label.custom_minimum_size.x=0
+		label.custom_minimum_size.y=27
+		label.add_theme_stylebox_override("normal",StyleBoxEmpty.new())
 		label.icon = icon_texture(["shield","speed","health","focus","wand","star"][RULES.ABILITIES.find(a)])
 		label.add_theme_constant_override("icon_max_width",15)
 		card.add_child(centered(str(score)+" (%+d)" % rules.mod_for(score) if has_scores else "—",25,IVORY))
@@ -806,7 +822,7 @@ func abilities() -> void:
 			by_total[total].append({"dice": dice, "dropped": int(sorted[0])})
 		for ability in RULES.ABILITIES:
 			var total = int(draft["base_scores"].get(ability,0))
-			var card = column(roll_cards,4)
+			var card = score_tile(roll_cards)
 			card.add_child(centered(ability.to_upper()+" · "+(str(total) if has_scores else "—"),18,IVORY))
 			var matching: Array = by_total.get(total,[])
 			if matching.is_empty():
