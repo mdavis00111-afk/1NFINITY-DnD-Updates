@@ -623,7 +623,8 @@ func legacy_unsettled_authorization(id: String) -> void:
 	var state=session.token(id)
 	var intent={"schema_version":"1","campaign_id":id,"actor_id":state["actor_id"],"expected_revision":state["revision"],"request_id":session.make_id(),"kind":"chat","args":{"text":"I wait one minute."}}
 	var req=ctrl.tool_for(intent,state,"wait",{"seconds":60,"text":intent["args"]["text"]})
-	var job={"intent":intent,"stage":"execute","tool":req,"attempt":{},"context_review":{"request":req,"revision":state["revision"],"attempt_id":session.make_id(),"report":{"disposition":"supported","intent_evidence":intent["args"]["text"],"context":[],"ruling":{"seconds":60,"establish_clock":false},"reason":"Legacy assessment fixture."}}}
+	var job={"intent":intent,"stage":"execute","tool":req,"attempt":{},"context_review":{"request":req,"revision":state["revision"],"attempt_id":session.make_id(),"report":{"disposition":"supported","intent_evidence":intent["args"]["text"],"context":[],"ruling":{"safe_nonmechanical":true,"seconds":60,"establish_clock":false},"reason":"Legacy assessment fixture."}}}
+	expect(ctrl.policy.validate_assessment(req,job["context_review"]["report"],job,state).get("ok",false),"Legacy fixture otherwise has valid ruling shape")
 	if not expect(ctrl.update_active(job),"Persist unsettled legacy authorization"):
 		return
 	var before=durable_snapshot(id)

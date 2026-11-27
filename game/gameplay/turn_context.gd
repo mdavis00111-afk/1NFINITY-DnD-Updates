@@ -7,7 +7,7 @@ const REG=preload("res://gameplay/tool_registry.gd")
 const DIRECT_KINDS="'equip','quick_equip','swap','unequip','attune','unattune','item_use','item_drop','item_transfer','currency_transfer','loot_pickup','loot_take_all','spell_cast','spell_prepare','spell_unprepare','resource_use','rest','object_interact'"
 # Only durable narration linked by the existing turn receipt or standalone
 # pointer. Administrative discoveries/story updates are not separate moves.
-const LINKED="(EXISTS(SELECT 1 FROM turn_narrations n WHERE n.event_id=e.id) OR EXISTS(SELECT 1 FROM meta m WHERE m.key='c5_narration:'||json_extract(e.payload,'$.standalone_request_id') AND m.value=CAST(e.id AS TEXT)))"
+const LINKED="(EXISTS(SELECT 1 FROM turn_narrations n JOIN turn_receipts tr2 ON tr2.turn_id=n.turn_id WHERE n.event_id=e.id AND tr2.actor_id=? AND json_extract(e.payload,'$.turn_id')=n.turn_id) OR EXISTS(SELECT 1 FROM meta m JOIN gameplay_requests q ON q.request_id=json_extract(e.payload,'$.standalone_request_id') WHERE m.key='c5_narration:'||q.request_id AND m.value=CAST(e.id AS TEXT) AND q.actor_id=? AND q.status='committed' AND q.logical_turn_id IS NULL AND q.event_id=json_extract(e.payload,'$.source_event_id'))) "
 const PUBLIC="json_valid(e.payload) AND coalesce(json_extract(e.payload,'$.visibility'),'player')='player'"
 var cache_key: Array=[]
 var cached_memory: Dictionary={}
@@ -18,14 +18,16 @@ var memory_hits=0
 var rules_catalogue=CAT.new()
 
 func memory(state: Dictionary,session) -> Dictionary:
+	if not state.get("ok",false):
+		return {"ok":false}
 	var key=[state["campaign_id"],state["actor_id"],state["revision"],state["pending_turn_id"],state["metadata"]]
 	if key==cache_key and not cached_memory.is_empty():
 		memory_hits+=1
 		return cached_memory.duplicate(true)
 	memory_reads+=1
 	var rows=session.read(state,[
-		SQL.stmt("SELECT e.id,e.turn,e.kind,e.payload,r.payload AS receipt_event FROM events e LEFT JOIN turn_narrations n ON n.event_id=e.id LEFT JOIN turn_receipts tr ON tr.turn_id=n.turn_id LEFT JOIN events r ON r.id=tr.event_id WHERE "+PUBLIC+" AND ((e.kind='narration' AND "+LINKED+") OR (e.kind='gameplay_change' AND EXISTS(SELECT 1 FROM gameplay_requests q WHERE q.event_id=e.id AND q.status='committed' AND q.kind IN ("+DIRECT_KINDS+") AND NOT EXISTS(SELECT 1 FROM meta m WHERE m.key='c5_narration:'||q.request_id)))) ORDER BY e.id DESC LIMIT 10"),
-		SQL.stmt("SELECT e.id,json_extract(e.payload,'$.narrative_recap') AS recap FROM events e WHERE e.kind='narration' AND "+PUBLIC+" AND "+LINKED+" AND json_type(e.payload,'$.narrative_recap')='text' AND length(json_extract(e.payload,'$.narrative_recap')) BETWEEN 1 AND 3000 ORDER BY e.id DESC LIMIT 1")
+		SQL.stmt("SELECT e.id,e.turn,e.kind,e.payload,r.payload AS receipt_event FROM events e LEFT JOIN turn_narrations n ON n.event_id=e.id LEFT JOIN turn_receipts tr ON tr.turn_id=n.turn_id LEFT JOIN events r ON r.id=tr.event_id WHERE "+PUBLIC+" AND ((e.kind='narration' AND "+LINKED+") OR (e.kind='gameplay_change' AND EXISTS(SELECT 1 FROM gameplay_requests q WHERE q.event_id=e.id AND q.actor_id=? AND q.status='committed' AND q.kind IN ("+DIRECT_KINDS+") AND NOT EXISTS(SELECT 1 FROM meta m WHERE m.key='c5_narration:'||q.request_id)))) ORDER BY e.id DESC LIMIT 10",[state["actor_id"],state["actor_id"],state["actor_id"]]),
+		SQL.stmt("SELECT e.id,json_extract(e.payload,'$.narrative_recap') AS recap FROM events e WHERE e.kind='narration' AND "+PUBLIC+" AND "+LINKED+" AND json_type(e.payload,'$.narrative_recap')='text' AND length(json_extract(e.payload,'$.narrative_recap')) BETWEEN 1 AND 3000 ORDER BY e.id DESC LIMIT 1",[state["actor_id"],state["actor_id"]])
 	])
 	if not rows.get("ok",false):
 		return {"ok":false}
@@ -99,3 +101,40 @@ func rules(situation: Dictionary,kind: String) -> Array:
 		budget-=size
 		output.append({"id":id,"record":record})
 	return output
+
+# Rank existing disclosed memory by current scene, named references, open
+# threads and recency. This changes context selection only, not game rules.
+func select_story(records: Array,scene: Dictionary,actors: Array,text: String) -> Array:
+	var lower=text.to_lower()
+	var local=scene.get("location_id")
+	var actor_ids=actors.map(func(row): return row.get("actor_id"))
+	var scored: Array=[]
+	for row in records:
+		var score=0
+		if row.get("kind") in ["overview","situation"]:
+			score+=100
+		if row.get("location_id")==local:
+			score+=30
+		if row.get("status") in ["open","active","offered"]:
+			score+=15
+		var title=str(row.get("title","")).to_lower()
+		if title.length()>=3 and lower.contains(title):
+			score+=60
+		for person in row.get("participants",[]):
+			if person.get("actor_id") in actor_ids:
+				score+=20
+				break
+		scored.append({"score":score,"row":row})
+	scored.sort_custom(func(x,y): return x["score"]>y["score"] if x["score"]!=y["score"] else int(x["row"].get("updated_event_id",0))>int(y["row"].get("updated_event_id",0)))
+	var selected: Array=[]
+	var budget=10000
+	for entry in scored:
+		var row=entry["row"]
+		var size=JSON.stringify(row).length()
+		if size>budget:
+			continue
+		selected.append(row)
+		budget-=size
+		if selected.size()>=24:
+			break
+	return selected

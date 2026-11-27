@@ -265,6 +265,16 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	refresh()
 	semantic_requested.emit(stage,{"identity":identity.duplicate(true),"data":payload.duplicate(true)})
 
+# Read-only context may reuse the currently emitted committed projection
+# when identity, revision and campaign metadata all match a fresh token.
+func context_view(state: Dictionary) -> Dictionary:
+	if view.get("campaign",{})==state["campaign"] and view.get("interaction_extension",{}).get("revision")==state["revision"] and view.get("interaction_extension",{}).get("actor_id")==state["actor_id"]:
+		return view
+	return BASE.new().gameplay_view(state["campaign_id"])
+
+func command_catalogue() -> Dictionary:
+	return registry.catalogue()
+
 func scene_context(state: Dictionary) -> Dictionary:
 	var world=WORLD.new()
 	var dm=world.scene_seed(state)
@@ -310,11 +320,11 @@ func advance() -> void:
 				if not context.get("ok",false):
 					stop("retry","Relevant context unavailable.")
 					return
-				var public_view=BASE.new().gameplay_view(campaign_id).get("interaction_extension",{})
+				var public_view=context_view(state).get("interaction_extension",{})
 				if public_view.get("revision")!=state["revision"]:
 					stop("retry","Public action context changed.")
 					return
-				ask("interpret",job,{"intent":job["intent"],"catalogue":registry.catalogue(),"scene":context["scene"],"actor":PACK.actor_projection(state),"public_actors":public_view.get("public_actors",[]),"public_quests":public_view.get("public_quests",[]),"story":public_view.get("story_records",[]),"inventory":public_view.get("inventory_instances",[]),"loot":public_view.get("loot_containers",[])})
+				ask("interpret",job,{"intent":job["intent"],"catalogue":command_catalogue(),"scene":context["scene"],"actor":PACK.actor_projection(state),"public_actors":public_view.get("public_actors",[]),"public_quests":public_view.get("public_quests",[]),"story":public_view.get("story_records",[]),"inventory":public_view.get("inventory_instances",[]),"loot":public_view.get("loot_containers",[])})
 		"execute":
 			execute_active()
 		"narrate","critical","background","reconcile":
@@ -404,7 +414,7 @@ func recover_active() -> void:
 	if not context.get("ok",false):
 		stop("retry","Narration context unavailable.")
 		return
-	var public_view=BASE.new().gameplay_view(campaign_id).get("interaction_extension",{})
+	var public_view=context_view(state).get("interaction_extension",{})
 	if public_view.get("revision")!=state["revision"]:
 		stop("retry","Committed narration context changed.")
 		return

@@ -47,6 +47,9 @@ func scene_context(state: Dictionary) -> Dictionary:
 		scene_cache=result.duplicate(true)
 	return result
 
+func command_catalogue() -> Dictionary:
+	return context_builder.catalogue(registry)
+
 func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	var rid=job["intent"]["request_id"]
 	var clock=Time.get_ticks_msec()
@@ -56,7 +59,7 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 			sample("queue_wait",clock-int(timing[rid]["accepted"]))
 	var expanded=payload.duplicate(true)
 	var state=data["state"]
-	var snap=view if view.get("interaction_extension",{}).get("revision")==state["revision"] and view.get("campaign",{}).get("id")==campaign_id else BASE.new().gameplay_view(campaign_id)
+	var snap=context_view(state)
 	var ext=snap.get("interaction_extension",{})
 	if ext.get("revision")!=state["revision"]:
 		stop("retry","Context revision changed.")
@@ -85,10 +88,11 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	expanded["scene"]=scene
 	expanded.erase("actor")
 	expanded.erase("inventory")
+	expanded.erase("loot")
 	expanded.erase("recent_events")
 	expanded["public_actors"]=ext.get("public_actors",[]).slice(0,32)
 	expanded["public_quests"]=ext.get("public_quests",[]).slice(0,32)
-	expanded["story"]=ext.get("story_records",[]).slice(0,32)
+	expanded["story"]=context_builder.select_story(ext.get("story_records",[]),scene,expanded["public_actors"],str(job["intent"]["args"].get("text","")))
 	expanded["overview"]=expanded["story"].filter(func(row): return row["kind"] in ["overview","situation"])
 	expanded["selected_context"]=job.get("selected_context",[])
 	expanded["recent_outcomes"]=job.get("completed_steps",[])

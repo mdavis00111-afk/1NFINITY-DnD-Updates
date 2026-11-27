@@ -204,7 +204,7 @@ func scene_seed(token: Dictionary) -> Dictionary:
 	var radius=25.0
 	var relevant="SELECT l.id FROM locations l JOIN world_places w ON w.location_id=l.id LEFT JOIN world_discovery d ON d.location_id=l.id"+DM_RELEVANT+" ORDER BY CASE WHEN l.id=? THEN 0 WHEN l.id IN (SELECT to_id FROM geographic_relationships WHERE from_id=? UNION SELECT from_id FROM geographic_relationships WHERE to_id=? UNION SELECT to_id FROM world_routes WHERE from_id=? UNION SELECT from_id FROM world_routes WHERE to_id=?) THEN 1 WHEN l.parent_id=? THEN 2 ELSE 3 END,w.source_event_id DESC,l.id LIMIT ?"
 	var args=[at,at,at,at,at,at,at,"\"location_id\":\""+at+"\"",at,at,at,at,at,radius,radius,radius*radius,at,at,at,at,at,at,DM_LIMIT]
-	var result=read_sets(token,[SQL.stmt(relevant,args),SQL.stmt("SELECT id AS event_id,turn,kind,payload FROM events WHERE kind IN ('campaign_created','narration','mechanical_receipt') ORDER BY id DESC LIMIT 12")])
+	var result=read_sets(token,[SQL.stmt(relevant,args),SQL.stmt("SELECT id AS event_id,turn,kind,json_object('text',json_extract(payload,'$.text'),'visibility',coalesce(json_extract(payload,'$.visibility'),'player')) AS payload FROM events WHERE kind IN ('campaign_created','narration') AND json_valid(payload) ORDER BY id DESC LIMIT 12")])
 	if not result.get("ok",false):
 		return result
 	return {"ok":true,"campaign_id":token["campaign_id"],"actor_id":token["actor_id"],"revision":token["revision"],"current_location_id":at,"locations":result["sets"][0],"recent_events":typed_rows(result["sets"][1])}
