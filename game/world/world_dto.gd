@@ -87,8 +87,19 @@ static func receipt_valid(receipt: Variant) -> bool:
 		for item in receipt[key]:
 			if not item is Dictionary:
 				return false
-	if receipt["effects"].size()>1 or (receipt["effects"].size()==1 and not movement_valid(receipt["effects"][0])):
+	# Retain structural readability of B1 receipts; B2 store requires strict
+	# registered unions for every new commit.
+	if receipt["effects"].size()>2:
 		return false
+	var movement_seen = false
+	var time_seen = false
+	for effect in receipt["effects"]:
+		if movement_valid(effect) and not movement_seen and not time_seen:
+			movement_seen=true
+		elif exact_keys(effect,["kind","seconds","establish_clock"]) and effect["kind"]=="time" and not time_seen and effect["establish_clock"] is bool and (effect["seconds"]==null or whole(effect["seconds"],0,28800)):
+			time_seen=true
+		else:
+			return false
 	return JSON.stringify(receipt).length()<=131072
 
 # SQLite bridge returns string/null. Never silently turn absence into zero.
