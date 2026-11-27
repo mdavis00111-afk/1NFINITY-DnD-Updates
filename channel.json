@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.18",
-  "source_commit": "b582b68bc365640dc0d5542aa7855e37aec0e2ab",
-  "notes": "Full saved character sheet, four-screen creator polish, Gemini model discovery, asset catalogue support and SQLite persistence. Private reference files remain outside the updater. Windows runtime test pending.",
+  "version": "0.0.19",
+  "source_commit": "4973fc3572fbc36b83aedf8c587590f112b0d022",
+  "notes": "Compact character creation and saved-sheet layout pass; local SQLite book-page search. Private reference DB installed separately. Windows runtime and exact visual matching pending.",
   "files": [
     {
       "path": "main.tscn",
@@ -270,19 +270,19 @@
     },
     {
       "path": "players/character_creator.gd",
-      "blob": "bffaf9f13b2c588c1f4ee68875888900a1406105"
+      "blob": "4211a4825d00403e21db02be92223d038b551f5d"
     },
     {
       "path": "players/character_manager.gd",
-      "blob": "6b83b48f30f7ed9a10ad42504bce91720798cde4"
+      "blob": "91b4b556d09e109efdccf1b79c8c7d7df0661afb"
     },
     {
       "path": "players/full_character_sheet.gd",
-      "blob": "d5bd61127800de0a976e8e9ecaa4b35eae9f3297"
+      "blob": "5dbda4e0c84b5f88ab19248f60f847b996abf8a4"
     },
     {
       "path": "project.godot",
-      "blob": "b4855662f0b74cd8c110a317d079d2f4bfbbb3f1"
+      "blob": "c5b43274300f4f9ec563710413afea2fb04e0617"
     },
     {
       "path": "rules/catalog.gd",
@@ -290,7 +290,7 @@
     },
     {
       "path": "rules/catalog_browser.gd",
-      "blob": "51337684ba2ec9a6f9af912fb99b5b0b77c1c0fb"
+      "blob": "35770489c4613aa42615526af10cfa6b9ff81f64"
     },
     {
       "path": "systems/asset_library.gd",
@@ -306,11 +306,11 @@
     },
     {
       "path": "tests/layout_smoke.gd",
-      "blob": "51ba964563f46ac6597ed628a8d199cb61f36832"
+      "blob": "0190c6e433c6d3420c851a19facd57b3f2427b6c"
     },
     {
       "path": "version.txt",
-      "blob": "32786aa437b1ac88d17aa6f54dfa6679c26a5725"
+      "blob": "44517d5188ebee12f168042bef6bc3cc6d28681e"
     },
     {
       "path": "rules/PRIVATE_REFERENCE_POLICY.md",
