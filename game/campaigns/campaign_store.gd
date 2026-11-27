@@ -261,6 +261,20 @@ func gameplay_view(id: String) -> Dictionary:
 		last_error = "Invalid campaign player identifier."
 		return {}
 	var expected_metadata = loaded_metadata
+	# Legacy saves work without migrating. Once the extension exists, the old
+	# location-list popup must not bypass player discovery or precision.
+	var marker = SQL.run(path_for(id),[SQL.stmt("SELECT value FROM meta WHERE key='world_schema'")],true)
+	if not marker.get("ok",false):
+		last_error = "Cannot inspect world schema."
+		return {}
+	var world_version = null if marker["results"][0].is_empty() else marker["results"][0][0]["value"]
+	if world_version!=null and world_version!="1":
+		last_error = "Unsupported world schema version."
+		return {}
+	var location_sql = "SELECT id,name,kind,x,y,payload FROM locations ORDER BY name COLLATE NOCASE,id"
+	if world_version=="1":
+		location_sql = "SELECT l.id,l.name,l.kind,CASE WHEN w.precision IN ('approximate','surveyed') THEN l.x END AS x,CASE WHEN w.precision IN ('approximate','surveyed') THEN l.y END AS y,CASE WHEN l.id=? AND d.first_event_id=(SELECT min(id) FROM events WHERE kind='campaign_created' AND turn=0) THEN l.payload ELSE '{}' END AS payload,w.public_description FROM locations l JOIN world_places w ON w.location_id=l.id JOIN world_discovery d ON d.location_id=l.id WHERE d.visibility='player' AND d.status<>'unknown' ORDER BY l.name COLLATE NOCASE,l.id"
+	var location_command = SQL.stmt(location_sql,[record.get("location_id","")] if world_version=="1" else [])
 	# Use the exact same eligibility guard as the opening write, in the read snapshot.
 	var available = opening_guard(record,expected_metadata) if opening_eligible(record) else SQL.stmt("SELECT NULL WHERE 0")
 	var result = SQL.run(path_for(id),[
@@ -269,17 +283,22 @@ func gameplay_view(id: String) -> Dictionary:
 		SQL.stmt("SELECT payload,location_id,master_character_id FROM actors WHERE id=? AND kind='player'",[actor_id]),
 		SQL.stmt("SELECT item_id,quantity,payload FROM inventory WHERE actor_id=? ORDER BY item_id",[actor_id]),
 		SQL.stmt("SELECT id,turn,kind,payload FROM events WHERE kind IN ('campaign_created','narration') ORDER BY id"),
-		SQL.stmt("SELECT id,name,kind,x,y,payload FROM locations ORDER BY name COLLATE NOCASE,id"),
+		location_command,
 		SQL.stmt("SELECT id,status,payload FROM quests ORDER BY id"),
 		available,
+		SQL.stmt("SELECT value FROM meta WHERE key='world_schema'"),
 		SQL.stmt("COMMIT")
 	],true)
 	if not result.get("ok",false):
 		last_error = result_error(result,"Cannot read campaign workspace.")
 		return {}
 	var sets: Array = result.get("results",[])
-	if sets.size()!=9 or sets[1].size()!=1 or str(sets[1][0]["value"])!=expected_metadata or sets[2].size()!=1:
+	if sets.size()!=10 or sets[1].size()!=1 or str(sets[1][0]["value"])!=expected_metadata or sets[2].size()!=1:
 		last_error = "Campaign changed or player data unavailable. Reopen and retry."
+		return {}
+	var snapshot_version = null if sets[8].is_empty() else sets[8][0]["value"]
+	if snapshot_version!=world_version:
+		last_error = "World schema changed. Reopen and retry."
 		return {}
 	# One read-only transaction on the bridge connection.
 	var can_open = not sets[7].is_empty()
@@ -317,6 +336,15 @@ func gameplay_view(id: String) -> Dictionary:
 		var payload = JSON.parse_string(str(row["payload"]))
 		if not payload is Dictionary:
 			payload = {}
+		if world_version=="1":
+			var public_facts: Array = []
+			# Only the already player-visible opening facts, not arbitrary legacy
+			# payload keys. New geography is projected separately by world_store.
+			if payload.get("opening_generated")==true and payload.get("world_facts") is Array:
+				for fact in payload["world_facts"].slice(0,16):
+					if fact is String and fact.length()<=500:
+						public_facts.append(fact)
+			payload={"world_facts":public_facts,"description":str(row.get("public_description",""))}
 		var location = {"id":str(row["id"]),"name":str(row["name"]),"kind":str(row["kind"]),"x":row["x"],"y":row["y"],"payload":payload}
 		locations.append(location)
 		if location["id"]==actor["location_id"]:
