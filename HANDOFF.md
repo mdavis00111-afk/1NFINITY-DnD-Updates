@@ -290,3 +290,6 @@ Base 6cf0b8268885da7352c5927c70eaa07d790e3664; added noncombat_store.gd with gua
 
 ## C3 stage 3 — supported spells, resource use, rest and local transfers
 Base 5b4ff6a54685cbf0030e37f7ac9c543c86c445c8; self-target Cure Wounds/Healing Word with actual prepared/known source, components and slot debit, Life bonus; Second Wind and Lay on Hands; explicit rest hit dice, resource and pact-slot reset, long-rest tracked 24-hour eligibility, prepared list validation and time, budget reset for B2. Atomic local disclosed NPC/player item and denomination transfer with capacity and ownership mirror. No fabricated combat outcomes; all effects use supported level-one and verified quiet context, no unsupported spell/condition/feature effects. Registry and end-to-end tests next. Source-only, no release.
+
+## C3 stage 4a — preparation and adoption binding refinement
+Base ccd721e3d19269e4bacfef20479991ec2eba2dcc; explicit rest-linked spell preparation/unpreparation, quick equip alias, no duplicate-copy attunement, B2 receipt result must match durable adopted intent. Registry and recovery adapter next; source only, no publication.

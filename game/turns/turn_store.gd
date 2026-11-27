@@ -186,6 +186,36 @@ func adoption_guard(token: Dictionary, turn_id: String, adopted: Dictionary = {}
 		return failure("Adoption missing, conflicting or no longer pending.")
 	return {"ok":true,"commands":[SQL.stmt("INSERT INTO meta(key,value) VALUES('c3_adoption_guard',(SELECT 'ok' FROM gameplay_requests WHERE request_id=? AND actor_id=? AND logical_turn_id=? AND expected_revision=CAST(? AS INTEGER) AND status='accepted_pending' AND request_payload=? AND (SELECT count(*) FROM gameplay_requests WHERE status='accepted_pending')=1 AND EXISTS(SELECT 1 FROM meta WHERE key='gameplay_schema' AND value='1')))",[adopted["request_id"],token["actor_id"],turn_id,token["revision"],adopted["request_payload"]]),SQL.stmt("DELETE FROM meta WHERE key='c3_adoption_guard'")]}
 
+# Match the resulting B2 action to the exact durable typed request.
+func adopted_receipt_matches(binding: Dictionary,receipt: Dictionary,player_text: String) -> bool:
+	if binding.is_empty():
+		return true
+	var request=JSON.parse_string(binding["request_payload"])
+	if not request is Dictionary or not request.get("args") is Dictionary:
+		return false
+	var a=request["args"]
+	var result=receipt["results"][0]
+	var kind=request.get("kind")
+	match kind:
+		"chat":
+			return request.get("schema_version")=="1" and player_text==a.get("text")
+		"conversation","observe":
+			return result["kind"]=="observe" and player_text==a.get("text")
+		"wait":
+			return result["kind"]=="wait" and receipt["effects"].back()["seconds"]==a.get("seconds")
+		"ability_check","skill_check","object_check","saving_throw":
+			var expected="saving_throw" if kind=="saving_throw" else "ability_check"
+			if result["kind"]!=expected or (a.has("ability") and result.get("ability")!=a["ability"]) or (a.has("skill_id") and result.get("skill")!=a["skill_id"]):
+				return false
+			if a.has("skill") and result.get("skill")!=a["skill"]:
+				return false
+			if a.has("difficulty") and RAW.DIFFICULTY.has(a["difficulty"]) and result["dc"]!=RAW.DIFFICULTY[a["difficulty"]]:
+				return false
+			return not a.has("text") or a["text"]==player_text
+		"move","travel":
+			return result["kind"] in ["move","travel"] and result.get("destination_id")==a.get("destination_id") and (not a.has("route_id") or a["route_id"]==result["route_id"]) and (not a.has("pace") or a["pace"]==result["pace"]) and (not a.has("fast_travel") or a["fast_travel"]==result["fast_travel"])
+	return false
+
 # Engine-only API; strict registered RAW unions, exact state and SQL guards.
 # No generic patch or caller-supplied SQL.
 func commit_receipt(id: String, token: Dictionary, receipt: Dictionary, player_text: String = "", adopted: Dictionary = {}) -> Dictionary:
@@ -211,6 +241,8 @@ func commit_receipt(id: String, token: Dictionary, receipt: Dictionary, player_t
 	var binding = adoption_guard(current,receipt["turn_id"],adopted)
 	if not binding.get("ok",false):
 		return binding
+	if not adopted_receipt_matches(adopted,receipt,player_text):
+		return failure("Mechanical receipt does not match adopted intent.")
 	var commands: Array = [guard(current)]
 	commands.append_array(binding["commands"])
 	commands.append_array(inventory_guards(current))

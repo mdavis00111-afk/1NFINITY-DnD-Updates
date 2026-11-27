@@ -277,7 +277,7 @@ func wear_duration(pack: Dictionary,iid: String,donning: bool) -> int:
 # slots; we reject unsupported extra ring/accessory layouts rather than infer.
 func equipment_action(id: String,req: Dictionary,clearance: Dictionary) -> Dictionary:
 	var kind = str(req.get("kind",""))
-	var fields = {"equip":["instance_id","slot","grip"],"swap":["instance_id","slot","grip","replace_instance_ids"],"unequip":["instance_id","slot"],"attune":["instance_id"],"unattune":["instance_id"]}
+	var fields = {"quick_equip":["instance_id","slot","grip"],"equip":["instance_id","slot","grip"],"swap":["instance_id","slot","grip","replace_instance_ids"],"unequip":["instance_id","slot"],"attune":["instance_id"],"unattune":["instance_id"]}
 	if not fields.has(kind):
 		return fail("Unknown equipment action.")
 	var ctx = begin(id,req,kind,fields[kind])
@@ -307,6 +307,8 @@ func equipment_action(id: String,req: Dictionary,clearance: Dictionary) -> Dicti
 		for item in pack["items"].values():
 			if item["attunement"]=="attuned":
 				n+=1
+				if kind=="attune" and item["definition_id"]==row["definition_id"]:
+					return fail("Cannot attune to multiple copies of the same item.")
 		if kind=="attune" and (row["attunement"]!="unattuned" or n>=3):
 			return fail("Attunement eligibility or three-item limit not established.")
 		if kind=="unattune" and row["attunement"]!="attuned":
@@ -758,3 +760,35 @@ func transfer(id: String,req: Dictionary,clearance: Dictionary) -> Dictionary:
 	commands.append_array(mirror_commands(receiver,b))
 	action_seconds=6
 	return _commit(ctx,commands,result,"Selected possessions transferred.")
+
+# Preparation decision immediately after a completed verified long rest.
+func prepare_spells(id: String,req: Dictionary,clearance: Dictionary) -> Dictionary:
+	var kind=str(req.get("kind",""))
+	if not kind in ["spell_prepare","spell_unprepare"]:
+		return fail("Invalid preparation action.")
+	var ctx=begin(id,req,kind,["spell_id","prepared_ids"])
+	if not ctx.get("ok",false) or ctx.get("replayed",false):
+		return ctx
+	if not allowed(ctx,clearance,"spell_prepare"):
+		return fail("Verified long-rest preparation context required.")
+	var state=ctx["state"]
+	var actor=state["actor"].duplicate(true)
+	var args=req["args"]
+	var history=read(state,[SQL.stmt("SELECT payload FROM events WHERE kind='c3_long_rest' ORDER BY id DESC LIMIT 1")])
+	if not history.get("ok",false) or history["sets"][0].size()!=1:
+		return fail("Complete a verified long rest before changing prepared spells.")
+	var marker=JSON.parse_string(history["sets"][0][0]["payload"])
+	if not marker is Dictionary or marker.get("actor_id")!=state["actor_id"] or marker.get("end_elapsed_seconds")!=state["elapsed_seconds"]:
+		return fail("Preparation requires the immediate end of a verified long rest.")
+	var previous=settlement(id,str(marker.get("request_id","")))
+	if not previous.get("found",false) or previous["status"]!="committed" or previous["revision"]!=state["revision"] or previous["request"]["kind"]!="rest" or previous["request"]["args"]["prepared_ids"]!=null:
+		return fail("Rest preparation window has ended; choose the next rest's complete list.")
+	var plan=spell_preparation(actor,args["prepared_ids"])
+	if not plan.get("ok",false):
+		return plan
+	var old=actor["spellcasting"].get("prepared_ids",[])
+	if not old is Array or not DTO.bounded_text(args["spell_id"],100) or (kind=="spell_prepare" and (args["spell_id"] in old or not args["spell_id"] in plan["prepared_ids"])) or (kind=="spell_unprepare" and (not args["spell_id"] in old or args["spell_id"] in plan["prepared_ids"])):
+		return fail("Selected preparation change does not match the explicit final list.")
+	actor["spellcasting"]["prepared_ids"]=plan["prepared_ids"]
+	action_seconds=plan["seconds"]
+	return _commit(ctx,[SQL.stmt("UPDATE actors SET payload=? WHERE id=?",[JSON.stringify(actor),state["actor_id"]])],{"kind":kind,"prepared_ids":plan["prepared_ids"],"rule_refs":[RAW.rule_ref("resting"),RAW.rule_ref("casting-a-spell")]},"Prepared spell list updated.")
