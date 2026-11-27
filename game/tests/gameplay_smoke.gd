@@ -8,6 +8,19 @@ const DICE = preload("res://gameplay/manual_dice.gd")
 const DISPLAY = preload("res://gameplay/display_values.gd")
 const CATALOG = preload("res://rules/catalog.gd")
 const STARTS = preload("res://campaigns/campaign_starts.gd")
+const INTENTS = preload("res://gameplay/ui_intents.gd")
+# Synthetic instance IDs for isolated C2-contract fixtures only, never persisted.
+const TEST_SWORD = "11111111111111111111111111111111"
+const TEST_SHIELD = "22222222222222222222222222222222"
+const TEST_GREAT = "33333333333333333333333333333333"
+const TEST_RING = "44444444444444444444444444444444"
+const TEST_POTION = "55555555555555555555555555555555"
+const TEST_LONG = "66666666666666666666666666666666"
+const TEST_QUEST = "77777777777777777777777777777777"
+const TEST_DEST = "88888888888888888888888888888888"
+const TEST_TURN = "99999999999999999999999999999999"
+const TEST_PARTY = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+const TEST_WRONG = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 var failures: Array[String] = []
 
 func _initialize() -> void:
@@ -74,6 +87,7 @@ func run() -> void:
 	var racial_fixture = {"spellcasting":{"racial_cantrip_ids":["fire-bolt"],"racial_casting_ability":"int","save_dc":12},"ability_modifiers":{"int":3},"proficiency_bonus":2}
 	expect(DISPLAY.racial_spell_text(racial_fixture).contains("Save DC 13") and DISPLAY.racial_spell_text(racial_fixture).contains("Attack +5"),"Racial spell ability incorrectly shares class DC")
 	var original = snapshot.duplicate(true)
+	test_intent_adapter(snapshot)
 	var market = STARTS.texture_for("market")
 	expect(market!=null and STARTS.texture_for("missing-art-id")!=null,"Scene artwork fallback missing")
 	if market is AtlasTexture:
@@ -108,6 +122,15 @@ func run() -> void:
 			var width = nav_button.get_theme_font("font").get_string_size(nav_button.text,HORIZONTAL_ALIGNMENT_LEFT,-1,nav_button.get_theme_font_size("font_size")).x
 			expect(width+8<=nav_button.size.x+1,"Navigation label clipped: "+nav_button.text)
 		expect(not ui.composer.editable and ui.send_button.disabled,"Future action input unexpectedly active")
+		expect(ui.slot_options("main_hand").size()==1 and ui.item_definition(ui.slot_options("main_hand")[0]["row"])=="shortsword","Legacy owned weapon picker fabricated or omitted a candidate")
+		expect(ui.slot_options("body").is_empty() and ui.slot_options("shield").is_empty(),"Legacy empty slots fabricated owned armor/shield")
+		expect(ui.legacy_slots({"item_id":"greatsword"})==["main_hand"],"Two-handed category offered as single offhand")
+		ui.show_slot("body")
+		await settle()
+		var empty_equip = find_button(ui,"Equip / Swap")
+		expect(empty_equip!=null and empty_equip.disabled,"Empty legacy slot not inspectable or mutation enabled")
+		close_popups(ui)
+		await settle()
 		for caption in ["4 / 7","30 ft.","Weight: 18.38 / 150 lb","17 gp","2 sp","Passive Perception","Proficiency"]:
 			expect(has_text(ui,caption),"Missing displayed campaign value: "+caption)
 		var columns_width = ui.left_panel.size.x+ui.center_panel.size.x+ui.right_panel.size.x
@@ -157,6 +180,7 @@ func run() -> void:
 			expect(has_text(variant_ui.right_content,"No spells recorded."),"Non-caster fabricated spells")
 			base.remove_child(variant_ui)
 			variant_ui.queue_free()
+		await test_bound_ui_fixture(snapshot,campaign,base)
 		root.remove_child(base)
 		base.queue_free()
 		await settle()
@@ -184,6 +208,237 @@ func run() -> void:
 		expect(store.gameplay_view(id)==original,"Bad campaign affected sibling")
 	expect(players.load_record(master_id)==master,"Workspace modified master")
 	finish()
+
+# C1 contract fixtures supplement, not replace, the real disposable SQL reads above.
+# They simulate a future C2 view and capture intentions; no mock ever writes state.
+func offer(slot: String,grip: String,replaced: Array = [],allowed: bool = true,warning: String = "") -> Dictionary:
+	return {"slot":slot,"grip":grip,"replace_instance_ids":replaced,"available":allowed,"warning":warning}
+
+func instance_row(id: String,definition: String,name_value: String,quantity: int,options: Array,attunement: String = "unknown") -> Dictionary:
+	return {"instance_id":id,"definition_id":definition,"name":name_value,"description":"Fixture-only public details for "+name_value,"quantity":quantity,"equip_options":options,"attunement_status":attunement}
+
+func future_fixture(snapshot: Dictionary) -> Dictionary:
+	var value = snapshot.duplicate(true)
+	var slots = {}
+	for key in INTENTS.SLOTS:
+		slots[key] = null
+	slots["main_hand"] = TEST_SWORD
+	slots["off_hand"] = TEST_SHIELD
+	slots["shield"] = TEST_SHIELD
+	value["actor"]["resources"] = {"fixture_resource":{"max":3,"spent":1}}
+	value["actor"]["saving_throws"] = {"str":0,"dex":1,"con":1,"int":5,"wis":4,"cha":-1}
+	value["locations"].append({"id":TEST_DEST,"name":"Disclosed fixture destination","kind":"town"})
+	value["interaction"] = {
+		"schema_version":"1","campaign_id":value["campaign"]["id"],"actor_id":value["actor"]["id"],"revision":7,
+		"phase":"idle","pending_turn_id":null,"active_turn_id":null,"settled_request_id":null,"settled_status":null,
+		"supported_intents":INTENTS.FIELDS.keys(),"status_text":"Fixture controller (no writes)",
+		"slot_assignments":slots,
+		"inventory_instances":[
+			instance_row(TEST_SWORD,"shortsword","Fixture shortsword",1,[offer("main_hand","one_handed")]),
+			instance_row(TEST_SHIELD,"shield","Fixture shield",1,[]),
+			instance_row(TEST_GREAT,"greatsword","Fixture greatsword",1,[offer("main_hand","two_handed",[TEST_SWORD,TEST_SHIELD],true,"Fixture: both hands displaced.")]),
+			instance_row(TEST_LONG,"longsword","Fixture versatile sword",1,[offer("main_hand","one_handed",[TEST_SWORD]),offer("main_hand","two_handed",[TEST_SWORD,TEST_SHIELD])]),
+			instance_row(TEST_RING,"fixture-ring","Fixture ring",1,[offer("ring","worn")],"unattuned"),
+			instance_row(TEST_POTION,"fixture-potion","Fixture potion",2,[])
+		],
+		"spell_options":[{"spell_id":"sleep","source":"prepared","slot_level":1,"available":true,"warning":""},{"spell_id":"sleep","source":"prepared","slot_level":2,"available":false,"warning":"Fixture slot unavailable."}],
+		"preparation_options":[{"spell_id":"sleep","kind":"spell_unprepare","available":true,"warning":""},{"spell_id":"magic-missile","kind":"spell_prepare","available":true,"warning":"Fixture preparation offer."}],
+		"public_quests":[{"id":TEST_QUEST,"title":"Disclosed fixture quest","description":"Fixture-only.","status":"active","source_event_id":2}],
+		"party_members":[],"party_candidates":[{"actor_id":TEST_PARTY,"name":"Disclosed fixture companion","available":true,"warning":""}]
+	}
+	return value
+
+func settled_view(view_value: Dictionary,id: String,phase: String = "idle",settlement: String = "committed") -> Dictionary:
+	var value = view_value.duplicate(true)
+	var packet = value["interaction"]
+	packet["revision"] = int(packet["revision"])+1
+	packet["settled_request_id"] = id
+	packet["settled_status"] = settlement
+	packet["phase"] = phase
+	packet["active_turn_id"] = null if phase=="idle" else TEST_TURN
+	packet["pending_turn_id"] = null if phase=="idle" else TEST_TURN
+	return value
+
+func test_intent_adapter(snapshot: Dictionary) -> void:
+	var seen: Array = []
+	var handler = func(packet: Dictionary):
+		seen.append(packet.duplicate(true))
+		return {"ok":true,"request_id":packet["request_id"],"message":"Fixture accepted; no write."}
+	var legacy = INTENTS.new()
+	legacy.configure(snapshot,handler)
+	expect(not legacy.available("chat") and not legacy.request("chat",{"text":"Inspect."}).get("ok",false) and seen.is_empty(),"Legacy projection fabricated a revision or dispatched")
+	var data = future_fixture(snapshot)
+	var adapter = INTENTS.new()
+	adapter.configure(data)
+	expect(not adapter.available("equip") and not adapter.available("chat"),"Unbound future projection activated controls")
+	adapter.configure(data,handler)
+	expect(adapter.view_valid and adapter.available("equip"),"Valid typed view not accepted")
+	var good = {
+		"equip":{"instance_id":TEST_RING,"slot":"ring","grip":"worn"},
+		"swap":{"instance_id":TEST_GREAT,"slot":"main_hand","grip":"two_handed","replace_instance_ids":[TEST_SWORD,TEST_SHIELD]},
+		"unequip":{"instance_id":TEST_SHIELD,"slot":"shield"},
+		"item_use":{"instance_id":TEST_POTION,"quantity":1,"target_id":null},
+		"item_drop":{"instance_id":TEST_POTION,"quantity":2},
+		"attune":{"instance_id":TEST_RING},
+		"spell_prepare":{"spell_id":"magic-missile"},
+		"spell_unprepare":{"spell_id":"sleep"},
+		"spell_cast":{"spell_id":"sleep","source":"prepared","slot_level":1,"target_id":null},
+		"skill_check":{"skill_id":"arcana"},
+		"ability_check":{"ability":"int"},
+		"saving_throw":{"ability":"wis"},
+		"rest":{"rest_kind":"short"},
+		"resource_use":{"resource_id":"fixture_resource","quantity":2},
+		"level_up":{},
+		"quest_interact":{"quest_id":TEST_QUEST},
+		"party_add":{"member_actor_id":TEST_PARTY},
+		"travel":{"destination_id":TEST_DEST},
+		"chat":{"text":"  Inspect the door.  "}
+	}
+	for kind in good:
+		expect(adapter.validate_args(kind,good[kind]),"Valid intent fixture rejected: "+kind)
+	var attuned_view = data.duplicate(true)
+	attuned_view["interaction"]["inventory_instances"][4]["attunement_status"]="attuned"
+	expect(adapter.accept_view(attuned_view) and adapter.validate_args("unattune",{"instance_id":TEST_RING}),"Recorded attunement cannot be ended")
+	expect(adapter.accept_view(data),"Same-revision fixture refresh rejected")
+	expect(not adapter.validate_args("swap",{"instance_id":TEST_GREAT,"slot":"main_hand","grip":"two_handed","replace_instance_ids":[TEST_SWORD]}),"Partial two-hand swap allowed")
+	expect(not adapter.validate_args("equip",{"instance_id":TEST_GREAT,"slot":"main_hand","grip":"two_handed"}),"Equip bypassed displaced items")
+	expect(not adapter.validate_args("equip",{"instance_id":TEST_WRONG,"slot":"ring","grip":"worn"}),"Unowned item offered")
+	expect(not adapter.validate_args("item_drop",{"instance_id":TEST_POTION,"quantity":3}),"Unowned quantity accepted")
+	expect(not adapter.validate_args("unequip",{"instance_id":TEST_SWORD,"slot":"shield"}),"Unequip wrong assignment accepted")
+	expect(not adapter.validate_args("spell_cast",{"spell_id":"sleep","source":"prepared","slot_level":2,"target_id":null}),"Unavailable slot choice accepted")
+	expect(not adapter.validate_args("spell_prepare",{"spell_id":"unknown-spell"}),"Unoffered preparation accepted")
+	expect(not adapter.validate_args("resource_use",{"resource_id":"fixture_resource","quantity":3}),"Overspent resource accepted")
+	expect(not adapter.validate_args("travel",{"destination_id":TEST_WRONG}) and not adapter.validate_args("quest_interact",{"quest_id":TEST_WRONG}),"Undisclosed target accepted")
+	expect(not adapter.validate_args("skill_check",{"skill_id":"arcana","dc":1}),"Arbitrary mechanical DC accepted")
+	var malformed = data.duplicate(true)
+	malformed["interaction"]["slot_assignments"].erase("head")
+	expect(not adapter.accept_view(malformed) and not adapter.available("equip"),"Incomplete view failed open")
+	expect(adapter.accept_view(data),"Valid view did not recover after invalid")
+	malformed=data.duplicate(true)
+	malformed["interaction"]["actor_id"]=TEST_WRONG
+	expect(not adapter.accept_view(malformed) and not adapter.available("chat"),"Wrong actor view accepted")
+	expect(adapter.accept_view(data),"Valid view recovery failed")
+	var before = adapter.snapshot.duplicate(true)
+	expect(adapter.request("swap",good["swap"]).get("ok",false),"Valid swap did not submit")
+	expect(seen.size()==1 and seen[0]["args"]==good["swap"] and seen[0]["expected_revision"]==7 and seen[0]["actor_id"]==data["actor"]["id"],"Wrong typed request envelope")
+	expect(adapter.snapshot==before and not adapter.available("chat") and not adapter.request("swap",good["swap"]).get("ok",false),"Optimistic state change or duplicate request")
+	var pending_request = adapter.outstanding_id
+	var unrelated = settled_view(data,TEST_WRONG)
+	expect(adapter.accept_view(unrelated) and adapter.outstanding_id==pending_request,"Unrelated refresh unlocked request")
+	var busy = settled_view(unrelated,pending_request,"busy","accepted_pending")
+	expect(adapter.accept_view(busy) and adapter.outstanding_id.is_empty() and not adapter.available("chat") and adapter.available("cancel") and not adapter.available("retry"),"Pending phase guards incorrect")
+	expect(not adapter.validate_args("cancel",{"turn_id":TEST_WRONG}) and adapter.validate_args("cancel",{"turn_id":TEST_TURN}),"Cancel target not guarded")
+	expect(adapter.request("cancel",{"turn_id":TEST_TURN}).get("ok",false),"Cancel intention not submitted")
+	var retryable = settled_view(busy,adapter.outstanding_id,"retryable","accepted_pending")
+	expect(adapter.accept_view(retryable) and adapter.available("retry") and not adapter.available("chat"),"Retry phase guards incorrect")
+	expect(adapter.request("retry",{"turn_id":TEST_TURN}).get("ok",false) and seen[-1]["args"]["turn_id"]==TEST_TURN,"Retry changed active turn")
+	expect(not adapter.accept_view(data) and not adapter.available("retry"),"Decreasing revision failed open")
+	var recovered = settled_view(retryable,adapter.outstanding_id)
+	expect(adapter.accept_view(recovered) and adapter.available("chat"),"Matching settlement did not reconcile")
+	var ambiguous = INTENTS.new()
+	ambiguous.configure(data,func(_packet): return {})
+	expect(not ambiguous.request("chat",good["chat"]).get("ok",false) and not ambiguous.outstanding_id.is_empty() and not ambiguous.available("chat"),"Unknown acknowledgment permitted duplicate delivery")
+	var reconciled = settled_view(data,ambiguous.outstanding_id)
+	expect(ambiguous.accept_view(reconciled) and ambiguous.available("chat"),"Unknown acknowledgment cannot be reconciled")
+	var rejected = INTENTS.new()
+	rejected.configure(data,func(packet): return {"ok":false,"request_id":packet["request_id"],"message":"Fixture rejected."})
+	expect(not rejected.request("chat",good["chat"]).get("ok",false) and rejected.available("chat"),"Definitive rejection did not release guard")
+
+func find_button(node: Node,caption: String) -> Button:
+	if node is Button and node.text==caption:
+		return node
+	for child in node.get_children():
+		var found = find_button(child,caption)
+		if found!=null:
+			return found
+	return null
+
+func close_popups(ui: Node) -> void:
+	for child in ui.get_children():
+		if child is Window:
+			ui.remove_child(child)
+			child.queue_free()
+
+func test_bound_ui_fixture(snapshot: Dictionary,campaign: Dictionary,base: Control) -> void:
+	var fixture = future_fixture(snapshot)
+	var received: Array = []
+	var handler = func(packet: Dictionary):
+		received.append(packet.duplicate(true))
+		return {"ok":true,"request_id":packet["request_id"],"message":"Fixture accepted only."}
+	var ui = UI.new()
+	ui.configure(fixture,campaign,func(): pass,func(): pass,func(): pass,false,"",handler)
+	base.add_child(ui)
+	ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	await settle()
+	expect(ui.composer.editable and not ui.send_button.disabled,"Explicit mock controller binding failed")
+	expect(ui.inventory_cells.has(TEST_GREAT) and ui.inventory_cells.has(TEST_LONG) and ui.equipped(TEST_SHIELD),"Instance grid or authoritative slot missing")
+	expect(ui.slot_options("main_hand").size()==4,"Grip choices not preserved")
+	ui.show_slot("main_hand",TEST_GREAT)
+	await settle()
+	var swap = find_button(ui,"Swap")
+	expect(swap!=null and not swap.disabled,"Owned two-handed swap button unavailable")
+	if swap!=null and not swap.disabled:
+		swap.pressed.emit()
+		await settle()
+		expect(received.size()==1 and received[0]["kind"]=="swap" and received[0]["args"]["replace_instance_ids"]==[TEST_SWORD,TEST_SHIELD],"Swap UI emitted wrong intent")
+		expect(ui.equipped(TEST_SWORD) and not ui.equipped(TEST_GREAT) and not ui.composer.editable,"Swap changed UI before committed refresh")
+		var next = settled_view(fixture,ui.intents.outstanding_id)
+		next["interaction"]["slot_assignments"]["main_hand"]=TEST_GREAT
+		next["interaction"]["slot_assignments"]["off_hand"]=TEST_GREAT
+		next["interaction"]["slot_assignments"]["shield"]=null
+		next["actor"]["combat"]["hp_current"]=5
+		next["actor"]["combat"]["armor_class"]=12
+		next["actor"]["coins"]["gp"]=18
+		expect(ui.apply_authoritative_view(next),"Committed fixture refresh failed")
+		await settle()
+		expect(ui.equipped(TEST_GREAT) and not ui.equipped(TEST_SWORD) and has_text(ui,"5 / 7") and has_text(ui,"18 gp"),"HUD/equipment not refreshed from authoritative fixture")
+		fixture = next
+	close_popups(ui)
+	await settle()
+	# The following selection popups exercise their actual controls and gates.
+	ui.show_spell("sleep")
+	await settle()
+	var cast = find_button(ui,"Cast")
+	expect(cast!=null and not cast.disabled,"Offered prepared spell cast control unavailable")
+	close_popups(ui)
+	ui.show_check("skill_check","arcana")
+	await settle()
+	var check = find_button(ui,"Request check")
+	expect(check!=null and not check.disabled,"Skill intention control unavailable")
+	close_popups(ui)
+	ui.show_resource("fixture_resource")
+	await settle()
+	var use = find_button(ui,"Request resource use")
+	expect(use!=null and not use.disabled,"Resource intention control unavailable")
+	close_popups(ui)
+	ui.show_character_actions()
+	await settle()
+	var rest = find_button(ui,"Request short rest")
+	expect(rest!=null and not rest.disabled,"Rest intention control unavailable")
+	close_popups(ui)
+	ui.show_quests()
+	await settle()
+	var pursue = find_button(ui,"Discuss / pursue selected quest")
+	expect(pursue!=null and not pursue.disabled,"Disclosed quest control unavailable")
+	close_popups(ui)
+	await settle()
+	var previous_count = received.size()
+	var stale = ui.map_intention({"kind":"travel_intention","campaign_id":campaign["id"],"expected_revision":ui.intents.revision-1,"destination_id":TEST_DEST})
+	expect(not stale.get("ok",false) and received.size()==previous_count,"Stale map intent reached controller")
+	ui.composer.text = "  I inspect the door.  "
+	ui.send_button.pressed.emit()
+	await settle()
+	expect(received.size()==previous_count+1 and received[-1]["kind"]=="chat" and received[-1]["args"]["text"]=="  I inspect the door.  ","Chat altered original input")
+	expect(not ui.composer.editable and ui.composer.text=="  I inspect the door.  ","Chat draft cleared before settlement")
+	var chat_id = ui.intents.outstanding_id
+	if not chat_id.is_empty():
+		var pending_view = settled_view(fixture,chat_id,"busy","accepted_pending")
+		expect(ui.apply_authoritative_view(pending_view) and ui.composer.text=="  I inspect the door.  " and not ui.composer.editable,"Pending chat refresh cleared draft or unlocked")
+		var final_view = settled_view(pending_view,chat_id)
+		expect(ui.apply_authoritative_view(final_view) and ui.composer.text.is_empty() and ui.composer.editable,"Committed chat refresh did not settle draft")
+	base.remove_child(ui)
+	ui.queue_free()
+	await settle()
 
 func finish() -> void:
 	for failure in failures: push_error(failure)

@@ -179,7 +179,8 @@ static func valid_view(packet: Variant,cid: String,aid: String) -> bool:
 		quests_seen[row["id"]] = true
 	if not packet.get("party_members",[]) is Array or not packet.get("party_candidates",[]) is Array:
 		return false
-	var members = {aid:true}
+	var members = {}
+	members[aid] = true
 	for member in packet.get("party_members",[]):
 		if not member is Dictionary or not stable_id(member.get("actor_id")) or members.has(member["actor_id"]) or not member.get("name") is String or not member.get("portrait","") is String:
 			return false
@@ -312,9 +313,14 @@ func validate_args(kind: String,args: Dictionary) -> bool:
 					return true
 			return false
 		"travel":
-			# Caller must use matching player-visible MapView revision. Controller
-			# checks destination, routes and current position again.
-			return stable_id(args["destination_id"])
+			# Caller also checks matching MapView revision. Do not forward an ID
+			# absent from the same authoritative visible gameplay projection.
+			if not stable_id(args["destination_id"]) or args["destination_id"]==actor.get("location_id"):
+				return false
+			for row in snapshot.get("locations",[]):
+				if row.get("id")==args["destination_id"]:
+					return true
+			return false
 		"chat":
 			return args["text"] is String and not args["text"].strip_edges().is_empty() and args["text"].length()<=2000
 		"retry","cancel":
