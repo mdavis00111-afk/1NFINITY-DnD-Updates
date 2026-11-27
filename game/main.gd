@@ -120,13 +120,21 @@ func show_screen(name: String) -> void:
 	var painted_title = false
 	var art_loaded = false
 	for candidate in ["res://art/" + art + ".png", "res://art/" + art + ".jpg", "user://art/" + art + ".png", "user://art/" + art + ".jpg"]:
-		if FileAccess.file_exists(candidate):
+		var texture: Texture2D = null
+		if candidate.begins_with("res://"):
+			# Packaged artwork is imported by Godot and works in exported builds.
+			if ResourceLoader.exists(candidate, "Texture2D"):
+				texture = ResourceLoader.load(candidate, "Texture2D") as Texture2D
+		elif FileAccess.file_exists(candidate):
+			# User-provided images are external files and are not imported resources.
 			var img = Image.load_from_file(candidate)
 			if not img.is_empty():
-				backdrop.texture = ImageTexture.create_from_image(img)
-				art_loaded = true
-				painted_title = name == "Main"
-				break
+				texture = ImageTexture.create_from_image(img)
+		if texture != null:
+			backdrop.texture = texture
+			art_loaded = true
+			painted_title = name == "Main"
+			break
 	if not art_loaded:
 		backdrop.texture = load("res://art/" + ("forest" if art == "hall" else art) + ".svg")
 	if name in ["Create New","Generate Character","Edit Character"]:
