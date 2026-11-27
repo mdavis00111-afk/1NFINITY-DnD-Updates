@@ -224,7 +224,7 @@ func recover_active() -> void:
 		ask("narrate",job,payload)
 	else:
 		payload["candidate"]=job["candidate"]
-		ask("background" if job.get("critical_verified",false) else "critical",job,payload)
+		stop("retry","Legacy narration candidate requires explicit recovery.")
 
 func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 	var stage=identity.get("stage","")

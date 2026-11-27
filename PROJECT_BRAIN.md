@@ -553,3 +553,7 @@ Removed independent interpretation loop for new actions. Combined narration stag
 
 ## v0.0.27 checkpoint 3b.1 — contextual fallback removal
 prepare_review retains direct_safe and exact request/revision validate_assessment authorization; absent evidence now stops safely instead of dispatching adjudicate. Legacy adjudicate stage stops for recovery. No registry or persistence changes. Deferred descriptive actions without existing valid authorization now stop rather than receive an extra provider request; combined deferred evidence support remains outstanding. Source anchor checks passed; native and provider tests not run. Manifest unchanged.
+
+
+## v0.0.27 checkpoint 3b.2a — adapter dispatch and retry bound
+Production adapter accepts interpret/narrate only, one transport call per stage, no automatic query or repair resend. Assessment and world extraction instructions retained as helpers. Standalone legacy candidate stops for explicit recovery. Base controller legacy recovery and deferred descriptive authorization remain outstanding (3b.2b); do not publish. Native/provider tests not run. Source anchors checked.
