@@ -37,6 +37,7 @@ var actor_id = ""
 var revision = -1
 var outstanding_id = ""
 var invalid_reply = false
+var view_valid = false
 var last_error = ""
 
 static func stable_id(value: Variant) -> bool:
@@ -74,6 +75,7 @@ func configure(value: Dictionary, callback: Callable = Callable()) -> void:
 	accept_view(value)
 
 func accept_view(value: Dictionary) -> bool:
+	view_valid = false
 	# The legacy read model is usable for browsing, never for a state-changing intent.
 	var campaign = value.get("campaign",{})
 	var actor = value.get("actor",{})
@@ -85,7 +87,7 @@ func accept_view(value: Dictionary) -> bool:
 		last_error = "Campaign or actor changed; reopen the workspace."
 		return false
 	var packet = value.get("interaction")
-	if packet!=null and not valid_view(packet,cid,aid):
+	if packet!=null and (campaign.get("actor_id")!=aid or not valid_view(packet,cid,aid)):
 		last_error = "Interaction view invalid; gameplay mutations unavailable."
 		return false
 	if packet==null and revision>=0:
@@ -104,6 +106,7 @@ func accept_view(value: Dictionary) -> bool:
 			outstanding_id = ""
 			invalid_reply = false
 	last_error = ""
+	view_valid = true
 	return true
 
 static func valid_view(packet: Variant,cid: String,aid: String) -> bool:
@@ -116,6 +119,8 @@ static func valid_view(packet: Variant,cid: String,aid: String) -> bool:
 	for key in ["pending_turn_id","active_turn_id","settled_request_id"]:
 		if not packet.has(key) or (packet[key]!=null and not stable_id(packet[key])):
 			return false
+	if not packet.has("settled_status") or (packet.get("settled_request_id")==null and packet["settled_status"]!=null) or (packet.get("settled_request_id")!=null and not packet["settled_status"] in ["accepted_pending","committed","rejected","cancelled"]):
+		return false
 	for kind in packet["supported_intents"]:
 		if not kind is String or not FIELDS.has(kind):
 			return false
@@ -126,12 +131,19 @@ static func valid_view(packet: Variant,cid: String,aid: String) -> bool:
 		if not row is Dictionary or not stable_id(row.get("instance_id")) or ids.has(row["instance_id"]) or not identifier(row.get("definition_id")) or not integer(row.get("quantity"),1) or not row.get("name") is String or not row.get("description") is String or not row.get("equip_options") is Array:
 			return false
 		ids[row["instance_id"]] = true
+		var options_seen = {}
 		for opt in row["equip_options"]:
 			if not opt is Dictionary or not opt.get("slot") in SLOTS or not opt.get("grip") in GRIPS or not opt.get("available") is bool or not opt.get("warning") is String or not opt.get("replace_instance_ids") is Array:
 				return false
+			var key = str(opt["slot"])+":"+str(opt["grip"])
+			if options_seen.has(key):
+				return false
+			options_seen[key] = true
+			var displaced = {}
 			for other in opt["replace_instance_ids"]:
-				if not stable_id(other) or other==row["instance_id"]:
+				if not stable_id(other) or other==row["instance_id"] or displaced.has(other):
 					return false
+				displaced[other] = true
 	for key in packet["slot_assignments"]:
 		if not key in SLOTS or (packet["slot_assignments"][key]!=null and not ids.has(packet["slot_assignments"][key])):
 			return false
@@ -140,21 +152,38 @@ static func valid_view(packet: Variant,cid: String,aid: String) -> bool:
 			for other in opt["replace_instance_ids"]:
 				if not ids.has(other):
 					return false
-	if not packet.get("spell_options") is Array:
+	if not packet.get("spell_options") is Array or not packet.get("preparation_options") is Array or not packet.get("public_quests") is Array:
 		return false
 	for opt in packet["spell_options"]:
 		if not opt is Dictionary or not identifier(opt.get("spell_id")) or not opt.get("source") in SPELL_SOURCES or not integer(opt.get("slot_level"),0,9) or not opt.get("available") is bool or not opt.get("warning") is String:
 			return false
+	var preparation_seen = {}
+	for opt in packet["preparation_options"]:
+		if not opt is Dictionary or not identifier(opt.get("spell_id")) or not opt.get("kind") in ["spell_prepare","spell_unprepare"] or not opt.get("available") is bool or not opt.get("warning") is String:
+			return false
+		var key = str(opt["spell_id"])+":"+str(opt["kind"])
+		if preparation_seen.has(key):
+			return false
+		preparation_seen[key] = true
+	var quests_seen = {}
+	for row in packet["public_quests"]:
+		if not row is Dictionary or not stable_id(row.get("id")) or quests_seen.has(row["id"]) or not row.get("title") is String or not row.get("description") is String or not row.get("status") is String or not integer(row.get("source_event_id"),1):
+			return false
+		quests_seen[row["id"]] = true
 	return true
 
 func available(kind: String) -> bool:
-	if not handler.is_valid() or interaction.is_empty() or not outstanding_id.is_empty() or not kind in interaction.get("supported_intents",[]):
+	if not view_valid or not handler.is_valid() or interaction.is_empty() or not outstanding_id.is_empty() or not kind in interaction.get("supported_intents",[]):
 		return false
-	if kind in ["retry","cancel"]:
+	if kind=="retry":
+		return stable_id(interaction.get("active_turn_id")) and interaction.get("phase")=="retryable"
+	if kind=="cancel":
 		return stable_id(interaction.get("active_turn_id")) and interaction.get("phase") in ["retryable","awaiting_decision","busy","blocked"]
 	return interaction.get("phase")=="idle" and interaction.get("pending_turn_id")==null
 
 func reason(kind: String) -> String:
+	if not view_valid:
+		return "Invalid or stale authoritative view; refresh required."
 	if not handler.is_valid():
 		return "Controller not connected — inspection only."
 	if interaction.is_empty():
@@ -186,6 +215,12 @@ func owns_spell(id: String) -> bool:
 			return true
 	return false
 
+func preparation_option(id: String,kind: String) -> Dictionary:
+	for row in interaction.get("preparation_options",[]):
+		if row.get("spell_id")==id and row.get("kind")==kind:
+			return row
+	return {}
+
 func validate_args(kind: String,args: Dictionary) -> bool:
 	if not FIELDS.has(kind) or not exact_keys(args,FIELDS[kind]):
 		return false
@@ -204,6 +239,9 @@ func validate_args(kind: String,args: Dictionary) -> bool:
 				if opt.is_empty() or not opt.get("available",false):
 					return false
 				var replaced = opt.get("replace_instance_ids",[])
+				var current = interaction["slot_assignments"].get(args["slot"])
+				if current!=null and current!=args["instance_id"] and not current in replaced:
+					return false
 				return (kind=="equip" and replaced.is_empty()) or (kind=="swap" and not replaced.is_empty() and args["replace_instance_ids"]==replaced)
 			if kind=="unequip":
 				return args["slot"] in SLOTS and interaction["slot_assignments"].get(args["slot"])==args["instance_id"]
@@ -211,9 +249,11 @@ func validate_args(kind: String,args: Dictionary) -> bool:
 				if not integer(args["quantity"],1,int(row["quantity"])):
 					return false
 				return kind=="item_drop" or args["target_id"]==null or stable_id(args["target_id"])
-			return true
+			if kind=="attune":
+				return row.get("attunement_status")=="unattuned"
+			return row.get("attunement_status")=="attuned"
 		"spell_prepare","spell_unprepare":
-			return identifier(args["spell_id"]) and owns_spell(args["spell_id"])
+			return identifier(args["spell_id"]) and preparation_option(args["spell_id"],kind).get("available",false)
 		"spell_cast":
 			if not identifier(args["spell_id"]) or not integer(args["slot_level"],0,9) or not args["source"] in SPELL_SOURCES or (args["target_id"]!=null and not stable_id(args["target_id"])):
 				return false
@@ -224,17 +264,22 @@ func validate_args(kind: String,args: Dictionary) -> bool:
 		"skill_check":
 			return identifier(args["skill_id"]) and actor.get("skills",{}).has(args["skill_id"])
 		"ability_check","saving_throw":
-			return args["ability"] in ABILITIES and actor.get("ability_scores",{}).has(args["ability"])
+			return args["ability"] in ABILITIES and actor.get("saving_throws" if kind=="saving_throw" else "ability_scores",{}).has(args["ability"])
 		"rest":
 			return args["rest_kind"] in ["short","long"]
 		"resource_use":
-			return identifier(args["resource_id"]) and actor.get("resources",{}).has(args["resource_id"]) and integer(args["quantity"],1)
+			if not identifier(args["resource_id"]):
+				return false
+			var resource = actor.get("resources",{}).get(args["resource_id"],{})
+			var maximum = resource.get("max")
+			var spent = resource.get("spent")
+			return integer(maximum) and integer(spent) and int(spent)<=int(maximum) and integer(args["quantity"],1,int(maximum)-int(spent))
 		"level_up":
 			return true
 		"quest_interact":
 			if not stable_id(args["quest_id"]):
 				return false
-			for row in snapshot.get("quests",[]):
+			for row in interaction.get("public_quests",[]):
 				if row.get("id")==args["quest_id"]:
 					return true
 			return false

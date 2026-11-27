@@ -123,7 +123,8 @@ func apply_authoritative_view(snapshot: Dictionary) -> bool:
 	if not last_chat_request_id.is_empty() and intents.interaction.get("settled_request_id")==last_chat_request_id:
 		if intents.interaction.get("settled_status")=="committed":
 			draft = ""
-		last_chat_request_id = ""
+		if intents.interaction.get("settled_status") in ["committed","rejected","cancelled"]:
+			last_chat_request_id = ""
 	view = intents.snapshot
 	campaign = view["campaign"]
 	actor = view["actor"]
@@ -673,9 +674,9 @@ func build_center(parent: VBoxContainer) -> void:
 	log_scroll = scroll(log,120)
 	log_list = vbox(log_scroll,6)
 	for event in view.get("events",[]):
-		var role = "System" if event.get("kind")=="campaign_created" else "DM"
+		var role = "System" if event.get("kind") in ["campaign_created","mechanical_summary"] else ("Player" if event.get("kind")=="player_action" else "DM")
 		var entry = hbox(log_list,6)
-		picture(entry,glyph("diamond" if role=="System" else "initiative"),Vector2(30,30))
+		picture(entry,actor_portrait() if role=="Player" else glyph("diamond" if role=="System" else "initiative"),Vector2(30,30))
 		var words = vbox(entry,2)
 		one_line(words,role+"  ·  Turn "+number(event.get("turn")),17,GOLD)
 		label(words,str(event.get("text","")),17,IVORY)
@@ -690,9 +691,10 @@ func build_center(parent: VBoxContainer) -> void:
 	if view.get("opening_available",false):
 		opening_button = button(actions,"Generate Opening",retry_action,15,"wand")
 		opening_button.disabled = pending or not data_error.is_empty()
+	button(actions,"Turn / Retry",show_turn_controls,15)
 	var save_exit = button(actions,"Save & Exit",leave_action,15)
 	save_exit.tooltip_text = "Committed campaign data is already saved. Pending opening generation is canceled; manual dice are not saved."
-	var status_text = "Turn controller pending — action submission unavailable."
+	var status_text = str(intents.interaction.get("status_text","Turn controller pending — action submission unavailable."))
 	if not data_error.is_empty():
 		status_text = "Campaign data unavailable. Return to Campaign and reopen."
 	elif pending:
@@ -704,12 +706,14 @@ func build_center(parent: VBoxContainer) -> void:
 	composer = LineEdit.new()
 	composer.placeholder_text = "Type your action here… (turn controller pending)"
 	composer.editable = false
+	composer.max_length = 2000
+	composer.text_submitted.connect(func(_value: String): submit_chat())
 	composer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	composer.add_theme_stylebox_override("normal",box_style(false,5))
 	composer.add_theme_stylebox_override("read_only",box_style(false,5))
 	composer.custom_minimum_size.y = 34
 	compose.add_child(composer)
-	send_button = button(compose,"Send",func(): pass,16)
+	send_button = button(compose,"Send",submit_chat,16)
 	send_button.size_flags_horizontal = Control.SIZE_FILL
 	send_button.disabled = true
 	send_button.tooltip_text = "Action resolution is not implemented. No action is submitted or saved."
@@ -806,6 +810,26 @@ func request_intent(kind: String,args: Dictionary) -> Dictionary:
 	popup_status_labels = live
 	refresh_intent_controls()
 	return reply
+
+func submit_chat() -> void:
+	if not is_instance_valid(composer):
+		return
+	var reply = request_intent("chat",{"text":composer.text})
+	if reply.get("ok",false):
+		last_chat_request_id = intents.outstanding_id
+	# Preserve original text until matching committed settlement.
+
+func show_turn_controls() -> void:
+	var popup = popup_base("Turn status")
+	var col = vbox(popup,6)
+	col.custom_minimum_size.x = 470
+	label(col,str(intents.interaction.get("status_text","Turn controller not connected.")),18,GOLD)
+	label(col,"Retry uses the same active turn. A committed receipt is never rolled again.",15)
+	var active_id = intents.interaction.get("active_turn_id")
+	intent_button(col,"Retry active turn","retry",{"turn_id":active_id},active_id!=null,"No active turn recorded.")
+	intent_button(col,"Cancel / reconcile active turn","cancel",{"turn_id":active_id},active_id!=null,"No active turn recorded.")
+	popup_status(col)
+	popup.popup_centered(Vector2i(510,250))
 
 func roll_dice() -> void:
 	last_roll = DICE.roll(int(dice_type.get_item_metadata(dice_type.selected)),int(dice_count.value))
@@ -1094,9 +1118,86 @@ func build_spells() -> void:
 			has_spells = true
 			label(list,str(group[1]),17,GOLD)
 			for id in ids:
-				reference_row(list,"spells",str(id))
-	if not has_spells:
+				var spell_id = str(id)
+				button(list,title_for("spells",spell_id),func(): show_spell(spell_id),15)
+	var additional: Array = []
+	for opt in intents.interaction.get("preparation_options",[]):
+		var id = str(opt["spell_id"])
+		if not intents.owns_spell(id) and not id in additional:
+			additional.append(id)
+	if not additional.is_empty():
+		label(list,"Preparation choices",17,GOLD)
+		for id in additional:
+			var spell_id = str(id)
+			button(list,title_for("spells",spell_id),func(): show_spell(spell_id),15)
+	if not has_spells and additional.is_empty():
 		label(list,"No spells recorded.",16)
+
+func show_spell(id: String) -> void:
+	var popup = popup_base(title_for("spells",id))
+	var col = vbox(popup,5)
+	col.custom_minimum_size.x = 640
+	var detail = TextEdit.new()
+	detail.editable = false
+	detail.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	detail.custom_minimum_size.y = 230
+	detail.text = cat.describe("spells",id)
+	col.add_child(detail)
+	var sp = actor.get("spellcasting",{})
+	var sources: PackedStringArray = []
+	for group in [["cantrip_ids","Class cantrip"],["racial_cantrip_ids","Racial cantrip"],["known_ids","Known"],["prepared_ids","Prepared"],["always_prepared_ids","Always prepared"]]:
+		if id in sp.get(group[0],[]):
+			sources.append(group[1])
+	label(col,"Recorded sources: "+(", ".join(sources) if not sources.is_empty() else "Preparation choice"),15,GOLD)
+	var prep_row = hbox(col,4)
+	for kind in ["spell_prepare","spell_unprepare"]:
+		var offer = intents.preparation_option(id,kind)
+		intent_button(prep_row,"Prepare" if kind=="spell_prepare" else "Unprepare",kind,{"spell_id":id},offer.get("available",false),str(offer.get("warning","Preparation eligibility requires the handler.")))
+	var cast_row = hbox(col,4)
+	var cast_choices = OptionButton.new()
+	cast_choices.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cast_row.add_child(cast_choices)
+	var options: Array = []
+	for opt in intents.interaction.get("spell_options",[]):
+		if opt.get("spell_id")==id:
+			options.append(opt)
+			var text = str(opt["source"]).replace("_"," ").capitalize()+" · "+("Slotless" if opt["slot_level"]==0 else "Level "+str(opt["slot_level"]))
+			cast_choices.add_item(text)
+			cast_choices.set_item_disabled(cast_choices.item_count-1,not opt["available"])
+	var cast_note = label(col,"Target is unselected; controller resolves or asks for required choices.",14,GOLD)
+	var cast = button(cast_row,"Cast",func():
+		var index = cast_choices.selected
+		if index<0 or index>=options.size():
+			return
+		var opt = options[index]
+		request_intent("spell_cast",{"spell_id":id,"source":opt["source"],"slot_level":opt["slot_level"],"target_id":null})
+		if not intents.outstanding_id.is_empty():
+			popup.queue_free()
+	,16)
+	var update = func(index: int):
+		if index<0 or index>=options.size():
+			cast.disabled = true
+			cast_note.text = "No authoritative cast options recorded."
+			return
+		var opt = options[index]
+		cast.disabled = not opt["available"] or not can_intent("spell_cast")
+		cast_note.text = str(opt["warning"]) if not str(opt["warning"]).is_empty() else "Target unselected; controller may request explicit targeting."
+		cast.tooltip_text = intent_reason("spell_cast")
+	cast_choices.item_selected.connect(update)
+	if options.is_empty():
+		cast_choices.add_item("Cast options unavailable")
+		cast_choices.disabled = true
+		update.call(-1)
+	else:
+		var first = 0
+		for i in range(options.size()):
+			if options[i]["available"]:
+				first = i
+				break
+		cast_choices.select(first)
+		update.call(first)
+	popup_status(col)
+	popup.popup_centered(Vector2i(680,470))
 
 func build_skills() -> void:
 	var list = list_for_tab("Skills & Saving Throws")
@@ -1108,11 +1209,33 @@ func build_skills() -> void:
 		if skill.is_empty():
 			continue
 		var marker = "✦ " if skill.get("expertise",false) else ("◆ " if skill.get("proficient",false) else "◇ ")
-		reference_row(list,"skills",id,marker+title_for("skills",id)+"   "+number(skill.get("modifier"),true))
+		button(list,marker+title_for("skills",id)+"   "+number(skill.get("modifier"),true),func(): show_check("skill_check",id),15)
 	for key in ABILITIES:
 		var marker = "◆ " if "saving-throw-"+key in actor.get("proficiency_ids",[]) else "◇ "
-		label(list,marker+key.to_upper()+" Save  "+number(actor.get("saving_throws",{}).get(key),true),16)
+		var ability = key
+		button(list,marker+key.to_upper()+" Save  "+number(actor.get("saving_throws",{}).get(key),true),func(): show_check("saving_throw",ability),15)
 	label(list,"✦ Expertise · ◆ Proficient · ◇ Not proficient",13,GOLD)
+	label(list,"Ability checks",17,GOLD)
+	for key in ABILITIES:
+		var ability = key
+		button(list,key.to_upper()+"  "+number(actor.get("ability_modifiers",{}).get(key),true),func(): show_check("ability_check",ability),15)
+
+func show_check(kind: String,id: String) -> void:
+	var caption = title_for("skills",id) if kind=="skill_check" else id.to_upper()+(" saving throw" if kind=="saving_throw" else " ability check")
+	var popup = popup_base(caption)
+	var col = vbox(popup,6)
+	col.custom_minimum_size.x = 480
+	if kind=="skill_check":
+		label(col,cat.describe("skills",id),15)
+		label(col,"Recorded modifier: "+number(actor.get("skills",{}).get(id,{}).get("modifier"),true),16,GOLD)
+	else:
+		var data = actor.get("saving_throws",{}) if kind=="saving_throw" else actor.get("ability_modifiers",{})
+		label(col,"Recorded modifier: "+number(data.get(id),true),16,GOLD)
+	label(col,"Submit a check intention. The controller determines whether a roll is called for, the circumstances, DC and outcome. No local mechanical roll.",15)
+	var args = {"skill_id":id} if kind=="skill_check" else {"ability":id}
+	intent_button(col,"Request "+("saving throw" if kind=="saving_throw" else "check"),kind,args)
+	popup_status(col)
+	popup.popup_centered(Vector2i(520,300))
 
 func build_features() -> void:
 	var list = list_for_tab("Features & Resources")
@@ -1124,9 +1247,46 @@ func build_features() -> void:
 		label(list,cat.human(bg),16)
 	for key in actor.get("resources",{}):
 		var resource = actor["resources"][key]
-		label(list,str(key).replace("_"," ").capitalize()+": "+DISPLAY.remaining_text(resource.get("max"),resource.get("spent")),16,GOLD)
+		var resource_id = str(key)
+		button(list,resource_id.replace("_"," ").capitalize()+": "+DISPLAY.remaining_text(resource.get("max"),resource.get("spent")),func(): show_resource(resource_id),16)
 	for id in actor.get("combat",{}).get("conditions",[]):
 		reference_row(list,"conditions",str(id))
+	button(list,"Rest & advancement",show_character_actions,16)
+
+func show_resource(id: String) -> void:
+	var resource = actor.get("resources",{}).get(id,{})
+	if resource.is_empty():
+		return
+	var popup = popup_base(id.replace("_"," ").capitalize())
+	var col = vbox(popup,5)
+	col.custom_minimum_size.x = 430
+	label(col,"Remaining: "+DISPLAY.remaining_text(resource.get("max"),resource.get("spent")),19,GOLD)
+	var maximum = resource.get("max")
+	var spent = resource.get("spent")
+	var known = DISPLAY.nonnegative_integer(maximum) and DISPLAY.nonnegative_integer(spent) and float(spent)<=float(maximum)
+	var remaining = int(maximum)-int(spent) if known else 0
+	var quantity = SpinBox.new()
+	quantity.min_value = 1
+	quantity.max_value = maxi(1,remaining)
+	quantity.value = 1
+	col.add_child(quantity)
+	var use = button(col,"Request resource use",func(): request_intent("resource_use",{"resource_id":id,"quantity":int(quantity.value)}),16)
+	track_intent(use,"resource_use",known and remaining>0,"No available quantity established.")
+	label(col,"No manual counter adjustment; effects, timing and costs require resolution.",14,GOLD)
+	popup_status(col)
+	popup.popup_centered(Vector2i(470,250))
+
+func show_character_actions() -> void:
+	var popup = popup_base("Character actions")
+	var col = vbox(popup,5)
+	col.custom_minimum_size.x = 460
+	label(col,"Rest, recovery and advancement",19,GOLD)
+	intent_button(col,"Request short rest","rest",{"rest_kind":"short"})
+	intent_button(col,"Request long rest","rest",{"rest_kind":"long"})
+	intent_button(col,"Review level-up eligibility","level_up",{})
+	label(col,"The controller validates time, safety, resources, class features and advancement. No manual HP, spell slot, XP or coin changes.",15)
+	popup_status(col)
+	popup.popup_centered(Vector2i(500,300))
 
 func build_notes() -> void:
 	var list = list_for_tab("Established local facts")
@@ -1208,15 +1368,17 @@ func show_character() -> void:
 	if actor.is_empty():
 		popup_text("Character","Campaign character unavailable.")
 		return
-	var popup = popup_base("Campaign Character — read only")
+	var popup = popup_base("Campaign Character")
+	var col = vbox(popup,3)
 	var sc = ScrollContainer.new()
-	sc.custom_minimum_size = Vector2(1000,530)
+	sc.custom_minimum_size = Vector2(1000,495)
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	popup.add_child(sc)
+	col.add_child(sc)
 	var sheet = SHEET.new()
 	sheet.configure(actor,func(caption: String,detail: String): popup_text(caption,detail),true)
 	sheet.custom_minimum_size.x = 960
 	sc.add_child(sheet)
+	button(col,"Rest & advancement",func(): popup.queue_free(); show_character_actions())
 	popup.popup_centered(Vector2i(1040,610))
 
 func show_quests() -> void:
