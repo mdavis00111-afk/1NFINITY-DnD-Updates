@@ -61,3 +61,6 @@ Source inspection: character_rules.gd roll_scores calls Godot randi_range(1,6) f
 
 ## 0.0.22 pre-publication check
 `file /mnt/data/Godot.exe` identified PE32+ Windows x64. Copied to /tmp, chmod +x, executed `--version`: failed with Exec format error. `command -v godot`, `godot4`, `wine` found none; curl to GitHub release endpoint failed DNS. No engine import, parser or smoke tests executed. User requested upload; publish Windows playtest with existing updater gates, not verified final release. Candidate literal preload paths/duplicate top-level functions checked; release hashes verified separately against pinned tree. No schema changes.
+
+## P0-03 management polish
+Owner screenshot shows v0.0.22 manager opens with portrait roster and centered sheet; owner approves composition subject to polish. Source changes are limited to action labels, opacity and ability abbreviation wrapping; regression assertion added. No engine tests executed.

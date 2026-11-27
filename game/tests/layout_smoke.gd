@@ -301,6 +301,7 @@ func exercise_viewer(base: Control, records: Array) -> void:
 	var viewport = base.get_global_rect()
 	inside(manager.roster_scroll, viewport, "Player portrait roster")
 	inside(manager.toolbar,viewport,"Bottom actions")
+	expect(find_button(manager,"Delete") != null and find_button(manager,"Archive") == null and find_button(manager,"Rules Catalogue") == null,"Manager action labels differ from approved controls")
 	expect(manager.toolbar.get_global_rect().position.y>manager.scroll.get_global_rect().position.y,"Manager actions not below sheet")
 	inside(manager.scroll, viewport, "Sheet viewport")
 	expect(manager.scroll.size.x >= 700 and manager.scroll.size.y >= 400, "Sheet viewport collapsed")

@@ -151,3 +151,6 @@ Audit scope: recursive live godot tree, core source and SQL definitions, supplie
 
 ## 0.0.22 release verification
 Owner authorized Windows playtest publication. Supplied Godot.exe is PE32+ Windows x64; execution in Linux failed with Exec format error, no Wine or native Godot installed, attempted GitHub download DNS failed. No import, GDScript parser, layout, actual Gemini or Windows runtime checks executed here. Existing updater stages verified files and runs import, SQLite smoke and startup handshakes before switching active pointer. Those gates are not a substitute for full GUI testing. Preserve previous version on installation failure. No changes to mechanics, SQL schema, save storage, updater, or private reference data.
+
+## P0-03 management final polish (feature checkpoint)
+Owner Windows screenshot confirms v0.0.22 management layout/portrait roster displayed. Owner accepts composition subject to removing Rules Catalogue action, changing Archive to Delete (existing recovery transaction retained), slight transparency increase in manager backing and slight opacity increase in creator surfaces. CON/CHA ability abbreviations now nonwrapping. No save/mechanics changes; engine tests not run here.
