@@ -557,3 +557,7 @@ prepare_review retains direct_safe and exact request/revision validate_assessmen
 
 ## v0.0.27 checkpoint 3b.2a — adapter dispatch and retry bound
 Production adapter accepts interpret/narrate only, one transport call per stage, no automatic query or repair resend. Assessment and world extraction instructions retained as helpers. Standalone legacy candidate stops for explicit recovery. Base controller legacy recovery and deferred descriptive authorization remain outstanding (3b.2b); do not publish. Native/provider tests not run. Source anchors checked.
+
+
+## v0.0.27 checkpoint 3b.2b — recovery and descriptive authorization
+Base and standalone recovery regenerate narration from durable receipts instead of dispatching legacy review stages. Existing reconcile and settlement guards retained. Retry clears obsolete contextual stage markers. Descriptive clearance derived locally from staged cursor, committed public narration evidence, exact durable request and current revision, then existing policy and registry validators; no transfer/resource clearance. Source anchors checked, native/provider tests not run. Exact transformed discovery arguments and legacy fixture compatibility require regression review; no publication. Context insufficiency remains checkpoint 4.

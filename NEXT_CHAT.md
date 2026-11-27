@@ -1,2 +1,2 @@
 # Next session
-3b.2a adapter dispatch and request bound committed. Finish 3b.2b base legacy recovery and deferred descriptive authorization; then actual transport count tests 3b.3, recap 4, performance 5, integration 6. Live 0.0.26, no publication. Native tests outstanding. Prepare handover at 40 messages, rotate at 50.
+3b.2b committed unpublished. Next 3b.3 transport count and recovery/world persistence regressions; inspect exact transformed discovery argument binding and legacy fixtures. Native/provider tests not run. Then 4 context packets/recap (insufficient context after disabling query loops), 5 performance, 6 integration/publication. Live 0.0.26. Prepare handover at 40 messages, rotate at 50.

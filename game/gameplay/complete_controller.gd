@@ -411,14 +411,9 @@ func recover_active() -> void:
 	var payload={"receipt":PACK.public_receipt(receipt),"player_text":result.get("player_text",""),"scene":context["scene"],"maturity_id":state["campaign"].get("maturity_id","standard"),"turn_id":job["turn_id"],"public_actors":public_view.get("public_actors",[]),"public_quests":public_view.get("public_quests",[]),"story":public_view.get("story_records",[])}
 	if job.get("stage")=="reconcile":
 		reconcile(job,receipt,context["ids"])
-	elif job.get("candidate",{}).is_empty():
-		ask("narrate",job,payload)
-	elif not job.get("critical_verified",false):
-		payload["candidate"]=job["candidate"]
-		ask("critical",job,payload)
 	else:
-		payload["candidate"]=job["candidate"]
-		ask("background",job,payload)
+		# The durable receipt remains authoritative; regenerate narration only.
+		ask("narrate",job,payload)
 
 # Provider/mock replies are data only. The trusted review callback, not an
 # AI boolean, authorizes critical prose. All claims requiring new mechanics

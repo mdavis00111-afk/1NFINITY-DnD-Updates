@@ -126,6 +126,29 @@ func validate_assessment(req: Dictionary,report: Variant,job: Dictionary,state: 
 			return {"ok":false,"error":"Pinned applicable rule unavailable."}
 	return {"ok":true,"ruling":ruling}
 
+# Derive descriptive clearance only from the exact staged proposal and committed public narration.
+# The registry still validates the typed operation and performs its own transaction.
+func descriptive_assessment(req: Dictionary,job: Dictionary,state: Dictionary) -> Dictionary:
+	if not req["kind"] in DESCRIPTIVE or req!=job.get("story_request") or not bound_request(req,job,state):
+		return {}
+	var event_id=job.get("narration_event_id")
+	if req["args"].get("source_event_id")!=event_id or not DTO.whole(event_id,1):
+		return {}
+	var source=controller.registry.session.source(state,event_id)
+	if source.get("kind")!="narration" or not controller.registry.session.public_source(source):
+		return {}
+	var entries=job.get("story",[]) if req["kind"]=="story_update" else job.get("discoveries",[])
+	var index=int(job.get("story_index",0)) if req["kind"]=="story_update" else int(job.get("discovery_index",0))
+	if index<0 or index>=entries.size():
+		return {}
+	var entry=entries[index]
+	if req["kind"]!="story_update" and entry.get("kind")!=req["kind"]:
+		return {}
+	var evidence=entry.get("evidence","")
+	if not DTO.bounded_text(evidence,2000) or not source_text(source).contains(evidence):
+		return {}
+	return {"disposition":"supported","intent_evidence":evidence,"context":[{"event_id":event_id,"evidence":evidence}],"ruling":{},"reason":"Committed descriptive proposal; no player resource authorization."}
+
 func review(req: Dictionary,scope: Dictionary,intent: Dictionary) -> Dictionary:
 	var out={"request_id":req["request_id"],"campaign_id":req["campaign_id"],"actor_id":req["actor_id"],"expected_revision":req["expected_revision"],"accepted":false,"ruling":{},"reason":"Independent contextual evidence unavailable."}
 	var state=controller.registry.session.token(req["campaign_id"])

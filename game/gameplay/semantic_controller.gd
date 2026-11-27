@@ -220,11 +220,8 @@ func recover_active() -> void:
 	var payload={"settlement":verified,"turn_id":rid,"scene":context["scene"],"player_text":job["intent"]["args"].get("text",""),"maturity_id":data["state"]["campaign"].get("maturity_id","standard")}
 	if job.get("stage")=="reconcile":
 		reconcile(job,verified,context["ids"])
-	elif job.get("candidate",{}).is_empty():
-		ask("narrate",job,payload)
 	else:
-		payload["candidate"]=job["candidate"]
-		stop("retry","Legacy narration candidate requires explicit recovery.")
+		ask("narrate",job,payload)
 
 func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 	var stage=identity.get("stage","")
@@ -716,6 +713,12 @@ func prepare_review(req: Dictionary,resume_stage: String) -> bool:
 	var state=data["state"]
 	if policy.direct_safe(req,job,state):
 		return true
+	var descriptive=policy.descriptive_assessment(req,job,state)
+	if not descriptive.is_empty():
+		var checked=policy.validate_assessment(req,descriptive,job,state)
+		if checked.get("ok",false):
+			job["context_review"]={"request":req.duplicate(true),"revision":state["revision"],"attempt_id":registry.session.make_id(),"report":descriptive}
+			return update_active(job)
 	var record=job.get("context_review",{})
 	if record.get("request")==req and record.get("revision")==state["revision"]:
 		var checked=policy.validate_assessment(req,record.get("report"),job,state)
@@ -751,7 +754,9 @@ func retry() -> Dictionary:
 	# Recover a durable request first, not a new interpretation. Context
 	# assessment can be refreshed only before an uncommitted write.
 	if job.get("stage")=="adjudicate" or job.has("review_request"):
-		job["stage"]="adjudicate"
+		job.erase("review_request")
+		job.erase("review_resume")
+		job["stage"]="post_story" if job.get("narration_event_id")!=null else ("execute" if not job.get("tool",{}).is_empty() else "new")
 	elif job.get("narration_event_id")!=null:
 		job["stage"]="post_story"
 	elif not job.get("geography",{}).is_empty() and job.get("critical_verified",false):
