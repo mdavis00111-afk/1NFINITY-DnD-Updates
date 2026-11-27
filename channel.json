@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.11",
-  "source_commit": "dc450c6f7281b84c44a348eee025255df2a42e1e",
-  "notes": "Four-stage character creator, quick generation, persistent local player records, original 2014/2018 SRD catalogue with side reference pane and tooltips, cleaner scalable italic typography. SRD subset plus 2018 supplements; full PHB and gameplay mechanics remain pending. 1596 catalogue reference checks passed; Windows runtime testing outstanding.",
+  "version": "0.0.12",
+  "source_commit": "38daec3604ad7b86f3d02037b2fab5be327bcd7a",
+  "notes": "Fix bundled castle and Hall background loading using Godot imported Texture2D resources; user images still loaded externally. Character data and artwork unchanged. Runtime test pending.",
   "files": [
     {
       "path": "main.tscn",
@@ -222,15 +222,15 @@
     },
     {
       "path": "main.gd",
-      "blob": "e8659fd5141550c73cf061f37114963f0b76869b"
+      "blob": "12ffd05fb1992301cff1ce23f407cdb258b8b278"
     },
     {
       "path": "project.godot",
-      "blob": "abe9e9772656360bf2f91693482f75620cbfd154"
+      "blob": "e8186cac8ed92129fad5302cdaa9a73299979960"
     },
     {
       "path": "version.txt",
-      "blob": "2cfabea2f1e6e353e6999e9b2508d971fdbbef0f"
+      "blob": "8cbf02c396d6a33cd86257bec57bade7a1a63614"
     },
     {
       "path": "themes/master_theme.tres",
