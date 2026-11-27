@@ -529,3 +529,5 @@ Lead-authorized release infrastructure review complete on feature/complete-gamep
 
 ## C7 owner-authorized experimental alpha (2026-11-27)
 Owner explicitly authorizes v0.0.25 alpha publication for personal Windows playtesting, not stable certification. Production manager binds existing semantic controller after opening, closes it on render/exit, retains read-only fallback on binding failure. Native compilation, 14 suites, Windows migration/updater, live Gemini and latency remain unexecuted; updater import/startup gates retained. Back up shared profile offline before testing; version rollback alone does not restore saves. Full combat and broader RAW remain outstanding. C6 live coordination reconciled; staged foundation superseded, never published separately.
+
+Release manifest generated from immutable source 76e869d31ce1aa2e73eded9e1999a52b621e9074; 396 entries, three changed game blobs retrieved from source, remaining entries inherited from audited C6 inventory. Full independent byte audit and native execution remain outstanding.
