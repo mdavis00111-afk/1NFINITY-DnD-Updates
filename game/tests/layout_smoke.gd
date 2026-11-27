@@ -67,51 +67,39 @@ func check_creator(creator: Control, viewport: Rect2, context: String) -> void:
 
 
 func exercise_picker(creator: Control) -> void:
-	var choices = [
-		{"key": "cure", "label": "Cure Wounds"},
-		{"key": "fire", "label": "Fire Bolt"},
-	]
+	var choices = [{"key":"cure","label":"Cure Wounds"},{"key":"fire","label":"Fire Bolt"}]
 	var selected: Array[String] = []
 	creator.choose_popup("Layout Test Picker", choices, func(id: String): selected.append(id), "cure")
 	await settle()
-	var windows = creator.find_children("*", "Window", false, false)
-	expect(not windows.is_empty(), "Choice dialog did not open")
-	if windows.is_empty():
-		return
-	var dialog = windows.back()
-	var lists = dialog.find_children("*", "ItemList", true, false)
-	var searches = dialog.find_children("*", "LineEdit", true, false)
-	expect(not lists.is_empty() and not searches.is_empty(), "Choice dialog lacks search or results")
+	var overlay = creator.picker_overlay
+	expect(is_instance_valid(overlay), "Choice dropdown did not open")
+	if not is_instance_valid(overlay): return
+	var panel = overlay.get_node_or_null("ChoiceDropdown")
+	expect(panel != null, "Choice dropdown panel missing")
+	if panel != null: inside(panel,creator.get_global_rect(),"Choice dropdown")
+	var lists = overlay.find_children("*","ItemList",true,false)
+	var searches = overlay.find_children("*","LineEdit",true,false)
+	expect(not lists.is_empty() and not searches.is_empty(),"Choice dropdown lacks search or results")
 	if lists.is_empty() or searches.is_empty():
-		dialog.queue_free()
+		creator.close_picker()
 		return
 	var results: ItemList = lists.front()
 	var search: LineEdit = searches.front()
-	expect(results.item_count == 2 and results.is_selected(0), "Choice dialog did not show the current choice")
+	expect(results.item_count==2 and results.is_selected(0),"Choice dropdown did not show current choice")
 	search.text = "fire"
 	search.text_changed.emit(search.text)
-	expect(results.item_count == 1 and results.get_item_text(0) == "Fire Bolt", "Choice search did not filter results")
-	results.select(0)
-	var select_button = find_button(dialog, "Select")
-	expect(select_button != null, "Choice dialog lacks a confirm button")
-	if select_button != null:
-		select_button.pressed.emit()
-		await settle()
-	expect(selected == ["fire"], "Choice confirm did not return the selected value")
-	if is_instance_valid(dialog):
-		dialog.queue_free()
+	expect(results.item_count==1 and results.get_item_text(0)=="Fire Bolt","Choice search did not filter")
+	results.item_selected.emit(0)
 	await settle()
-	creator.choose_popup("Layout Test Picker", choices, func(id: String): selected.append(id))
+	expect(selected==["fire"] and not is_instance_valid(creator.picker_overlay),"Choice selection did not close or return the selected value")
+	creator.choose_popup("Layout Test Picker",choices,func(id: String): selected.append(id))
 	await settle()
-	windows = creator.find_children("*", "Window", false, false)
-	if not windows.is_empty():
-		dialog = windows.back()
-		var cancel_button = find_button(dialog, "Cancel")
-		expect(cancel_button != null, "Choice dialog lacks cancel")
-		if cancel_button != null:
-			cancel_button.pressed.emit()
-			await settle()
-	expect(selected == ["fire"], "Choice cancel changed the selected value")
+	if is_instance_valid(creator.picker_overlay):
+		var cancel_button = find_button(creator.picker_overlay,"Cancel")
+		expect(cancel_button!=null,"Choice dropdown lacks cancel")
+		if cancel_button!=null: cancel_button.pressed.emit()
+	await settle()
+	expect(selected==["fire"],"Choice cancel changed selection")
 
 
 func exercise_creator(base: Control, role: String) -> Dictionary:
@@ -140,8 +128,13 @@ func exercise_creator(base: Control, role: String) -> Dictionary:
 	expect(creator.description_editor.text == long_prose, context + " editable description lost text")
 	if role == "wizard" and base.size.x == 1280:
 		await exercise_picker(creator)
-		creator.description_received(true, "Example response from a test double.")
-		expect(creator.description_editor.text == "Example response from a test double.", "AI response did not populate editable text")
+		var details = {"description":"Example response from a test double.","personality":"Curious","ideal":"Truth","bond":"Home","flaw":"Impatient","backstory":"A traveller."}
+		creator.description_received(true,JSON.stringify(details))
+		for key in details:
+			expect(creator.draft[key]==details[key] and creator.identity_editors[key].text==details[key],"AI response did not fill "+key)
+		var before = creator.draft.duplicate(true)
+		creator.description_received(true,JSON.stringify({"description":"Incomplete"}))
+		expect(creator.draft==before,"Incomplete AI response changed the draft")
 		creator.description_editor.text = long_prose
 		creator.description_editor.text_changed.emit()
 		creator.description_received(false, "Example error from a test double.")
@@ -153,6 +146,9 @@ func exercise_creator(base: Control, role: String) -> Dictionary:
 		next.pressed.emit()
 		await settle()
 	expect(creator.step == 2, context + " valid identity did not advance")
+	for ability in ["STR","DEX","CON","INT","WIS","CHA"]:
+		check_action(creator,ability,viewport,context+" pre-roll card")
+	expect(creator.draft["ability_method"].is_empty() and creator.draft["roll_history"].is_empty(),"Pre-roll view mutated dice state")
 	for mode in [["roll", "Roll 4d6, Drop Lowest"], ["point", "Point Buy 27"], ["array", "Standard Array"]]:
 		var mode_button = check_action(creator, mode[1], viewport, context + " abilities")
 		if mode_button != null:
@@ -168,6 +164,17 @@ func exercise_creator(base: Control, role: String) -> Dictionary:
 				reroll.pressed.emit()
 				await settle()
 			expect(creator.draft["roll_history"].size() == 6 and creator.draft["roll_history"] != rolls, context + " reroll did not refresh six dice records")
+			var totals: Array = []
+			for dice in creator.draft["roll_history"]:
+				expect(dice.size()==4,"Ability roll did not use four dice")
+				var sorted = dice.duplicate()
+				for die in sorted: expect(int(die)>=1 and int(die)<=6,"Die outside d6 range")
+				sorted.sort()
+				if sorted.size()==4: totals.append(int(sorted[1])+int(sorted[2])+int(sorted[3]))
+			totals.sort()
+			var pool = creator.draft["roll_pool"].duplicate()
+			pool.sort()
+			expect(totals==pool,"Recorded pool does not equal 4d6 drop lowest")
 	next = check_action(creator, "Next", viewport, context + " abilities")
 	if next != null:
 		next.pressed.emit()
@@ -291,48 +298,31 @@ func exercise_viewer(base: Control, records: Array) -> void:
 	base.add_child(manager)
 	await settle()
 	var viewport = base.get_global_rect()
-	inside(manager.list, viewport, "Player picker")
+	inside(manager.roster_scroll, viewport, "Player portrait roster")
+	inside(manager.toolbar,viewport,"Bottom actions")
+	expect(manager.toolbar.get_global_rect().position.y>manager.scroll.get_global_rect().position.y,"Manager actions not below sheet")
 	inside(manager.scroll, viewport, "Sheet viewport")
-	expect(manager.scroll.size.x >= 1000 and manager.scroll.size.y >= 400, "Sheet viewport collapsed")
+	expect(manager.scroll.size.x >= 700 and manager.scroll.size.y >= 400, "Sheet viewport collapsed")
 	manager.records = records
+	manager.rebuild_roster()
 	manager.select_record(0)
+	expect(manager.roster_buttons.size()==records.size(),"Roster does not contain all saved characters")
 	await settle()
 	expect(manager.body.get_child_count() >= 2, "Sheet content is missing")
 	if manager.body.get_child_count() >= 2:
 		var sheet = manager.body.get_child(1)
 		expect(sheet.get_child_count() >= 5, "Sheet sections missing")
 		expect(sheet.number(14.0) == "14" and sheet.number(-1.0, true) == "-1" and sheet.number(1.0, true) == "+1", "Integer display regression")
-	expect(manager.fit_width, "Sheet viewer does not start in fit-width mode")
-	expect(is_equal_approx(manager.sheet_extent.size.x, manager.scroll.size.x) or manager.sheet_extent.size.x < manager.scroll.size.x, "Fit-width sheet extends beyond its viewer")
-	var fit_step: int = manager.displayed_zoom()
-	manager.zoom_in.pressed.emit()
-	await settle()
-	expect(manager.zoom_percent == mini(fit_step + 10, 200) and not manager.fit_width, "Zoom-in does not advance by ten points")
-	manager.zoom_out.pressed.emit()
-	await settle()
-	expect(manager.zoom_percent == fit_step, "Zoom-out does not step back by ten points")
-	manager.set_zoom_percent(250)
-	await settle()
-	expect(manager.zoom_percent == 200, "Zoom upper limit is not 200%")
-	expect(manager.scroll.get_h_scroll_bar().visible, "200% sheet cannot be navigated horizontally")
-	expect(manager.scroll.get_v_scroll_bar().visible, "200% sheet cannot be navigated vertically")
-	manager.scroll.scroll_horizontal = 80
+	expect(is_equal_approx(manager.sheet_scale(),0.70),"Sheet does not default to fixed 70 percent")
+	expect(manager.canvas.get_global_rect().size.x <= manager.scroll.size.x,"Sheet exceeds viewport")
+	expect(absf(manager.canvas.position.x-(manager.sheet_extent.size.x-manager.canvas.size.x*manager.sheet_scale())*0.5)<2.0,"Sheet is not centered")
+	expect(not manager.scroll.get_h_scroll_bar().visible,"Fixed sheet requires horizontal scrolling")
 	manager.scroll.scroll_vertical = 100
 	await settle()
-	expect(manager.scroll.scroll_horizontal > 0 and manager.scroll.scroll_vertical > 0, "Zoomed viewport cannot follow scroll input")
-	manager.set_zoom_percent(20)
-	await settle()
-	expect(manager.zoom_percent == 50, "Zoom lower limit is not 50%")
-	manager.reset_button.pressed.emit()
-	await settle()
-	expect(manager.zoom_percent == 100 and not manager.fit_width, "Reset does not select actual 100%")
-	manager.fit_button.pressed.emit()
-	await settle()
-	expect(manager.fit_width, "Fit-width toolbar action does not restore fit")
-	for button in [manager.zoom_in, manager.zoom_out, manager.reset_button, manager.fit_button]:
-		inside(button, viewport, "Sheet zoom toolbar")
-		expect(not manager.scroll.is_ancestor_of(button), "Sheet toolbar scrolls with the sheet")
-	manager.select_record(1)
+	expect(manager.scroll.scroll_vertical>0,"Sheet cannot scroll vertically")
+	expect(find_button(manager,"Fit width")==null and find_button(manager,"+")==null,"Unwanted zoom controls remain")
+
+	manager.roster_buttons[1].pressed.emit()
 	await settle()
 	expect(manager.active == records[1], "Changing selection did not load the second record")
 	var portraits = manager.body.find_children("*", "TextureRect", true, false)

@@ -1,2 +1,4 @@
 # 04 — Gemini pipeline
 Baseline 0.0.21: game/systems/gemini.gd handles model discovery and prose generation; creator description only, prompts editable but gameplay unwired. API key stays local; redact logs. Target typed Rules-Check proposal -> Godot rules validation/dice/transaction -> Narration of committed outcome. No arbitrary SQL or narrative override; reject invalid responses, retries must not duplicate committed actions. Preserve optional Gemini use and existing settings. Next P4 after deterministic turn controller; test error handling and schema validation. Brain section 4 contains current contracts.
+
+P0-02 feature branch: creator generates a JSON object containing description, personality, ideal, bond, flaw and backstory. Reject missing/non-string/empty fields before any writes; only whitelist those six draft fields. No gameplay/mechanical authority change; real Gemini request untested.

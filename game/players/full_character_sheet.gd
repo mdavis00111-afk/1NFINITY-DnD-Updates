@@ -4,6 +4,7 @@ const CAT = preload("res://rules/catalog.gd")
 const FRAME = preload("res://themes/parts/panel_gold.png")
 const ACTIVE = preload("res://themes/parts/panel_active.png")
 const PORTRAIT = preload("res://themes/parts/portrait_empty.png")
+const PORTRAIT_ART = preload("res://players/portrait_art.gd")
 const ICONS = preload("res://themes/parts/icons.png")
 const FLOURISH = preload("res://themes/gold_flourish.svg")
 const CORNER = preload("res://themes/parts/corner.png")
@@ -136,8 +137,7 @@ func ref_button(parent: Container, table: String, id: String, caption: String = 
 	b.add_theme_color_override("font_hover_color",GOLD)
 	b.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	var summary = cat.summary(table,id)
-	b.tooltip_text = b.text if summary.is_empty() else b.text + "\n" + summary
+	b.tooltip_text = "Inspect "+b.text.left(100)
 	b.pressed.connect(func():
 		if reference_requested.is_valid():
 			reference_requested.call(cat.title(table,id),cat.describe(table,id)))
@@ -151,7 +151,7 @@ func text_ref(parent: Container, title_text: String, detail: String) -> Button:
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.add_theme_font_size_override("font_size",18)
 	b.add_theme_color_override("font_color",IVORY)
-	b.tooltip_text = detail
+	b.tooltip_text = "Inspect "+title_text.left(100)
 	b.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	b.pressed.connect(func():
 		if reference_requested.is_valid():
@@ -173,26 +173,22 @@ func portrait(parent: Container) -> void:
 	t.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	t.custom_minimum_size = Vector2(244,316)
 	v.add_child(t)
-	var path = str(field("portrait"))
-	if not path.is_empty() and FileAccess.file_exists(path):
-		var img = Image.load_from_file(path)
-		if not img.is_empty():
-			var actual = TextureRect.new()
-			actual.texture = ImageTexture.create_from_image(img)
-			actual.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			actual.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-			var mask = Shader.new()
-			mask.code = PORTRAIT_MASK
-			var art_material = ShaderMaterial.new()
-			art_material.shader = mask
-			actual.material = art_material
-			actual.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			t.add_child(actual)
-			actual.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-			actual.offset_left = 20
-			actual.offset_right = -20
-			actual.offset_top = 28
-			actual.offset_bottom = -28
+	var actual = TextureRect.new()
+	actual.texture = PORTRAIT_ART.texture_for(str(field("portrait")))
+	actual.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	actual.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	var mask = Shader.new()
+	mask.code = PORTRAIT_MASK
+	var art_material = ShaderMaterial.new()
+	art_material.shader = mask
+	actual.material = art_material
+	actual.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	t.add_child(actual)
+	actual.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	actual.offset_left = 20
+	actual.offset_right = -20
+	actual.offset_top = 28
+	actual.offset_bottom = -28
 	for side in [0,1,2,3]:
 		var corner = TextureRect.new()
 		corner.texture = CORNER

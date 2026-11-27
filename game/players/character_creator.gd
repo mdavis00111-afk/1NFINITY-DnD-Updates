@@ -282,7 +282,9 @@ func render(preserve_lists: bool = false) -> void:
 	reference.custom_minimum_size = Vector2(190,110)
 	reference.add_theme_font_size_override("font_size",17)
 	reference.add_theme_color_override("font_readonly_color",IVORY)
-	reference.add_theme_stylebox_override("read_only",soft_style(false,true))
+	var reference_pad = StyleBoxEmpty.new()
+	for edge in [SIDE_LEFT,SIDE_RIGHT,SIDE_TOP,SIDE_BOTTOM]: reference_pad.set_content_margin(edge,7)
+	reference.add_theme_stylebox_override("read_only",reference_pad)
 	side.add_child(reference)
 	var scenery = TextureRect.new()
 	# Frame the painted castle without the title from the left side of the menu artwork.
@@ -414,8 +416,13 @@ func text_field(parent: Container, key: String, placeholder: String, multi: bool
 		edit.text = str(draft.get(key,""))
 		edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
 		edit.custom_minimum_size.y = height
-		edit.add_theme_stylebox_override("normal",soft_style(false,true))
-		edit.add_theme_stylebox_override("focus",soft_style(true,true))
+		var normal = soft_style(false,true)
+		var focused = soft_style(true,true)
+		for edge in [SIDE_TOP,SIDE_BOTTOM]:
+			normal.set_content_margin(edge,10)
+			focused.set_content_margin(edge,10)
+		edit.add_theme_stylebox_override("normal",normal)
+		edit.add_theme_stylebox_override("focus",focused)
 		edit.add_theme_font_size_override("font_size",17)
 		edit.text_changed.connect(func(): draft[key]=edit.text)
 		parent.add_child(edit)
@@ -571,7 +578,7 @@ func choose_popup(caption: String, options: Array, callback: Callable, current: 
 				list.select(i)
 				break
 	var select = func(i: int):
-		if i>=0 and i<filtered.size():
+		if picker_overlay == overlay and i>=0 and i<filtered.size():
 			var opt = filtered[i]
 			show_detail(options_text(opt),str(opt["label"]))
 			close_picker()
@@ -679,6 +686,7 @@ func identity() -> void:
 
 func generate_description() -> void:
 	var context: Dictionary = {}
+	context["description"] = draft.get("description","")
 	for pair in [["race_id","races"],["subrace_id","subraces"],["class_id","classes"],["subclass_id","subclasses"],["background_id","backgrounds"]]:
 		var id = str(draft.get(pair[0],""))
 		if not id.is_empty(): context[pair[0]]=rules.cat.title(pair[1],id)

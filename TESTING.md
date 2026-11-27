@@ -55,3 +55,6 @@ Executed local Python SQLite checks on supplied expanded rules_private.db: integ
 
 ## Shared development setup — 2026-11-27
 Repository-only check at f31ada67209cafa86e36ce3c24dd7cf3bcf7cbf6: channel 0.0.21, version.txt and project.godot match; all 81 manifest path/blob entries match the immutable source tree 871746df1760f7b5b502688e6b327141682be1e2. Documentation-only coordination update; no new runtime tests executed. Prior cloud test evidence remains as recorded. Windows playtest acceptance pending.
+
+## P0-02 Windows feedback feature checkpoint
+Source inspection: character_rules.gd roll_scores calls Godot randi_range(1,6) four times per score, six scores, drops lowest; no AI call. Owner screenshots demonstrate v0.0.21 Windows creator and sheet opened, description populated; selector exceeds viewport and long tooltips overflow. New layout smoke covers in-bounds dropdown, selection/cancel, six-field JSON success/invalid atomicity, pre-roll placeholders, four d6 per score and recorded totals, left portrait roster, fixed 70% sheet and scroll. NOT RUN: Godot executable absent in current container. Production SQLite, actual Gemini response, import/parse and visual acceptance remain outstanding. No release authorized.
