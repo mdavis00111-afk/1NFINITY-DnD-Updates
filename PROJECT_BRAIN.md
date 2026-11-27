@@ -585,3 +585,5 @@ Active fixture tests malformed combined mechanical patch and valid envelope with
 
 ## v0.0.27 checkpoint 3b.3c.1 — persistent NPC and location regression
 Active production fixture submits conversation and combined narration with a reported village and local descriptive NPC using existing geography schema. Asserts two transport calls, unchanged player actor/owned inventory, campaign-local SQLite rows, source links and stable IDs on independent reads. Existing sibling isolation assertion retained. Source anchors checked; native/mock execution and live Gemini unexecuted. No publication. Next 3b.3c.2 geography/discovery binding.
+
+3b.3c.1 follow-up source check: SQLite bridge returns arrays directly in results, corrected fixture decoding. Runtime remains unexecuted.

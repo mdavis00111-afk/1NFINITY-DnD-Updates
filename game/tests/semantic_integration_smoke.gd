@@ -270,8 +270,8 @@ func persistent_npc_location(id: String) -> void:
 	var results=persisted.get("results",[])
 	if not expect(results.size()==2,"World record query results"):
 		return
-	var places=results[0].get("rows",[])
-	var npcs=results[1].get("rows",[])
+	var places: Array=results[0]
+	var npcs: Array=results[1]
 	if not expect(places.size()==1 and npcs.size()==1,"Exactly one persisted village and NPC"):
 		return
 	expect(not str(places[0]["id"]).is_empty() and places[0]["kind"]=="village" and places[0]["source_event_id"]!=null,"Village stable identity and committed source")
