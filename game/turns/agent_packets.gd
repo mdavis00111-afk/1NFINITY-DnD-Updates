@@ -247,26 +247,7 @@ static func valid_geography(packet: Variant, expected: Dictionary, text: String,
 # Validate the shape needed to read a committed B2 receipt, not a second RAW
 # adjudication against post-turn state. Unsupported/corrupt B1 receipts stop.
 static func committed_receipt_usable(value: Variant) -> bool:
-	if not DTO.receipt_valid(value) or value["results"].size()!=1 or value["effects"].is_empty() or value["effects"].back().get("kind")!="time":
-		return false
-	var action = value["results"][0]
-	var kind = action.get("kind")
-	if not kind in RAW.HANDLERS:
-		return false
-	if kind in ["ability_check","saving_throw"]:
-		if not DTO.exact_keys(action,["kind","ability","skill","dc","advantage","disadvantage","mode","outcome","roll_id"]) or not action["ability"] in RAW.ABILITIES or not DTO.whole(action["dc"]) or not action["advantage"] is bool or not action["disadvantage"] is bool or not action["mode"] in ["normal","advantage","disadvantage"] or value["effects"].size()!=1:
-			return false
-		if action["outcome"]=="automatic_failure":
-			return action["roll_id"]==null and value["rolls"].is_empty()
-		if not action["outcome"] in ["success","failure"] or value["rolls"].size()!=1:
-			return false
-		var roll = value["rolls"][0]
-		if not DTO.whole(roll.get("modifier"),-5,30):
-			return false
-		return RAW.roll_valid(roll,kind,action["mode"],int(roll["modifier"]),int(action["dc"])) and roll["roll_id"]==action["roll_id"] and roll["result"]==action["outcome"]
-	if kind in ["move","travel"]:
-		return DTO.exact_keys(action,["kind","outcome","pace","difficult","fast_travel","passive_perception","route_id","destination_id"]) and action["outcome"]=="arrived" and RAW.PACE.has(action["pace"]) and value["rolls"].is_empty() and value["effects"].size()==2 and DTO.movement_valid(value["effects"][0]) and value["effects"][0]["segments"].size()==1 and value["effects"][0]["segments"][0]["to_id"]==action["destination_id"] and value["effects"][0]["segments"][0]["route_id"]==action["route_id"]
-	return DTO.exact_keys(action,["kind","outcome"]) and action["outcome"]=="completed" and value["rolls"].is_empty() and value["effects"].size()==1 and (kind!="wait" or DTO.whole(value["effects"][0]["seconds"],1,RAW.MAX_WALK_SECONDS))
+	return RAW.stored_receipt_usable(value)
 
 # Narrator gets public outcome, not the raw persistence token or hidden DC.
 static func public_receipt(receipt: Dictionary) -> Dictionary:

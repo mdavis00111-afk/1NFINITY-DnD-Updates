@@ -182,6 +182,13 @@ func run() -> void:
 		finish()
 		return
 	receipt=committed["receipt"]
+	expect(RAW.stored_receipt_usable(receipt),"Committed travel receipt rejected")
+	var wrong_duration = receipt.duplicate(true)
+	wrong_duration["effects"].back()["seconds"]=1
+	expect(not RAW.stored_receipt_usable(wrong_duration),"Inconsistent stored travel clock accepted")
+	var missing_rules = receipt.duplicate(true)
+	missing_rules["rule_refs"]=[]
+	expect(not RAW.stored_receipt_usable(missing_rules),"Stored receipt missing rules accepted")
 	expect(engine.snapshot(id).get("elapsed_seconds")==3600,"Clock was not established from approved travel")
 	expect(resolver.resolve(id,token,request_id,turn_id,packet,action["reference_refs"],approval).get("replayed",false),"Receipt retry not idempotent")
 	var after = world.map_view(id)
@@ -220,6 +227,11 @@ func run() -> void:
 		finish()
 		return
 	var check_receipt = checked["receipt"]
+	var impossible_auto = check_receipt.duplicate(true)
+	impossible_auto["results"][0]["outcome"]="automatic_failure"
+	impossible_auto["results"][0]["roll_id"]=null
+	impossible_auto["rolls"]=[]
+	expect(not RAW.stored_receipt_usable(impossible_auto),"Automatic failure of ability check accepted on replay")
 	var roll = check_receipt["rolls"][0]
 	expect(roll["mode"]=="normal" and roll["values"].size()==1 and roll["total"]==roll["selected"]+6 and roll["target"]==15 and roll["result"]==("success" if roll["total"]>=15 else "failure"),"Incorrect check receipt")
 	expect(engine.snapshot(id).get("elapsed_seconds")==7260,"Check time not committed")

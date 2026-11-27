@@ -80,6 +80,8 @@ func receipt_by_id(id: String, turn_id: String) -> Dictionary:
 		return failure("Stored receipt revision or event provenance mismatch.")
 	var event = JSON.parse_string(row["event_payload"])
 	var modern = not receipt["effects"].is_empty() and receipt["effects"].back().get("kind")=="time"
+	if modern and not RAW.stored_receipt_usable(receipt):
+		return failure("Stored mechanical receipt is inconsistent.")
 	if not event is Dictionary or (event.has("turn_id") and event["turn_id"]!=turn_id) or (modern and event.get("turn_id")!=turn_id):
 		return failure("Stored receipt event identity mismatch.")
 	var narration_id = DTO.sql_int(row["narration_event_id"])

@@ -152,8 +152,8 @@ func resolve(id: String, token: Dictionary, request_id: String, turn_id: String,
 	if not prior.get("ok",false):
 		return prior
 	if prior.get("found",false):
-		if prior["receipt"]["actor_id"]!=token.get("actor_id"):
-			return RAW.fail("Stored receipt actor mismatch.","invalid")
+		if prior["receipt"]["actor_id"]!=token.get("actor_id") or not RAW.stored_receipt_usable(prior["receipt"]):
+			return RAW.fail("Stored receipt requires review; no new roll.","invalid")
 		if unresolved.has(id) and unresolved[id]["receipt"]["turn_id"]==turn_id:
 			unresolved.erase(id)
 		return {"ok":true,"replayed":true,"receipt":prior["receipt"],"narration_event_id":prior["narration_event_id"]}

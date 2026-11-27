@@ -248,6 +248,60 @@ static func receipt_valid(receipt: Variant, current: Dictionary, cat) -> bool:
 		return actor_check.get("ok",false) and segment["from_id"]==current["location_id"] and segment["to_id"]==result["destination_id"] and segment["route_id"]==result["route_id"] and seconds!=null and segment["elapsed_seconds"]==seconds and time["seconds"]==seconds and result["passive_perception"]==actor_check["passive_perception"]-(5 if result["pace"]=="fast" else 0) and valid_refs(receipt["rule_refs"],refs_for(kind),cat)
 	return false
 
+# Validate a persisted B2 receipt's self-consistency without reconstructing
+# old actor state, rerolling, querying a provider or re-adjudicating a turn.
+static func stored_receipt_usable(value: Variant) -> bool:
+	if not DTO.receipt_valid(value) or value["results"].size()!=1 or value["effects"].is_empty() or value["effects"].back().get("kind")!="time":
+		return false
+	var time = value["effects"].back()
+	if time["establish_clock"] and time["seconds"]==null:
+		return false
+	var action = value["results"][0]
+	var kind = action.get("kind")
+	if not kind in HANDLERS:
+		return false
+	var expected: Array = []
+	if kind in ["ability_check","saving_throw"]:
+		if not DTO.exact_keys(action,["kind","ability","skill","dc","advantage","disadvantage","mode","outcome","roll_id"]) or not action["ability"] in ABILITIES or not DTO.whole(action["dc"]) or not action["advantage"] is bool or not action["disadvantage"] is bool or not action["mode"] in ["normal","advantage","disadvantage"] or value["effects"].size()!=1:
+			return false
+		if (action["skill"]!=null and not DTO.bounded_text(action["skill"],100)) or (kind=="saving_throw" and action["skill"]!=null):
+			return false
+		expected=refs_for(kind,action["ability"],action["skill"])
+		if action["outcome"]=="automatic_failure":
+			if kind!="saving_throw" or not action["ability"] in ["str","dex"] or action["roll_id"]!=null or not value["rolls"].is_empty():
+				return false
+		else:
+			if not action["outcome"] in ["success","failure"] or value["rolls"].size()!=1:
+				return false
+			var roll = value["rolls"][0]
+			if not DTO.whole(roll.get("modifier"),-5,30) or not roll_valid(roll,kind,action["mode"],int(roll["modifier"]),int(action["dc"])) or roll["roll_id"]!=action["roll_id"] or roll["result"]!=action["outcome"]:
+				return false
+	elif kind in ["move","travel"]:
+		if not DTO.exact_keys(action,["kind","outcome","pace","difficult","fast_travel","passive_perception","route_id","destination_id"]) or action["outcome"]!="arrived" or not PACE.has(action["pace"]) or not action["difficult"] is bool or not action["fast_travel"] is bool or not DTO.whole(action["passive_perception"],-5,40) or not DTO.id_valid(action["route_id"]) or not DTO.id_valid(action["destination_id"]) or not value["rolls"].is_empty() or value["effects"].size()!=2 or not DTO.movement_valid(value["effects"][0]) or value["effects"][0]["segments"].size()!=1:
+			return false
+		var segment = value["effects"][0]["segments"][0]
+		var seconds = travel_seconds(segment["distance_miles"],action["pace"],action["difficult"])
+		if seconds==null or segment["elapsed_seconds"]!=seconds or time["seconds"]!=seconds or segment["to_id"]!=action["destination_id"] or segment["route_id"]!=action["route_id"]:
+			return false
+		expected=refs_for(kind)
+	else:
+		if not DTO.exact_keys(action,["kind","outcome"]) or action["outcome"]!="completed" or not value["rolls"].is_empty() or value["effects"].size()!=1 or (kind=="wait" and not DTO.whole(time["seconds"],1,MAX_WALK_SECONDS)):
+			return false
+		expected=refs_for(kind)
+	# Base references are mandatory; historical condition context cannot be
+	# recomputed from the post-turn actor. Validate extra reference shape only.
+	var seen: Array = []
+	for ref in value["rule_refs"]:
+		if not DTO.exact_keys(ref,["category","id","ruleset","revision"]) or not ref["category"] in ["rule-sections","skills","ability-scores","conditions"] or not DTO.bounded_text(ref["id"],100) or ref["ruleset"]!=CAT.RULESET or ref["revision"]!=CAT.REVISION or ref in seen:
+			return false
+		if not ref in expected and (not kind in ["ability_check","saving_throw"] or ref["category"]!="conditions" or not ref["id"] in CONDITIONS+["exhaustion"]):
+			return false
+		seen.append(ref)
+	for ref in expected:
+		if not ref in seen:
+			return false
+	return true
+
 static func summary(receipt: Dictionary) -> String:
 	var action = receipt["results"][0]
 	match action["kind"]:
