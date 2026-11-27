@@ -22,7 +22,7 @@ var fullscreen = true
 const NAV = {
 	"Main": ["Player", "Campaign", "Settings", "Full Screen", "Exit"],
 	"Settings": ["Set and Store API", "Edit AI Prompts", "Edit Content Rules", "Rules Library", "Rules Catalogue", "Update from GitHub", "Return to Main"],
-	"Player Manager": ["Generate Character", "Create New", "Manage Players", "Exit"],
+	"Player Manager": ["Create New", "Manage Players", "Exit"],
 	"Campaign Manager": ["New Campaign", "Existing Campaigns"]
 }
 const RULES = preload("res://rules/library.gd")
@@ -35,6 +35,7 @@ const MANAGER = preload("res://players/character_manager.gd")
 const BROWSER = preload("res://rules/catalog_browser.gd")
 const CAMPAIGN = preload("res://campaigns/campaign_manager.gd")
 const MATURITY = preload("res://campaigns/maturity_profiles.gd")
+const NARRATOR = preload("res://campaigns/narrator_prompt.gd")
 var editing_record: Dictionary = {}
 var browser_return: String = "Settings"
 var library = RULES.new()
@@ -59,6 +60,11 @@ func _ready() -> void:
 	theme = imported_theme
 	version = FileAccess.get_file_as_string("res://version.txt").strip_edges()
 	config.load(CONFIG_PATH)
+	var prompt_error = NARRATOR.seed_default()
+	if prompt_error.is_empty():
+		config.load(CONFIG_PATH)
+	else:
+		push_warning(prompt_error)
 	fullscreen = bool(config.get_value("display", "fullscreen", false))
 	if OS.get_cmdline_user_args().has("recovery-windowed") or DisplayServer.get_name() == "headless":
 		fullscreen = false
@@ -153,9 +159,9 @@ func show_screen(name: String) -> void:
 			backdrop.texture = scenery
 		else:
 			backdrop.texture = load("res://art/" + ("forest" if art == "hall" else art) + ".svg")
-	if name in ["Create New","Generate Character","Edit Character"]:
+	if name in ["Create New","Edit Character"]:
 		var creator = CREATOR.new()
-		creator.configure(name=="Generate Character",func(): show_screen("Player Manager"),func(): show_screen("Manage Players"),editing_record if name=="Edit Character" else {})
+		creator.configure(false,func(): show_screen("Player Manager"),func(): show_screen("Manage Players"),editing_record if name=="Edit Character" else {})
 		creator.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		screen.add_child(creator)
 		creator.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -185,7 +191,7 @@ func show_screen(name: String) -> void:
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	margin.add_theme_constant_override("margin_left", 220 if painted_title else 120)
 	margin.add_theme_constant_override("margin_top", 226 if painted_title else 64)
-	margin.add_theme_constant_override("margin_right", 100 if name in ["Create New", "Generate Character", "Rules Library", "Master Reference","Edit Content Rules"] else 540)
+	margin.add_theme_constant_override("margin_right", 100 if name in ["Create New", "Generate Character", "Rules Library", "Master Reference","Edit Content Rules","Edit AI Prompts"] else 540)
 	margin.add_theme_constant_override("margin_bottom", 44)
 	var scroll = ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -369,43 +375,79 @@ func prompt_screen(menu: VBoxContainer) -> void:
 	var role = OptionButton.new()
 	for item in ["Scene", "Interpreter", "Brief", "Narrator", "Write-back", "NPC"]:
 		role.add_item(item)
+	role.select(3)
 	menu.add_child(role)
 	var editor = TextEdit.new()
-	editor.custom_minimum_size.y = 220
-	editor.text = str(config.get_value("prompts", role.get_item_text(0), ""))
-	menu.add_child(editor)
-	role.item_selected.connect(func(i: int):
-		editor.text = str(config.get_value("prompts", role.get_item_text(i), "")))
-	var note = make_label("Local prompt editor; runtime integration pending.", 17)
-	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	menu.add_child(menu_button("Save Selected Prompt", func():
-		config.set_value("prompts", role.get_item_text(role.selected), editor.text)
-		note.text = "Saved locally." if config.save(CONFIG_PATH) == OK else "Save failed."))
-	menu.add_child(note)
-	menu.add_child(menu_button("Return to Settings", func(): show_screen("Settings")))
-
-func content_rules_screen(menu: VBoxContainer) -> void:
-	var intro = make_label("Campaign maturity profiles. Edit the approved profile definitions here; changes are read by campaigns using their stable profile IDs.",19)
-	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	menu.add_child(intro)
-	var editor = TextEdit.new()
-	editor.custom_minimum_size.y = 270
+	editor.custom_minimum_size.y = 310
 	editor.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
-	var profiles = MATURITY.load_profiles()
-	editor.text = JSON.stringify(profiles,"  ")
-	editor.placeholder_text = MATURITY.EXAMPLE
+	editor.text = NARRATOR.load_prompt()
 	menu.add_child(editor)
-	var note = make_label("No built-in maturity policy has been assumed. Supply your approved definitions.",17)
+	var note = make_label("Narrator guidance is editable. Godot authority and audience safeguards remain mandatory.",17)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	menu.add_child(note)
-	menu.add_child(menu_button("Save Content Rules",func():
-		var parsed = JSON.parse_string(editor.text)
-		var error = MATURITY.save_profiles(parsed)
+	var reset = menu_button("Reset Narrator to Default",func():
+		var error = NARRATOR.reset_prompt()
 		if error.is_empty():
 			config.load(CONFIG_PATH)
-			note.text="Saved locally. Campaigns resolve the current profile by ID."
+			editor.text = NARRATOR.load_prompt()
+		note.text = "Narrator default restored." if error.is_empty() else error)
+	role.item_selected.connect(func(i: int):
+		var key = role.get_item_text(i)
+		editor.text = NARRATOR.load_prompt() if key == "Narrator" else str(config.get_value("prompts",key,""))
+		reset.disabled = key != "Narrator"
+		note.text = "Editing "+key+". Save before switching roles.")
+	menu.add_child(menu_button("Save Selected Prompt",func():
+		var key = role.get_item_text(role.selected)
+		if key == "Narrator":
+			var error = NARRATOR.save_prompt(editor.text)
+			if error.is_empty():
+				config.load(CONFIG_PATH)
+				editor.text = NARRATOR.load_prompt()
+			note.text = "Saved locally." if error.is_empty() else error
 		else:
-			note.text=error))
+			var loaded = config.load(CONFIG_PATH)
+			if loaded != OK and loaded != ERR_FILE_NOT_FOUND:
+				note.text = "Cannot read settings; not overwritten."
+				return
+			config.set_value("prompts",key,editor.text)
+			note.text = "Saved locally." if config.save(CONFIG_PATH) == OK else "Save failed."))
+	menu.add_child(reset)
+	menu.add_child(note)
+	menu.add_child(menu_button("Return to Settings",func(): show_screen("Settings")))
+
+func content_rules_screen(menu: VBoxContainer) -> void:
+	var intro = make_label("Choose an audience profile and edit its guidance. Mandatory audience and provider safeguards remain in force.",19)
+	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	menu.add_child(intro)
+	var profiles = MATURITY.selectable_profiles()
+	var picker = OptionButton.new()
+	for profile in profiles:
+		picker.add_item(str(profile["name"]))
+		picker.set_item_metadata(picker.item_count-1,profile["id"])
+	picker.select(MATURITY.IDS.find(MATURITY.DEFAULT_ID))
+	menu.add_child(picker)
+	var editor = TextEdit.new()
+	editor.custom_minimum_size.y = 245
+	editor.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	editor.text = str(MATURITY.resolve(MATURITY.DEFAULT_ID)["instructions"])
+	menu.add_child(editor)
+	var note = make_label("Changes apply to campaigns using this profile ID. Save before switching profiles.",17)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	picker.item_selected.connect(func(i: int):
+		editor.text = str(MATURITY.resolve(str(picker.get_item_metadata(i)))["instructions"])
+		note.text = "Editing "+picker.get_item_text(i)+".")
+	menu.add_child(menu_button("Save Content Rules",func():
+		var error = MATURITY.save_guidance(str(picker.get_item_metadata(picker.selected)),editor.text)
+		if error.is_empty():
+			config.load(CONFIG_PATH)
+		note.text = "Saved locally." if error.is_empty() else error))
+	menu.add_child(menu_button("Reset Selected Profile",func():
+		var id = str(picker.get_item_metadata(picker.selected))
+		var error = MATURITY.reset_guidance(id)
+		if error.is_empty():
+			config.load(CONFIG_PATH)
+			editor.text = str(MATURITY.resolve(id)["instructions"])
+		note.text = "Default restored." if error.is_empty() else error))
+	menu.add_child(note)
 	menu.add_child(menu_button("Return to Settings",func(): show_screen("Settings")))
 	menu.add_child(menu_button("Return to Campaign",func(): show_screen("New Campaign")))
 

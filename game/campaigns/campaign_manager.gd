@@ -24,6 +24,7 @@ var selected_player = ""
 var selected_start = "tavern"
 var title_input: LineEdit
 var maturity_choice: OptionButton
+var adult_confirmation: CheckBox
 var synopsis: TextEdit
 var note: Label
 var resume_button: Button
@@ -48,7 +49,7 @@ func _ready() -> void:
 	gemini.completed.connect(art_received)
 	render.call_deferred()
 
-func surface(opacity: float = 0.73) -> StyleBoxFlat:
+func surface(opacity: float = 0.58) -> StyleBoxFlat:
 	var style = StyleBoxFlat.new()
 	style.bg_color = Color(0.035,0.065,0.115,opacity)
 	style.border_color = Color(0.82,0.62,0.32,0.88)
@@ -171,7 +172,8 @@ func render() -> void:
 			show_note(listing_error)
 	elif mode=="new":
 		action(nav,"Content Rules",func(): settings_action.call())
-		var begin = action(nav,"Begin Adventure",create)
+		var begin = action(nav,"Create Campaign",create)
+		begin.tooltip_text = "Save the campaign and open its opening workspace. Gameplay is not implemented yet."
 		begin.disabled = profiles.is_empty() or players.is_empty()
 		if profiles.is_empty():
 			show_note("Configure maturity profiles in Content Rules first.")
@@ -243,7 +245,7 @@ func update_library() -> void:
 	for i in range(roster_buttons.size()):
 		roster_buttons[i].set_pressed_no_signal(rows[i]["id"]==active["id"])
 	var profile = MATURITY.resolve(str(active.get("maturity_id","")))
-	var maturity_name = str(profile.get("name",active.get("maturity_name","Unknown")))
+	var maturity_name = str(profile.get("name","Standard (fallback: unknown or missing profile)"))
 	synopsis.text = str(active["title"])+"\n\nCharacter: "+str(active.get("player_name",""))+"\nOpening: "+str(active.get("start_name",""))+"\nMaturity: "+maturity_name+"\nTurn: "+str(active.get("turn",0))+"\n\nAdventure Synopsis\n────────────────\n\n"+store.synopsis(str(active["id"]))
 	synopsis.scroll_vertical=0
 	if is_instance_valid(resume_button): resume_button.disabled=false
@@ -280,17 +282,22 @@ func build_new(parent: Container) -> void:
 	title_input.custom_minimum_size.y = 38
 	title_input.add_theme_stylebox_override("normal",surface(0.84))
 	right.add_child(title_input)
-	profiles = MATURITY.load_profiles()
+	profiles = MATURITY.selectable_profiles()
 	maturity_choice = OptionButton.new()
 	maturity_choice.custom_minimum_size.y=38
 	maturity_choice.add_theme_stylebox_override("normal",surface(0.84))
-	maturity_choice.add_item("Select Maturity")
-	maturity_choice.set_item_disabled(0,true)
 	for profile in profiles:
 		maturity_choice.add_item(str(profile["name"]))
 		maturity_choice.set_item_metadata(maturity_choice.item_count-1,profile["id"])
-	maturity_choice.select(0)
+	maturity_choice.select(MATURITY.IDS.find(MATURITY.DEFAULT_ID))
 	right.add_child(maturity_choice)
+	adult_confirmation = CheckBox.new()
+	adult_confirmation.text = "I confirm everyone at this table is an adult (18+)."
+	adult_confirmation.visible = false
+	right.add_child(adult_confirmation)
+	maturity_choice.item_selected.connect(func(i: int):
+		adult_confirmation.set_pressed_no_signal(false)
+		adult_confirmation.visible = MATURITY.needs_adult_confirmation(str(maturity_choice.get_item_metadata(i))))
 	right.add_child(text_label("Choose Your Opening",23,true))
 	var grid = GridContainer.new()
 	grid.columns = 3
@@ -315,10 +322,13 @@ func select_start(id: String) -> void:
 func create() -> void:
 	if not pending_campaign.is_empty():
 		return
-	if maturity_choice.selected<=0:
+	if maturity_choice.selected<0:
 		show_note("Select a maturity profile.")
 		return
 	var profile_id = str(maturity_choice.get_item_metadata(maturity_choice.selected))
+	if MATURITY.needs_adult_confirmation(profile_id) and not adult_confirmation.button_pressed:
+		show_note("Confirm an adult table before creating a Mature campaign.")
+		return
 	var record = store.create_campaign(title_input.text,selected_player,selected_start,profile_id)
 	if record.is_empty():
 		show_note(store.last_error)
