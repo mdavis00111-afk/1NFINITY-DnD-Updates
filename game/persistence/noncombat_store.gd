@@ -450,7 +450,8 @@ func consume(id: String,req: Dictionary,clearance: Dictionary) -> Dictionary:
 		return fail("Consumable unavailable or equipped.")
 	var item=pack["items"][iid]
 	var def=pack["definitions"][iid]
-	if not official(def) or not HEALING.has(def.get("catalog_id")) or item["condition"] in ["damaged","broken"] or item["charges"]!=null or item["attunement"]=="attuned":
+	var ration=def.get("catalog_category")=="equipment" and def.get("catalog_id")=="rations-1-day"
+	if not official(def) or (not ration and not HEALING.has(def.get("catalog_id"))) or item["condition"] in ["damaged","broken"] or item["charges"]!=null or item["attunement"]=="attuned":
 		return fail("Unsupported item effect or ambiguous potion potency.")
 	var commands=owned_guards(pack)
 	if item["quantity"]==1:
@@ -461,6 +462,11 @@ func consume(id: String,req: Dictionary,clearance: Dictionary) -> Dictionary:
 		item["quantity"]-=1
 		commands.append(SQL.stmt("UPDATE item_instances SET quantity=quantity-1 WHERE id=?",[iid]))
 	var actor=pack["actor"].duplicate(true)
+	if ration:
+		commands.append_array(mirror_commands(pack,actor))
+		# Quantity and event only; no invented hydration/exhaustion cure.
+		action_seconds=600
+		return _commit(ctx,commands,{"kind":"item_use","instance_id":iid,"definition_id":def["id"],"consumed":1,"rolls":[],"food_ration":1,"rule_refs":[RAW.rule_ref("the-environment"),{"category":"equipment","id":def["catalog_id"],"ruleset":CAT.RULESET,"revision":CAT.REVISION}]},"One daily ration consumed.")
 	var dice_spec=HEALING[def["catalog_id"]]
 	var dice=healing_dice(dice_spec[0],dice_spec[1],dice_spec[2])
 	var restored=heal(actor,dice)
@@ -486,9 +492,13 @@ func slots_valid(actor: Dictionary) -> bool:
 	var sp = actor.get("spellcasting")
 	if not sp is Dictionary or not sp.get("slots") is Dictionary or not sp.get("pact_magic") is bool:
 		return false
+	var role=actor.get("class_id","")
+	var maximum=1 if role=="warlock" else (2 if role in ["bard","cleric","druid","sorcerer","wizard"] else 0)
+	if sp["pact_magic"]!=(role=="warlock") or sp["slots"].size()!=9:
+		return false
 	for key in sp["slots"]:
 		var slot = sp["slots"][key]
-		if not key is String or not key.is_valid_int() or not DTO.whole(int(key),1,9) or not slot is Dictionary or not DTO.whole(slot.get("maximum"),0,4) or not DTO.whole(slot.get("spent"),0,int(slot["maximum"])):
+		if not key is String or not key.is_valid_int() or not DTO.whole(int(key),1,9) or not slot is Dictionary or slot.get("maximum")!=(maximum if key=="1" else 0) or not DTO.whole(slot.get("spent"),0,int(slot["maximum"])):
 			return false
 	return true
 
@@ -796,3 +806,35 @@ func prepare_spells(id: String,req: Dictionary,clearance: Dictionary) -> Diction
 	actor["spellcasting"]["prepared_ids"]=plan["prepared_ids"]
 	action_seconds=plan["seconds"]
 	return _commit(ctx,[SQL.stmt("UPDATE actors SET payload=? WHERE id=?",[JSON.stringify(actor),state["actor_id"]])],{"kind":kind,"prepared_ids":plan["prepared_ids"],"rule_refs":[RAW.rule_ref("resting"),RAW.rule_ref("casting-a-spell")]},"Prepared spell list updated.")
+
+# State of a mundane, unlocked/unobstructed door or container, established
+# by C2 as a disclosed fact with identity_key beginning "object:". Not a
+# lockpick, trap, damage, magical effect or a fabricated encounter outcome.
+func object_interact(id: String,req: Dictionary,clearance: Dictionary) -> Dictionary:
+	var ctx=begin(id,req,"object_interact",["object_id","operation","source_event_id"])
+	if not ctx.get("ok",false) or ctx.get("replayed",false):
+		return ctx
+	if not allowed(ctx,clearance,"object_interaction"):
+		return fail("Verified safe unlocked/unobstructed object access required.")
+	var a=req["args"]
+	var state=ctx["state"]
+	var evidence=source(state,a["source_event_id"])
+	if not DTO.id_valid(a["object_id"]) or not a["operation"] in ["open","close"] or not public_source(evidence) or (evidence["data"].get("location_id")!=state["location_id"] and (evidence["kind"]!="campaign_created" or state["turn"]!=0)):
+		return fail("Established local object evidence required.")
+	var readback=read(state,[SQL.stmt("SELECT * FROM story_records WHERE id=? AND kind='circumstance' AND identity_key LIKE 'object:%' AND certainty='fact' AND visibility='player' AND location_id=? AND status IN ('open','closed')",[a["object_id"],state["location_id"]]),SQL.stmt("SELECT actor_id,role FROM story_participants WHERE record_id=? ORDER BY actor_id,role",[a["object_id"]])])
+	if not readback.get("ok",false) or readback["sets"][0].size()!=1:
+		return fail("Object identity or physical state not established.")
+	var old=readback["sets"][0][0]
+	var status="open" if a["operation"]=="open" else "closed"
+	if old["status"]==status:
+		return _reuse(ctx,{"kind":"object_interact","object_id":a["object_id"],"status":status,"changed":false},DTO.sql_int(old["updated_event_id"]))
+	var rid=req["request_id"]
+	var snapshot={"record_id":old["id"],"identity_key":old["identity_key"],"kind":"circumstance","title":old["title"],"description":old["description"],"status":status,"visibility":"player","certainty":"fact","location_id":old["location_id"],"parent_id":null,"source_event_id":a["source_event_id"],"progress_current":null,"progress_max":null,"participants":readback["sets"][1]}
+	var commands=[
+		SQL.stmt("INSERT INTO meta(key,value) VALUES('c3_object_guard',(SELECT 'ok' FROM story_records WHERE id=? AND identity_key=? AND status=? AND updated_event_id=? AND location_id=? AND visibility='player' AND certainty='fact'))",[old["id"],old["identity_key"],old["status"],old["updated_event_id"],state["location_id"]]),
+		SQL.stmt("UPDATE story_records SET status=?,updated_event_id="+EVENT+" WHERE id=?",[status,rid,old["id"]]),
+		SQL.stmt("INSERT INTO story_history(record_id,event_id,request_id,snapshot) VALUES(?,"+EVENT+",?,?)",[old["id"],rid,rid,JSON.stringify(snapshot)]),
+		SQL.stmt("DELETE FROM meta WHERE key='c3_object_guard'")
+	]
+	action_seconds=6
+	return _commit(ctx,commands,{"kind":"object_interact","object_id":old["id"],"status":status,"changed":true,"rolls":[],"rule_refs":[RAW.rule_ref("objects"),RAW.rule_ref("time")]},"Object is now "+status+".")

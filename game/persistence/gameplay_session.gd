@@ -124,7 +124,10 @@ func _commit(context: Dictionary,commands: Array,result_data: Dictionary,message
 		if prior.get("found",false) and prior["request"]==request and prior["status"]=="committed":
 			return {"ok":true,"replayed":true,"result":prior["result"],"revision":prior["revision"]}
 		return fail("Transaction rejected or unconfirmed; look up request before retry.")
-	return {"ok":true,"replayed":false,"result":result_data,"revision":state["revision"]+1}
+	var confirmed=settlement(id,rid)
+	if not confirmed.get("found",false) or confirmed["request"]!=request or confirmed["status"]!="committed":
+		return fail("Transaction acknowledged but settlement readback unavailable; recover by request ID.")
+	return {"ok":true,"replayed":false,"result":confirmed["result"],"revision":confirmed["revision"],"event_id":confirmed["event_id"]}
 
 # C3/C4 durable adoption only. A local controller must first validate the exact
 # v1 intent and assign a logical turn. This does not run mechanics or narrate.

@@ -79,6 +79,7 @@ func prepare(token: Dictionary, turn_id: String, action: Dictionary, approval: V
 	var receipt = {"schema_version":"1","campaign_id":token["campaign_id"],"actor_id":token["actor_id"],"turn_id":turn_id,"prior_revision":token["revision"],"next_revision":token["revision"]+1,"resulting_turn":token["turn"]+1,"results":[],"rolls":[],"effects":[],"rule_refs":[]}
 	var result: Dictionary = {}
 	var time: Dictionary = {}
+	var validation_token=token.duplicate(false)
 	if kind in ["ability_check","saving_throw"]:
 		if not DTO.exact_keys(ruling,["difficulty","effect_dc","advantage","disadvantage","seconds","establish_clock","optional_features_resolved"]) or not ruling["advantage"] is bool or not ruling["disadvantage"] is bool or not ruling["establish_clock"] is bool or not ruling["optional_features_resolved"] is bool or ruling["optional_features_resolved"]!=true:
 			return RAW.fail("Check/save needs a locally approved challenge, circumstances and feature handling.","clarification")
@@ -115,6 +116,7 @@ func prepare(token: Dictionary, turn_id: String, action: Dictionary, approval: V
 		var load=store.travel_load(token)
 		if not load.get("ok",false):
 			return load
+		validation_token["c2_load"]=load["load"]
 		var actor = RAW.travel_actor(token["actor"],token["inventory"],cat,load["load"])
 		if not actor.get("ok",false):
 			return actor
@@ -140,7 +142,7 @@ func prepare(token: Dictionary, turn_id: String, action: Dictionary, approval: V
 		return RAW.fail("Handler unavailable.")
 	receipt["results"].append(result)
 	receipt["effects"].append(time)
-	if not RAW.receipt_valid(receipt,token,cat):
+	if not RAW.receipt_valid(receipt,validation_token,cat):
 		return RAW.fail("Mechanical plan did not satisfy the registered receipt contract.")
 	return {"ok":true,"receipt":receipt}
 
