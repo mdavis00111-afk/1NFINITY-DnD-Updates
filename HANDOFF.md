@@ -10,10 +10,11 @@ Live release 0.0.21; immutable source 871746df1760f7b5b502688e6b327141682be1e2. 
 | Base | 5dbb2285190bbd27e7edf9611519dc52da15bcd5 (coordination commit follows) |
 | Feature branch | feature/p0-windows-gui-feedback |
 | Write scope | creator, manager, full sheet, relevant presentation assets/helpers, layout tests, GUI docs, Brain |
-| Last remote implementation checkpoint | None yet |
+| Last remote implementation checkpoint | Creator checkpoint (current feature branch commit; resolve branch ref) |
 | Release authorization | Not granted |
 | Tests | Pending; Godot executable unavailable in current container |
-| Next action | Implement and review scoped changes; preserve 0.0.21 channel |
+| Next action | Implement fixed-scale manager/portrait roster and full-sheet fallback; adapt layout tests and review creator. |
 
 Owner requests: fixed 70% sheet size (no zoom controls), left saved character portrait list, manager controls bottom-left; centered identity fields with in-field prompts rather than duplicate labels, fewer heavy black nested boxes, sample portrait default, Generate with AI fills description/personality/ideal/bond/flaw/backstory only, all ability score cards visible before choosing method, verify Godot random dice, compact in-bounds selection dropdowns and bounded wrapped tooltips. Compare approved images and supplied menu font exemplar; preserve data and mechanics. No unrelated changes.
+Checkpoint changed game/players/character_creator.gd and portrait_art.gd. Runtime validation not executed; existing layout suite still targets old picker/AI contracts until next checkpoint.
 Previous handoff history is retained in Git. Coordinate one writer, push checkpoints, recheck branch heads; do not publish without authorization.

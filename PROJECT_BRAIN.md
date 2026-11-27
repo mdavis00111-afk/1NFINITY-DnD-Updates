@@ -135,6 +135,9 @@ The lead assigns disjoint write scopes and uses read-only investigations for ove
 
 The playtest packages the creator and sheet reconstruction from `5282fac`. Godot and the production Windows SQLite bridge, updater, and save storage keep their existing contracts. Linux import, startup, smoke checks with a test-only SQLite transport, and two-resolution captures are recorded in TESTING.md. Windows visual acceptance, the stock SQLite adapter, updater staging and rollback, and save preservation through upgrade remain open. The live channel is authoritative for the published version.
 
+## P0-02 Windows GUI follow-up (feature checkpoint, not released)
+- Creator in-field labels and centered single-line fields; lighter translucent surfaces, less nested stat-card framing, pre-roll placeholders; bounded embedded searchable picker and wrapped button tips. Generate with AI requests and validates six editable prose-only fields atomically, no mechanical values. Existing roll_scores uses Godot randi_range(1,6) 24 times per six-score generation, drops lowest per roll and records dice. This is engine PRNG, not Gemini; no change to mechanical code. New portrait_art.gd crops existing approved sheet image as a display-only fallback, never overwrites custom portraits. Manager/sheet/test adaptation pending at this checkpoint. No Godot runtime available in this environment.
+
 ## Shared coordination
 - HANDOFF.md records current ownership, checkpoint and next action. docs/UI.md, docs/RULES.md, docs/WORLD.md and docs/AI.md index live subsystem contracts and outstanding work. Follow AGENTS.md shared development policy. No automatic chat dispatch or guaranteed recovery of unpushed work.
 
