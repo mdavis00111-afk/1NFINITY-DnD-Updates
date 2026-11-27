@@ -90,7 +90,7 @@ func menu_button(value: String, action: Callable) -> Button:
 	glow.visible = false
 	b.add_child(glow)
 	glow.position = Vector2(0, 39)
-	glow.size = Vector2(150, 2)
+	glow.size = Vector2(178, 2)
 	b.mouse_entered.connect(func():
 		glow.visible = true
 		b.add_theme_color_override("font_outline_color", Color("#a96419"))
@@ -120,23 +120,23 @@ func show_screen(name: String) -> void:
 		art = "forest"
 	elif name == "Campaign Manager" or name in NAV["Campaign Manager"]:
 		art = "valley"
-	var custom_art = "user://art/" + art + ".jpg"
-	var custom_png = "user://art/" + art + ".png"
-	if FileAccess.file_exists(custom_png):
-		custom_art = custom_png
-	if FileAccess.file_exists(custom_art):
-		var img = Image.load_from_file(custom_art)
-		if not img.is_empty():
-			backdrop.texture = ImageTexture.create_from_image(img)
-		else:
-			backdrop.texture = load("res://art/" + art + ".svg")
-	else:
+	var painted_title = false
+	var art_loaded = false
+	for candidate in ["res://art/" + art + ".png", "res://art/" + art + ".jpg", "user://art/" + art + ".png", "user://art/" + art + ".jpg"]:
+		if FileAccess.file_exists(candidate):
+			var img = Image.load_from_file(candidate)
+			if not img.is_empty():
+				backdrop.texture = ImageTexture.create_from_image(img)
+				art_loaded = true
+				painted_title = name == "Main"
+				break
+	if not art_loaded:
 		backdrop.texture = load("res://art/" + art + ".svg")
 	var margin = MarginContainer.new()
 	screen.add_child(margin)
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 120)
-	margin.add_theme_constant_override("margin_top", 64)
+	margin.add_theme_constant_override("margin_left", 220 if painted_title else 120)
+	margin.add_theme_constant_override("margin_top", 226 if painted_title else 64)
 	margin.add_theme_constant_override("margin_right", 540)
 	margin.add_theme_constant_override("margin_bottom", 44)
 	var scroll = ScrollContainer.new()
@@ -147,9 +147,12 @@ func show_screen(name: String) -> void:
 	menu.add_theme_constant_override("separation", 8)
 	scroll.add_child(menu)
 	var title = make_label("1NFINITY D&D" if name == "Main" else name, 54 if name == "Main" else 36)
-	menu.add_child(title)
-	if name == "Main":
-		menu.add_child(make_label("────────  ∞  ────────", 28))
+	if not painted_title:
+		menu.add_child(title)
+		if name == "Main":
+			menu.add_child(make_label("────────  ∞  ────────", 28))
+	else:
+		title.free()
 	var footer = make_label("v" + version + " dev build", 12, Color(0.67, 0.57, 0.37, 0.65))
 	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	screen.add_child(footer)
