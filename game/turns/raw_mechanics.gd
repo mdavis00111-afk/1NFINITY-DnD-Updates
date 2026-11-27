@@ -8,6 +8,9 @@ const DISPLAY = preload("res://gameplay/display_values.gd")
 const ABILITIES = ["str","dex","con","int","wis","cha"]
 const DIFFICULTY = {"very_easy":5,"easy":10,"medium":15,"hard":20,"very_hard":25,"nearly_impossible":30}
 const PACE = {"slow":2,"normal":3,"fast":4}
+# Hourly route legs only. The PHB daily column differs from hourly
+# approximations; do not extrapolate fast pace to 32 miles/day.
+const DAILY_MILES = {"slow":18,"normal":24,"fast":30}
 const MAX_WALK_SECONDS = 28800
 const HANDLERS = ["ability_check","saving_throw","observe","wait","move","travel"]
 const CONDITIONS = ["blinded","charmed","deafened","frightened","grappled","incapacitated","invisible","paralyzed","petrified","poisoned","prone","restrained","stunned","unconscious"]
@@ -21,7 +24,7 @@ static func rule_ref(id: String, category: String = "rule-sections") -> Dictiona
 static func ref_valid(ref: Variant, cat) -> bool:
 	return DTO.exact_keys(ref,["category","id","ruleset","revision"]) and ref["category"] in ["rule-sections","skills","ability-scores","conditions"] and DTO.bounded_text(ref["id"],100) and ref["ruleset"]==CAT.RULESET and ref["revision"]==CAT.REVISION and not cat.get_record(ref["category"],ref["id"]).is_empty()
 
-static func refs_for(kind: String, ability: String = "", skill: Variant = null) -> Array:
+static func refs_for(kind: String, ability: String = "", skill: Variant = null, actor: Dictionary = {}) -> Array:
 	var refs: Array = []
 	if kind in ["ability_check","saving_throw"]:
 		for id in ["ability-scores-and-modifiers","proficiency-bonus","advantage-and-disadvantage","ability-checks" if kind=="ability_check" else "saving-throws","time"]:
@@ -29,6 +32,12 @@ static func refs_for(kind: String, ability: String = "", skill: Variant = null) 
 		refs.append(rule_ref(ability,"ability-scores"))
 		if skill!=null:
 			refs.append(rule_ref(str(skill),"skills"))
+		var combat = actor.get("combat",{})
+		for condition in CONDITIONS:
+			if condition in combat.get("conditions",[]):
+				refs.append(rule_ref(condition,"conditions"))
+		if int(combat.get("exhaustion",0))>0:
+			refs.append(rule_ref("exhaustion","conditions"))
 	elif kind in ["travel","move"]:
 		refs = [rule_ref("movement"),rule_ref("time")]
 	else:
@@ -36,7 +45,7 @@ static func refs_for(kind: String, ability: String = "", skill: Variant = null) 
 	return refs
 
 static func valid_refs(refs: Variant, expected: Array, cat) -> bool:
-	if not refs is Array or refs!=expected:
+	if not refs is Array or refs!=expected or not cat.initialize():
 		return false
 	for ref in refs:
 		if not ref_valid(ref,cat):
@@ -95,7 +104,7 @@ static func modifier_for(actor: Dictionary, kind: String, ability: String, skill
 		if entry.get("proficient")!=trained or entry.get("expertise")!=expert or (expert and not trained):
 			return fail("Skill proficiency state inconsistent.")
 		var default_ability = rule.get("ability_score",{}).get("index")
-		if not default_ability in ABILITIES or entry.get("ability")!=default_ability or not DTO.whole(modifiers.get(default_ability),-5,10):
+		if not default_ability in ABILITIES or entry.get("ability")!=default_ability or not DTO.whole(scores.get(default_ability),1,30) or not DTO.whole(modifiers.get(default_ability),-5,10) or modifiers[default_ability]!=floori((int(scores[default_ability])-10)/2.0):
 			return fail("Skill ability or saved modifier unavailable.")
 		var extra = int(pb)*(2 if expert else (1 if trained else 0))
 		if not DTO.whole(entry.get("modifier"),-5,30) or entry["modifier"]!=int(modifiers[default_ability])+extra:
@@ -111,6 +120,12 @@ static func roll_context(actor: Dictionary, kind: String, ability: String, advan
 	var combat = actor["combat"]
 	var conditions: Array = combat["conditions"]
 	var exhaustion = int(combat["exhaustion"])
+	var equipment = actor.get("equipment",{})
+	if not equipment is Dictionary:
+		return fail("Equipment state requires review.")
+	# PHB p. 144: nonproficient armor imposes disadvantage on STR/DEX checks/saves.
+	if ability in ["str","dex"] and equipment.get("armor_penalty",false)==true:
+		disadvantage=true
 	var auto_fail = false
 	for condition in ["paralyzed","petrified","stunned","unconscious"]:
 		if condition in conditions and kind=="saving_throw" and ability in ["str","dex"]:
@@ -172,7 +187,7 @@ static func time_after(effect: Dictionary,current: Dictionary) -> Variant:
 	return int(current["elapsed_seconds"])+int(effect["seconds"])
 
 static func travel_seconds(distance: Variant, pace: String, difficult: bool) -> Variant:
-	if not DTO.number(distance,0.000001,32.0) or not PACE.has(pace):
+	if not PACE.has(pace) or not DTO.number(distance,0.000001,float(DAILY_MILES[pace])):
 		return null
 	var seconds = ceili(float(distance)*3600.0/float(PACE[pace])*(2.0 if difficult else 1.0))
 	return seconds if DTO.whole(seconds,1,MAX_WALK_SECONDS) else null
@@ -181,10 +196,14 @@ static func travel_actor(actor: Dictionary, inventory: Array, cat) -> Dictionary
 	if not actor_ready(actor):
 		return fail("Actor is not able to undertake supported travel.")
 	var combat = actor["combat"]
-	if not DTO.whole(combat.get("speed_feet"),1,60) or combat["exhaustion"]!=0 or not combat["conditions"].is_empty():
+	if not combat.get("speed_feet") in [25,30,35] or combat["exhaustion"]!=0 or not combat["conditions"].is_empty():
 		return fail("Travel with conditions, exhaustion or unknown speed requires another handler.")
-	if not DTO.whole(combat.get("passive_perception"),0,40) or not DTO.number(actor.get("carrying_capacity_lb"),0,100000):
-		return fail("Missing passive perception or carrying capacity.")
+	var scores = actor.get("ability_scores")
+	if not scores is Dictionary:
+		return fail("Ability scores unavailable.")
+	var strength = scores.get("str")
+	if not DTO.whole(combat.get("passive_perception"),0,40) or not DTO.whole(strength,1,30) or not combat.get("size") in ["Small","Medium"] or not DTO.number(actor.get("carrying_capacity_lb"),0,100000) or actor["carrying_capacity_lb"]!=int(strength)*15:
+		return fail("Passive perception, size or carrying capacity requires review.")
 	var load = DISPLAY.weight_summary(cat,inventory,actor.get("coins"))
 	if not load.get("complete",false) or float(load["known_lb"])>float(actor["carrying_capacity_lb"]):
 		return fail("Travel load is incomplete or exceeds carrying capacity.")
@@ -207,7 +226,7 @@ static func receipt_valid(receipt: Variant, current: Dictionary, cat) -> bool:
 		if not mod.get("ok",false):
 			return false
 		var context = roll_context(current["actor"],kind,result["ability"],result["advantage"],result["disadvantage"])
-		if not context.get("ok",false) or result["mode"]!=context["mode"] or not valid_refs(receipt["rule_refs"],refs_for(kind,result["ability"],result["skill"]),cat):
+		if not context.get("ok",false) or result["mode"]!=context["mode"] or not valid_refs(receipt["rule_refs"],refs_for(kind,result["ability"],result["skill"],current["actor"]),cat):
 			return false
 		if context["automatic_failure"]:
 			return result["roll_id"]==null and result["outcome"]=="automatic_failure" and receipt["rolls"].is_empty()
@@ -216,7 +235,7 @@ static func receipt_valid(receipt: Variant, current: Dictionary, cat) -> bool:
 		var roll = receipt["rolls"][0]
 		return roll_valid(roll,kind,context["mode"],mod["modifier"],int(result["dc"])) and result["roll_id"]==roll["roll_id"] and result["outcome"]==roll["result"]
 	if kind in ["observe","wait"]:
-		return DTO.exact_keys(result,["kind","outcome"]) and result["outcome"]=="completed" and receipt["rolls"].is_empty() and receipt["effects"].size()==1 and (kind!="wait" or (time["seconds"]!=null and time["seconds"]>0)) and valid_refs(receipt["rule_refs"],refs_for(kind),cat)
+		return actor_ready(current["actor"]) and not "unconscious" in current["actor"]["combat"]["conditions"] and DTO.exact_keys(result,["kind","outcome"]) and result["outcome"]=="completed" and receipt["rolls"].is_empty() and receipt["effects"].size()==1 and (kind!="wait" or (time["seconds"]!=null and time["seconds"]>0)) and valid_refs(receipt["rule_refs"],refs_for(kind),cat)
 	if kind in ["move","travel"]:
 		if not DTO.exact_keys(result,["kind","outcome","pace","difficult","fast_travel","passive_perception","route_id","destination_id"]) or result["outcome"]!="arrived" or not result["difficult"] is bool or not result["fast_travel"] is bool or not PACE.has(result["pace"]) or receipt["effects"].size()!=2 or not receipt["rolls"].is_empty() or not DTO.id_valid(result["route_id"]) or not DTO.id_valid(result["destination_id"]):
 			return false

@@ -88,7 +88,7 @@ func prepare(token: Dictionary, turn_id: String, action: Dictionary, approval: V
 		if not context.get("ok",false):
 			return context
 		time=time_effect(ruling["seconds"],ruling["establish_clock"])
-		receipt["rule_refs"]=RAW.refs_for(kind,args["ability"],args["skill"])
+		receipt["rule_refs"]=RAW.refs_for(kind,args["ability"],args["skill"],token["actor"])
 		if not RAW.time_valid(time,token) or not RAW.valid_refs(receipt["rule_refs"],receipt["rule_refs"],cat):
 			return RAW.fail("Time or required rules are unavailable.")
 		result={"kind":kind,"ability":args["ability"],"skill":args["skill"],"dc":dc,"advantage":ruling["advantage"],"disadvantage":ruling["disadvantage"],"mode":context["mode"],"outcome":"automatic_failure","roll_id":null}
@@ -148,6 +148,11 @@ func resolve(id: String, token: Dictionary, request_id: String, turn_id: String,
 		var pending = unresolved[id]
 		if pending["receipt"]["turn_id"]!=turn_id:
 			return RAW.fail("An unconfirmed receipt must be reconciled before another turn.")
+		var latest = store.snapshot(id)
+		if not latest.get("ok",false):
+			return latest
+		if not store.matching_token(pending["token"],latest):
+			return RAW.fail("Uncommitted receipt is stale; explicitly abandon it before replanning.")
 		var retry = store.commit_receipt(id,pending["token"],pending["receipt"])
 		if retry.get("ok",false):
 			unresolved.erase(id)
@@ -166,3 +171,16 @@ func resolve(id: String, token: Dictionary, request_id: String, turn_id: String,
 	if committed.get("ok",false):
 		unresolved.erase(id)
 	return committed
+
+# Local explicit abandon, only after successful lookup proves there is no
+# committed receipt. Caller must use a new logical ID for a new action.
+func abandon_uncommitted(id: String, turn_id: String) -> Dictionary:
+	if not unresolved.has(id) or unresolved[id]["receipt"]["turn_id"]!=turn_id:
+		return RAW.fail("No matching prepared receipt.")
+	var prior = store.receipt_by_id(id,turn_id)
+	if not prior.get("ok",false):
+		return prior
+	if prior.get("found",false):
+		return RAW.fail("Receipt already committed; resume narration instead.")
+	unresolved.erase(id)
+	return {"ok":true,"abandoned_turn_id":turn_id}

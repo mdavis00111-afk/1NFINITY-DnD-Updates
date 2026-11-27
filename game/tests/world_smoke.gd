@@ -7,6 +7,9 @@ const MIGRATION = preload("res://world/world_migration.gd")
 const DTO = preload("res://world/world_dto.gd")
 const WORLD = preload("res://world/world_store.gd")
 const TURN = preload("res://turns/turn_store.gd")
+const RAW = preload("res://turns/raw_mechanics.gd")
+const RESOLVER = preload("res://turns/turn_resolver.gd")
+const CAT = preload("res://rules/catalog.gd")
 var failures: Array[String] = []
 
 func _initialize() -> void:
@@ -22,6 +25,15 @@ func finish() -> void:
 	print("World/turn smoke failures: ",failures.size())
 	quit(0 if failures.is_empty() else 1)
 
+func action_packet(token: Dictionary, request_id: String, turn_id: String, action: Dictionary) -> Dictionary:
+	return {"schema_version":"1","request_id":request_id,"turn_id":turn_id,"campaign_id":token["campaign_id"],"actor_id":token["actor_id"],"expected_revision":token["revision"],"status":"proposed","actions":[action],"clarification":null,"rule_refs":action["reference_refs"]}
+
+func local_approval(token: Dictionary, turn_id: String, action: Dictionary, ruling: Dictionary) -> Dictionary:
+	return {"campaign_id":token["campaign_id"],"actor_id":token["actor_id"],"turn_id":turn_id,"expected_revision":token["revision"],"action":action,"ruling":ruling}
+
+func travel_action(route: String, dest: String, fast: bool) -> Dictionary:
+	return {"handler_id":"travel","target_refs":[{"kind":"location","id":dest}],"reference_refs":RAW.refs_for("travel"),"intent_text":"Walk to the chosen location","arguments":{"route_id":route,"destination_id":dest,"pace":"normal","fast_travel":fast}}
+
 func run() -> void:
 	var expected = OS.get_environment("INFINITY_TEST_USER_ROOT").replace("\\","/").trim_suffix("/")
 	var actual = ProjectSettings.globalize_path("user://").replace("\\","/").trim_suffix("/")
@@ -31,7 +43,7 @@ func run() -> void:
 		return
 	var players = PLAYER.new()
 	var master_id = players.make_id()
-	var error = players.save_record({"id":master_id,"name":"World fixture","status":"ready","ruleset":"5e-2014-2018","level":1,"inventory":[{"item_id":"dagger","quantity":2,"equipped":true}],"combat":{"hp_current":7,"hp_max":8}})
+	var error = players.save_record({"id":master_id,"name":"World fixture","status":"ready","ruleset":"5e-2014-2018","level":1,"ability_scores":{"str":10,"dex":14,"con":12,"int":10,"wis":12,"cha":10},"ability_modifiers":{"str":0,"dex":2,"con":1,"int":0,"wis":1,"cha":0},"proficiency_bonus":2,"proficiency_ids":["skill-stealth","saving-throw-dex"],"expertise_ids":["skill-stealth"],"skills":{"stealth":{"ability":"dex","proficient":true,"expertise":true,"modifier":6}},"saving_throws":{"str":0,"dex":4,"con":1,"int":0,"wis":1,"cha":0},"coins":{"pp":0,"gp":10,"ep":0,"sp":0,"cp":0},"carrying_capacity_lb":150,"equipment":{"armor_penalty":false},"inventory":[{"item_id":"dagger","quantity":2,"equipped":true}],"combat":{"hp_current":7,"hp_max":8,"speed_feet":30,"size":"Medium","passive_perception":11,"conditions":[],"exhaustion":0,"active_effects":[]}})
 	expect(error.is_empty(),"Master fixture save failed")
 	if not error.is_empty():
 		finish()
@@ -106,27 +118,121 @@ func run() -> void:
 	if not token.get("ok",false):
 		finish()
 		return
+	var resolver = RESOLVER.new()
+	var catalogue = CAT.new()
+	expect(RAW.selected_die([2,19],"advantage")==19 and RAW.selected_die([2,19],"disadvantage")==2 and RAW.selected_die([20],"normal")==20 and RAW.selected_die([1.5],"normal")==null,"d20 selection invalid")
+	expect(RAW.travel_seconds(3.0,"normal",false)==3600 and RAW.travel_seconds(3.0,"normal",true)==7200 and RAW.travel_seconds(4.0,"fast",false)==3600 and RAW.travel_seconds(2.0,"slow",false)==3600 and RAW.travel_seconds(32.0,"fast",false)==null,"PHB hourly pace invalid")
+	var mod = RAW.modifier_for(token["actor"],"ability_check","dex","stealth",catalogue)
+	expect(mod.get("modifier")==6,"Expertise not doubled exactly once")
+	expect(RAW.modifier_for(token["actor"],"ability_check","str","stealth",catalogue).get("modifier")==4,"Alternate ability skill check wrong")
+	expect(RAW.modifier_for(token["actor"],"saving_throw","dex",null,catalogue).get("modifier")==4,"Save proficiency wrong")
+	expect(RAW.roll_context(token["actor"],"ability_check","dex",true,true).get("mode")=="normal","Advantage/disadvantage did not cancel")
+	var conditioned = token["actor"].duplicate(true)
+	conditioned["combat"]["conditions"]=["poisoned"]
+	expect(RAW.roll_context(conditioned,"ability_check","dex",false,false).get("mode")=="disadvantage","Poison condition missing")
+	conditioned["combat"]["conditions"]=["paralyzed"]
+	expect(RAW.roll_context(conditioned,"saving_throw","dex",false,false).get("automatic_failure")==true,"Automatic failure missing")
 	var turn_id = players.make_id()
-	var receipt = {"schema_version":"1","campaign_id":id,"actor_id":actor_id,"turn_id":turn_id,"prior_revision":token["revision"],"next_revision":token["revision"]+1,"resulting_turn":token["turn"]+1,"results":[],"rolls":[],"effects":[{"kind":"movement","segments":[{"from_id":at,"to_id":bridge,"route_id":route,"distance_miles":3,"elapsed_seconds":null,"precision":"approximate","points":[{"x":0,"y":0},{"x":0,"y":3}]}]}],"rule_refs":[]}
-	var invalid = receipt.duplicate(true)
-	invalid["effects"][0]["segments"][0]["points"][1]["y"]=4
-	expect(not engine.commit_receipt(id,token,invalid).get("ok",false),"Unestablished geometry committed")
-	expect(not engine.receipt_by_id(id,turn_id).get("found",false) and engine.snapshot(id)["location_id"]==at,"Failed receipt changed state")
+	var request_id = players.make_id()
+	var action = travel_action(route,bridge,false)
+	var ruling = {"difficult":false,"clearance":"verified_unobstructed_supplied_foot_travel","establish_clock":true}
+	var packet = action_packet(token,request_id,turn_id,action)
+	var approval = local_approval(token,turn_id,action,ruling)
+	var first_fast = travel_action(route,bridge,true)
+	expect(not resolver.prepare(token,turn_id,first_fast,local_approval(token,turn_id,first_fast,ruling)).get("ok",false),"Untraversed fast route accepted")
+	var invalid = packet.duplicate(true)
+	invalid["actions"][0]["arguments"]["distance_miles"]=99
+	expect(not resolver.resolve(id,token,request_id,turn_id,invalid,action["reference_refs"],approval).get("ok",false),"Provider distance accepted")
+	expect(not resolver.resolve(id,token,request_id,turn_id,packet,action["reference_refs"],{}).get("ok",false),"Travel without local approval accepted")
+	var prepared = resolver.prepare(token,turn_id,action,approval)
+	expect(prepared.get("ok",false),"Travel plan failed: "+str(prepared.get("error","")))
+	if not prepared.get("ok",false):
+		finish()
+		return
+	var receipt = prepared["receipt"]
+	var bad_geometry = receipt.duplicate(true)
+	bad_geometry["effects"][0]["segments"][0]["points"][1]["y"]=4
+	expect(not engine.commit_receipt(id,token,bad_geometry).get("ok",false),"Unestablished geometry committed")
 	expect(not engine.commit_receipt(b["id"],token,receipt).get("ok",false),"Wrong campaign receipt accepted")
-	expect(engine.commit_receipt(id,token,receipt).get("ok",false),"Resolved movement commit failed")
-	expect(engine.commit_receipt(id,token,receipt).get("replayed",false),"Receipt retry not idempotent")
-	var stored = engine.receipt_by_id(id,turn_id)
-	expect(stored.get("found",false) and stored.get("receipt")==receipt,"Committed receipt unavailable")
+	expect(not engine.receipt_by_id(id,turn_id).get("found",false) and engine.snapshot(id)["location_id"]==at,"Rejected receipt changed state")
+	var trigger = SQL.run(path,[SQL.stmt("CREATE TRIGGER b2_test_abort BEFORE INSERT ON movement_points BEGIN SELECT RAISE(ABORT,'fixture'); END")])
+	expect(trigger.get("ok",false),"Rollback fixture setup failed")
+	var rejected = resolver.resolve(id,token,request_id,turn_id,packet,action["reference_refs"],approval)
+	expect(not rejected.get("ok",false),"Injected movement failure committed")
+	expect(not engine.receipt_by_id(id,turn_id).get("found",false) and engine.snapshot(id)["location_id"]==at and engine.snapshot(id)["elapsed_seconds"]==null,"Movement rollback incomplete")
+	expect(SQL.run(path,[SQL.stmt("DROP TRIGGER b2_test_abort")]).get("ok",false),"Rollback trigger removal failed")
+	var cached = resolver.unresolved.get(id,{}).get("receipt",{}).duplicate(true)
+	var committed = resolver.resolve(id,token,request_id,turn_id,packet,action["reference_refs"],approval)
+	expect(committed.get("ok",false) and committed.get("receipt")==cached,"Retry did not preserve prepared receipt")
+	if not committed.get("ok",false):
+		finish()
+		return
+	receipt=committed["receipt"]
+	expect(engine.snapshot(id).get("elapsed_seconds")==3600,"Clock was not established from approved travel")
+	expect(resolver.resolve(id,token,request_id,turn_id,packet,action["reference_refs"],approval).get("replayed",false),"Receipt retry not idempotent")
 	var after = world.map_view(id)
 	expect(after.get("travel",[]).size()==1 and after.get("travel_points",[]).size()==2 and after.get("party_location",{}).get("id")==bridge and after.get("party_location",{}).get("status")=="visited","Actual path or visited state not committed")
 	expect(engine.commit_narration(id,turn_id,1,"The stone bridge is ahead.").get("ok",false),"Narration commit failed")
 	expect(not engine.commit_narration(id,turn_id,1,"Duplicate").get("ok",false),"Duplicate narration accepted")
-	expect(TURN.new().snapshot(id).get("revision")==2 and TURN.new().snapshot(id).get("pending_turn_id")==null,"Reopened revision wrong")
-	expect(BASE.new().actor_record(id).get("combat")==original_actor.get("combat"),"Movement changed HP")
+	token=engine.snapshot(id)
+	expect(token.get("revision")==2 and token.get("pending_turn_id")==null,"Reopened revision wrong")
+	turn_id=players.make_id()
+	request_id=players.make_id()
+	action=travel_action(route,at,true)
+	ruling["establish_clock"]=false
+	packet=action_packet(token,request_id,turn_id,action)
+	approval=local_approval(token,turn_id,action,ruling)
+	var ordinary = travel_action(route,at,false)
+	var same_path = resolver.prepare(token,turn_id,ordinary,local_approval(token,turn_id,ordinary,ruling))
+	var fast_path = resolver.prepare(token,turn_id,action,approval)
+	expect(same_path.get("ok",false) and fast_path.get("ok",false) and same_path["receipt"]["effects"]==fast_path["receipt"]["effects"],"Fast travel changed time or path")
+	var back = resolver.resolve(id,token,request_id,turn_id,packet,action["reference_refs"],approval)
+	expect(back.get("ok",false) and engine.snapshot(id).get("elapsed_seconds")==7200 and engine.snapshot(id).get("location_id")==at,"Return journey failed")
+	if not back.get("ok",false):
+		finish()
+		return
+	expect(engine.commit_narration(id,turn_id,3,"Back at the inn.").get("ok",false),"Return narration failed")
+	token=engine.snapshot(id)
+	turn_id=players.make_id()
+	request_id=players.make_id()
+	var refs = RAW.refs_for("ability_check","dex","stealth")
+	action={"handler_id":"ability_check","target_refs":[],"reference_refs":refs,"intent_text":"Sneak past the obstruction","arguments":{"ability":"dex","skill":"stealth"}}
+	packet=action_packet(token,request_id,turn_id,action)
+	ruling={"difficulty":"medium","effect_dc":null,"advantage":true,"disadvantage":true,"seconds":60,"establish_clock":false,"optional_features_resolved":true}
+	approval=local_approval(token,turn_id,action,ruling)
+	var checked = resolver.resolve(id,token,request_id,turn_id,packet,refs,approval)
+	expect(checked.get("ok",false),"Ability check failed: "+str(checked.get("error","")))
+	if not checked.get("ok",false):
+		finish()
+		return
+	var check_receipt = checked["receipt"]
+	var roll = check_receipt["rolls"][0]
+	expect(roll["mode"]=="normal" and roll["values"].size()==1 and roll["total"]==roll["selected"]+6 and roll["target"]==15 and roll["result"]==("success" if roll["total"]>=15 else "failure"),"Incorrect check receipt")
+	expect(engine.snapshot(id).get("elapsed_seconds")==7260,"Check time not committed")
+	expect(resolver.resolve(id,token,request_id,turn_id,packet,refs,approval).get("receipt")==check_receipt,"Committed check rerolled")
+	expect(engine.commit_narration(id,turn_id,5,"The check is resolved.").get("ok",false),"Check narration failed")
+	token=engine.snapshot(id)
+	turn_id=players.make_id()
+	request_id=players.make_id()
+	refs=RAW.refs_for("saving_throw","dex",null)
+	action={"handler_id":"saving_throw","target_refs":[],"reference_refs":refs,"intent_text":"Resolve the approved Dexterity save","arguments":{"ability":"dex","skill":null}}
+	packet=action_packet(token,request_id,turn_id,action)
+	ruling={"difficulty":null,"effect_dc":12,"advantage":false,"disadvantage":true,"seconds":6,"establish_clock":false,"optional_features_resolved":true}
+	approval=local_approval(token,turn_id,action,ruling)
+	var saved = resolver.resolve(id,token,request_id,turn_id,packet,refs,approval)
+	expect(saved.get("ok",false),"Saving throw failed")
+	if not saved.get("ok",false):
+		finish()
+		return
+	roll=saved["receipt"]["rolls"][0]
+	expect(roll["mode"]=="disadvantage" and roll["values"].size()==2 and roll["selected"]==mini(int(roll["values"][0]),int(roll["values"][1])) and roll["total"]==roll["selected"]+4,"Save receipt wrong")
+	expect(engine.commit_narration(id,turn_id,7,"The saving throw is resolved.").get("ok",false),"Save narration failed")
+	expect(engine.snapshot(id).get("elapsed_seconds")==7266,"Saving throw time not committed")
+	expect(BASE.new().actor_record(id).get("combat")==original_actor.get("combat"),"Resolution changed HP")
 	expect(BASE.new().gameplay_view(b["id"])==sibling and players.load_record(master_id)==original_master,"Sibling or master changed")
 	var integrity = SQL.run(path,[SQL.stmt("PRAGMA integrity_check"),SQL.stmt("PRAGMA foreign_key_check"),SQL.stmt("SELECT quantity FROM inventory WHERE actor_id=?",[actor_id])],true)
 	expect(integrity.get("ok",false) and integrity["results"][0][0].get("integrity_check")=="ok" and integrity["results"][1].is_empty() and int(integrity["results"][2][0]["quantity"])==2,"Integrity or inventory preservation failed")
-	var proposal = {"schema_version":"1","request_id":players.make_id(),"turn_id":turn_id,"campaign_id":id,"actor_id":actor_id,"expected_revision":2,"source_event_id":null,"facts":[{"kind":"discovery","subject":{"id":bridge,"local_key":null},"entity_kind":"place","status":"observed","visibility":"player","evidence":"The stone bridge is ahead."}]}
+	var proposal = {"schema_version":"1","request_id":players.make_id(),"turn_id":turn_id,"campaign_id":id,"actor_id":actor_id,"expected_revision":8,"source_event_id":null,"facts":[{"kind":"discovery","subject":{"id":bridge,"local_key":null},"entity_kind":"place","status":"observed","visibility":"player","evidence":"The stone bridge is ahead."}]}
 	expect(DTO.geography_proposal_valid(proposal),"Valid descriptive proposal shape rejected")
 	proposal["facts"][0]["status"]="visited"
 	expect(not DTO.geography_proposal_valid(proposal),"Interpreter allowed to declare actual visit")

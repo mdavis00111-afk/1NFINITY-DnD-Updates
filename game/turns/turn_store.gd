@@ -98,13 +98,16 @@ func route_context(id: String, token: Dictionary, route_id: String, destination:
 		SQL.stmt("SELECT r.id,r.from_id,r.to_id,r.kind,r.precision,r.distance_miles,d.status AS route_status,fa.precision AS from_precision,fb.precision AS to_precision,a.x AS from_x,a.y AS from_y,b.x AS to_x,b.y AS to_y FROM world_routes r JOIN world_discovery d ON d.route_id=r.id JOIN world_discovery da ON da.location_id=r.from_id JOIN world_discovery db ON db.location_id=r.to_id JOIN world_places fa ON fa.location_id=r.from_id JOIN world_places fb ON fb.location_id=r.to_id JOIN locations a ON a.id=r.from_id JOIN locations b ON b.id=r.to_id WHERE r.id=? AND ((r.from_id=? AND r.to_id=?) OR (r.to_id=? AND r.from_id=?)) AND d.visibility='player' AND d.status<>'unknown' AND da.visibility='player' AND da.status<>'unknown' AND db.visibility='player' AND db.status<>'unknown'",[route_id,token["location_id"],destination,token["location_id"],destination]),
 		SQL.stmt("SELECT seq,x,y FROM route_points WHERE route_id=? ORDER BY seq",[route_id]),
 		SQL.stmt("SELECT COALESCE(sum(elapsed_seconds),0) AS walked,count(*)-count(elapsed_seconds) AS unknown_time,COALESCE(sum(CASE WHEN route_id=? THEN 1 ELSE 0 END),0) AS prior_traversals FROM movement_history WHERE actor_id=?",[route_id,token["actor_id"]]),
+		SQL.stmt("SELECT count(*) AS unresolved FROM encounters WHERE status NOT IN ('resolved','completed','closed','defeated')"),
 		SQL.stmt("COMMIT")
 	],true)
 	if not result.get("ok",false):
 		return failure("Route context unavailable.")
 	var sets: Array = result["results"]
-	if sets.size()!=6 or sets[1].size()!=1 or sets[2].size()!=1 or sets[4].size()!=1 or sets[1][0]["campaign_id"]!=id or DTO.sql_int(sets[1][0]["revision"])!=token["revision"] or DTO.sql_int(sets[1][0]["turn_number"])!=token["turn"]:
+	if sets.size()!=7 or sets[1].size()!=1 or sets[2].size()!=1 or sets[4].size()!=1 or sets[5].size()!=1 or sets[1][0]["campaign_id"]!=id or DTO.sql_int(sets[1][0]["revision"])!=token["revision"] or DTO.sql_int(sets[1][0]["turn_number"])!=token["turn"]:
 		return failure("Route is unknown, hidden, not connected, or stale.")
+	if DTO.sql_int(sets[5][0]["unresolved"])!=0:
+		return failure("An unresolved encounter requires ordinary adjudication before any travel.")
 	var row = sets[2][0]
 	var distance = DTO.sql_number(row["distance_miles"])
 	var walked = DTO.sql_int(sets[4][0]["walked"])
@@ -137,7 +140,7 @@ func inventory_guards(token: Dictionary) -> Array:
 
 func route_guards(token: Dictionary, route: Dictionary) -> Array:
 	var row = route["row"]
-	var commands: Array = [SQL.stmt("INSERT INTO meta(key,value) VALUES('turn_route_guard',(SELECT 'ok' FROM world_routes r JOIN world_discovery d ON d.route_id=r.id JOIN world_discovery a ON a.location_id=r.from_id JOIN world_discovery b ON b.location_id=r.to_id WHERE r.id=? AND r.from_id=? AND r.to_id=? AND r.kind=? AND r.precision=? AND r.distance_miles=CAST(? AS REAL) AND d.visibility='player' AND d.status=? AND a.visibility='player' AND a.status<>'unknown' AND b.visibility='player' AND b.status<>'unknown' AND (SELECT count(*) FROM route_points WHERE route_id=r.id)=CAST(? AS INTEGER) AND (SELECT COALESCE(sum(elapsed_seconds),0) FROM movement_history WHERE actor_id=?)=CAST(? AS INTEGER) AND NOT EXISTS(SELECT 1 FROM movement_history WHERE actor_id=? AND elapsed_seconds IS NULL)))",[row["id"],row["from_id"],row["to_id"],row["kind"],row["precision"],row["distance_miles"],row["route_status"],route["point_rows"].size(),token["actor_id"],route["walked"],token["actor_id"]]),SQL.stmt("DELETE FROM meta WHERE key='turn_route_guard'")]
+	var commands: Array = [SQL.stmt("INSERT INTO meta(key,value) VALUES('turn_route_guard',(SELECT 'ok' FROM world_routes r JOIN world_discovery d ON d.route_id=r.id JOIN world_discovery a ON a.location_id=r.from_id JOIN world_discovery b ON b.location_id=r.to_id WHERE r.id=? AND r.from_id=? AND r.to_id=? AND r.kind=? AND r.precision=? AND r.distance_miles=CAST(? AS REAL) AND d.visibility='player' AND d.status=? AND a.visibility='player' AND a.status<>'unknown' AND b.visibility='player' AND b.status<>'unknown' AND (SELECT count(*) FROM route_points WHERE route_id=r.id)=CAST(? AS INTEGER) AND (SELECT COALESCE(sum(elapsed_seconds),0) FROM movement_history WHERE actor_id=?)=CAST(? AS INTEGER) AND NOT EXISTS(SELECT 1 FROM movement_history WHERE actor_id=? AND elapsed_seconds IS NULL) AND NOT EXISTS(SELECT 1 FROM encounters WHERE status NOT IN ('resolved','completed','closed','defeated')) AND (SELECT count(*) FROM movement_history WHERE actor_id=? AND route_id=r.id)=CAST(? AS INTEGER)))",[row["id"],row["from_id"],row["to_id"],row["kind"],row["precision"],row["distance_miles"],row["route_status"],route["point_rows"].size(),token["actor_id"],route["walked"],token["actor_id"],token["actor_id"],route["prior_traversals"]]),SQL.stmt("DELETE FROM meta WHERE key='turn_route_guard'")]
 	for point in route["point_rows"]:
 		commands.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('turn_route_guard',(SELECT 'ok' FROM route_points WHERE route_id=? AND seq=CAST(? AS INTEGER) AND x=CAST(? AS REAL) AND y=CAST(? AS REAL)))",[row["id"],point["seq"],point["x"],point["y"]]))
 		commands.append(SQL.stmt("DELETE FROM meta WHERE key='turn_route_guard'"))
@@ -204,6 +207,7 @@ func commit_receipt(id: String, token: Dictionary, receipt: Dictionary) -> Dicti
 					commands.append(SQL.stmt("INSERT INTO movement_points(turn_id,segment_seq,seq,x,y) VALUES(?,?,?,?,?)",[turn_id,i,p,points[p]["x"],points[p]["y"]]))
 				commands.append(SQL.stmt("DELETE FROM meta WHERE key='movement_geometry_guard'"))
 			location_id=segment["to_id"]
+			commands.append(SQL.stmt("UPDATE world_discovery SET status=CASE WHEN status='surveyed' THEN status ELSE 'visited' END,last_visit_event_id=(SELECT event_id FROM turn_receipts WHERE turn_id=?) WHERE route_id=? AND visibility='player'",[turn_id,segment["route_id"]]))
 			# Actual arrival is evidence of visit. Preserve surveyed and first discovery.
 			commands.append(SQL.stmt("UPDATE world_discovery SET status=CASE WHEN status='surveyed' THEN status ELSE 'visited' END,visibility='player',first_event_id=COALESCE(first_event_id,(SELECT event_id FROM turn_receipts WHERE turn_id=?)),last_visit_event_id=(SELECT event_id FROM turn_receipts WHERE turn_id=?) WHERE location_id=?",[turn_id,turn_id,location_id]))
 			commands.append(SQL.stmt("INSERT INTO world_discovery(id,location_id,status,visibility,first_event_id,last_visit_event_id) SELECT ?,?,'visited','player',event_id,event_id FROM turn_receipts WHERE turn_id=? AND NOT EXISTS(SELECT 1 FROM world_discovery WHERE location_id=?)",[Crypto.new().generate_random_bytes(16).hex_encode(),location_id,turn_id,location_id]))
@@ -232,6 +236,7 @@ func commit_narration(id: String, turn_id: String, revision: int, text: String) 
 	var state = snapshot(id)
 	if not state.get("ok",false) or state["revision"]!=revision or state["pending_turn_id"]!=turn_id:
 		return failure("Narration is stale, already committed or unavailable.")
-	var commands = [guard(state),SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(?,?,'narration',?)",[state["turn"],"Unspecified",JSON.stringify({"turn_id":turn_id,"text":text})]),SQL.stmt("INSERT INTO turn_narrations(turn_id,event_id,revision) VALUES(?,last_insert_rowid(),?)",[turn_id,revision+1]),SQL.stmt("UPDATE world_state SET revision=?,pending_turn_id=NULL WHERE campaign_id=?",[revision+1,id]),SQL.stmt("DELETE FROM meta WHERE key='turn_write_guard'")]
+	var game_time = "Unspecified" if state["elapsed_seconds"]==null else "Elapsed "+str(state["elapsed_seconds"])+" seconds (tracked epoch)"
+	var commands = [guard(state),SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(?,?,'narration',?)",[state["turn"],game_time,JSON.stringify({"turn_id":turn_id,"text":text})]),SQL.stmt("INSERT INTO turn_narrations(turn_id,event_id,revision) VALUES(?,last_insert_rowid(),?)",[turn_id,revision+1]),SQL.stmt("UPDATE world_state SET revision=?,pending_turn_id=NULL WHERE campaign_id=?",[revision+1,id]),SQL.stmt("DELETE FROM meta WHERE key='turn_write_guard'")]
 	var result = SQL.run(BASE.new().path_for(id),commands)
 	return {"ok":true,"revision":revision+1} if result.get("ok",false) else failure("Narration transaction rejected. Reload receipt before retry.")
