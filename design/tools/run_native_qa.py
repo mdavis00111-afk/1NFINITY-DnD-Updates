@@ -13,6 +13,8 @@ import sys
 import tempfile
 import uuid
 
+from release_safety import validate_paths
+
 SUITES = ('sqlite', 'character', 'layout', 'campaign', 'ai_profile', 'gameplay',
           'world', 'coordinator', 'cartography_assets', 'cartography_renderer', 'persistence', 'noncombat', 'complete_gameplay', 'semantic_integration')
 REQUIRED = {'project.godot', 'main.tscn', 'main.gd', 'version.txt'}
@@ -29,6 +31,9 @@ def blob_hash(data):
 def materialize(repo, ref, project):
     commit = git(repo, 'rev-parse', '--verify', ref + '^{commit}').decode().strip()
     rows = git(repo, 'ls-tree', '-r', '-z', commit, '--', 'game').split(b'\0')
+    # Validate the whole namespace before creating any files (Windows aliases/collisions).
+    validate_paths(row.split(b'\t', 1)[1].decode('ascii').removeprefix('game/')
+                   for row in filter(None, rows))
     inventory, seen = {}, set()
     for row in filter(None, rows):
         meta, raw_path = row.split(b'\t', 1)
