@@ -2302,6 +2302,2086 @@
         "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
         "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
       }
+    },
+    {
+      "id": "terrain.plains.v1",
+      "category": "terrain",
+      "kind": "plains",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.plains.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.plains.v2",
+      "category": "terrain",
+      "kind": "plains",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.plains.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.grasslands.v1",
+      "category": "terrain",
+      "kind": "grasslands",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.grasslands.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.grasslands.v2",
+      "category": "terrain",
+      "kind": "grasslands",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.grasslands.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.rolling_hills.v1",
+      "category": "terrain",
+      "kind": "rolling_hills",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.rolling_hills.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.rolling_hills.v2",
+      "category": "terrain",
+      "kind": "rolling_hills",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.rolling_hills.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.mountain_peak.v1",
+      "category": "terrain",
+      "kind": "mountain_peak",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.mountain_peak.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.mountain_peak.v2",
+      "category": "terrain",
+      "kind": "mountain_peak",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.mountain_peak.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.mountain_range.v1",
+      "category": "terrain",
+      "kind": "mountain_range",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.mountain_range.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.mountain_range.v2",
+      "category": "terrain",
+      "kind": "mountain_range",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.mountain_range.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.snow_mountain.v1",
+      "category": "terrain",
+      "kind": "snow_mountain",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.snow_mountain.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.snow_mountain.v2",
+      "category": "terrain",
+      "kind": "snow_mountain",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.snow_mountain.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.mountain_pass.v1",
+      "category": "terrain",
+      "kind": "mountain_pass",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.mountain_pass.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.mountain_pass.v2",
+      "category": "terrain",
+      "kind": "mountain_pass",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.mountain_pass.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.cliff.v1",
+      "category": "terrain",
+      "kind": "cliff",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.cliff.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.cliff.v2",
+      "category": "terrain",
+      "kind": "cliff",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.cliff.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.valley.v1",
+      "category": "terrain",
+      "kind": "valley",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.valley.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.valley.v2",
+      "category": "terrain",
+      "kind": "valley",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.valley.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.ravine.v1",
+      "category": "terrain",
+      "kind": "ravine",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.ravine.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.ravine.v2",
+      "category": "terrain",
+      "kind": "ravine",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.ravine.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.canyon.v1",
+      "category": "terrain",
+      "kind": "canyon",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.canyon.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.canyon.v2",
+      "category": "terrain",
+      "kind": "canyon",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.canyon.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.plateau.v1",
+      "category": "terrain",
+      "kind": "plateau",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.plateau.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.plateau.v2",
+      "category": "terrain",
+      "kind": "plateau",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.plateau.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.deciduous_forest.v1",
+      "category": "terrain",
+      "kind": "deciduous_forest",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.deciduous_forest.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.deciduous_forest.v2",
+      "category": "terrain",
+      "kind": "deciduous_forest",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.deciduous_forest.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.pine_forest.v1",
+      "category": "terrain",
+      "kind": "pine_forest",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.pine_forest.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.pine_forest.v2",
+      "category": "terrain",
+      "kind": "pine_forest",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.pine_forest.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.dense_forest.v1",
+      "category": "terrain",
+      "kind": "dense_forest",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.dense_forest.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.dense_forest.v2",
+      "category": "terrain",
+      "kind": "dense_forest",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.dense_forest.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.dead_forest.v1",
+      "category": "terrain",
+      "kind": "dead_forest",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.dead_forest.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.dead_forest.v2",
+      "category": "terrain",
+      "kind": "dead_forest",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.dead_forest.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.jungle.v1",
+      "category": "terrain",
+      "kind": "jungle",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.jungle.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.jungle.v2",
+      "category": "terrain",
+      "kind": "jungle",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.jungle.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.swamp.v1",
+      "category": "terrain",
+      "kind": "swamp",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.swamp.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.swamp.v2",
+      "category": "terrain",
+      "kind": "swamp",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.swamp.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.marsh.v1",
+      "category": "terrain",
+      "kind": "marsh",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.marsh.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.marsh.v2",
+      "category": "terrain",
+      "kind": "marsh",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.marsh.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.desert.v1",
+      "category": "terrain",
+      "kind": "desert",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.desert.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.desert.v2",
+      "category": "terrain",
+      "kind": "desert",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.desert.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.dunes.v1",
+      "category": "terrain",
+      "kind": "dunes",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.dunes.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.dunes.v2",
+      "category": "terrain",
+      "kind": "dunes",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.dunes.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.tundra.v1",
+      "category": "terrain",
+      "kind": "tundra",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.tundra.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.tundra.v2",
+      "category": "terrain",
+      "kind": "tundra",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.tundra.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.glacier.v1",
+      "category": "terrain",
+      "kind": "glacier",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.glacier.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.glacier.v2",
+      "category": "terrain",
+      "kind": "glacier",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.glacier.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.volcano.v1",
+      "category": "terrain",
+      "kind": "volcano",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.volcano.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.volcano.v2",
+      "category": "terrain",
+      "kind": "volcano",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.volcano.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.beach.v1",
+      "category": "terrain",
+      "kind": "beach",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.beach.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 110,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "decorative texture/stamp only; actual geographic boundary and route geometry remains renderer-owned",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.beach.v2",
+      "category": "terrain",
+      "kind": "beach",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.beach.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 110,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "decorative texture/stamp only; actual geographic boundary and route geometry remains renderer-owned",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.rocky_coast.v1",
+      "category": "terrain",
+      "kind": "rocky_coast",
+      "variant": "v1",
+      "path": "res://cartography/art/terrain.rocky_coast.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 110,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "decorative texture/stamp only; actual geographic boundary and route geometry remains renderer-owned",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "terrain.rocky_coast.v2",
+      "category": "terrain",
+      "kind": "rocky_coast",
+      "variant": "v2",
+      "path": "res://cartography/art/terrain.rocky_coast.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 110,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "decorative texture/stamp only; actual geographic boundary and route geometry remains renderer-owned",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.ocean.v1",
+      "category": "water",
+      "kind": "ocean",
+      "variant": "v1",
+      "path": "res://cartography/art/water.ocean.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 110,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "decorative texture/stamp only; actual geographic boundary and route geometry remains renderer-owned",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.ocean.v2",
+      "category": "water",
+      "kind": "ocean",
+      "variant": "v2",
+      "path": "res://cartography/art/water.ocean.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 110,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "decorative texture/stamp only; actual geographic boundary and route geometry remains renderer-owned",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.sea.v1",
+      "category": "water",
+      "kind": "sea",
+      "variant": "v1",
+      "path": "res://cartography/art/water.sea.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 110,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "decorative texture/stamp only; actual geographic boundary and route geometry remains renderer-owned",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.sea.v2",
+      "category": "water",
+      "kind": "sea",
+      "variant": "v2",
+      "path": "res://cartography/art/water.sea.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 110,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "decorative texture/stamp only; actual geographic boundary and route geometry remains renderer-owned",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.lake.v1",
+      "category": "water",
+      "kind": "lake",
+      "variant": "v1",
+      "path": "res://cartography/art/water.lake.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 110,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "decorative texture/stamp only; actual geographic boundary and route geometry remains renderer-owned",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.lake.v2",
+      "category": "water",
+      "kind": "lake",
+      "variant": "v2",
+      "path": "res://cartography/art/water.lake.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 110,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "decorative texture/stamp only; actual geographic boundary and route geometry remains renderer-owned",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.pond.v1",
+      "category": "water",
+      "kind": "pond",
+      "variant": "v1",
+      "path": "res://cartography/art/water.pond.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 110,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "decorative texture/stamp only; actual geographic boundary and route geometry remains renderer-owned",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.pond.v2",
+      "category": "water",
+      "kind": "pond",
+      "variant": "v2",
+      "path": "res://cartography/art/water.pond.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 110,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "decorative texture/stamp only; actual geographic boundary and route geometry remains renderer-owned",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.river.v1",
+      "category": "water",
+      "kind": "river",
+      "variant": "v1",
+      "path": "res://cartography/art/water.river.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 110,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "decorative texture/stamp only; actual geographic boundary and route geometry remains renderer-owned",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.river.v2",
+      "category": "water",
+      "kind": "river",
+      "variant": "v2",
+      "path": "res://cartography/art/water.river.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 110,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "decorative texture/stamp only; actual geographic boundary and route geometry remains renderer-owned",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.stream.v1",
+      "category": "water",
+      "kind": "stream",
+      "variant": "v1",
+      "path": "res://cartography/art/water.stream.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 110,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "decorative texture/stamp only; actual geographic boundary and route geometry remains renderer-owned",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.stream.v2",
+      "category": "water",
+      "kind": "stream",
+      "variant": "v2",
+      "path": "res://cartography/art/water.stream.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 110,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "decorative texture/stamp only; actual geographic boundary and route geometry remains renderer-owned",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.waterfall.v1",
+      "category": "water",
+      "kind": "waterfall",
+      "variant": "v1",
+      "path": "res://cartography/art/water.waterfall.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.waterfall.v2",
+      "category": "water",
+      "kind": "waterfall",
+      "variant": "v2",
+      "path": "res://cartography/art/water.waterfall.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.spring.v1",
+      "category": "water",
+      "kind": "spring",
+      "variant": "v1",
+      "path": "res://cartography/art/water.spring.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.spring.v2",
+      "category": "water",
+      "kind": "spring",
+      "variant": "v2",
+      "path": "res://cartography/art/water.spring.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.island.v1",
+      "category": "water",
+      "kind": "island",
+      "variant": "v1",
+      "path": "res://cartography/art/water.island.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.island.v2",
+      "category": "water",
+      "kind": "island",
+      "variant": "v2",
+      "path": "res://cartography/art/water.island.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.archipelago.v1",
+      "category": "water",
+      "kind": "archipelago",
+      "variant": "v1",
+      "path": "res://cartography/art/water.archipelago.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.archipelago.v2",
+      "category": "water",
+      "kind": "archipelago",
+      "variant": "v2",
+      "path": "res://cartography/art/water.archipelago.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.reef.v1",
+      "category": "water",
+      "kind": "reef",
+      "variant": "v1",
+      "path": "res://cartography/art/water.reef.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.reef.v2",
+      "category": "water",
+      "kind": "reef",
+      "variant": "v2",
+      "path": "res://cartography/art/water.reef.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.shipwreck.v1",
+      "category": "water",
+      "kind": "shipwreck",
+      "variant": "v1",
+      "path": "res://cartography/art/water.shipwreck.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.shipwreck.v2",
+      "category": "water",
+      "kind": "shipwreck",
+      "variant": "v2",
+      "path": "res://cartography/art/water.shipwreck.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.ship.v1",
+      "category": "water",
+      "kind": "ship",
+      "variant": "v1",
+      "path": "res://cartography/art/water.ship.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.ship.v2",
+      "category": "water",
+      "kind": "ship",
+      "variant": "v2",
+      "path": "res://cartography/art/water.ship.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.boat.v1",
+      "category": "water",
+      "kind": "boat",
+      "variant": "v1",
+      "path": "res://cartography/art/water.boat.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
+    },
+    {
+      "id": "water.boat.v2",
+      "category": "water",
+      "kind": "boat",
+      "variant": "v2",
+      "path": "res://cartography/art/water.boat.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 82,
+        "min_px": 28,
+        "max_px": 220
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "individual illustration",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
+      }
     }
   ]
 }
