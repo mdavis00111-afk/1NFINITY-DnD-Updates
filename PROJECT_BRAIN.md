@@ -549,3 +549,7 @@ Narration now requests JSON prose plus geography/story/discoveries using existin
 
 ## v0.0.27 checkpoint 3a — direct combined response path
 Removed independent interpretation loop for new actions. Combined narration stages validated geography/story/discoveries directly for reconciliation, binding candidate and verified outcome hashes. Legacy recovery/review paths and contextual fallback remain pending 3b. Local hashes establish identity, not semantic truth of arbitrary prose; mechanical state remains engine-owned. Source anchor checks only; native/provider tests not run. No publication.
+
+
+## v0.0.27 checkpoint 3b.1 — contextual fallback removal
+prepare_review retains direct_safe and exact request/revision validate_assessment authorization; absent evidence now stops safely instead of dispatching adjudicate. Legacy adjudicate stage stops for recovery. No registry or persistence changes. Deferred descriptive actions without existing valid authorization now stop rather than receive an extra provider request; combined deferred evidence support remains outstanding. Source anchor checks passed; native and provider tests not run. Manifest unchanged.

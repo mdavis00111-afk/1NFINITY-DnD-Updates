@@ -723,11 +723,7 @@ func prepare_review(req: Dictionary,resume_stage: String) -> bool:
 			return true
 		stop("clarification",checked.get("error","Contextual review no longer valid."))
 		return false
-	job["review_request"]=req.duplicate(true)
-	job["review_resume"]=resume_stage
-	job["stage"]="adjudicate"
-	if update_active(job):
-		advance.call_deferred()
+	stop("clarification","Combined Rules-Check assessment missing or stale. No unverified action executed.")
 	return false
 
 func advance() -> void:
@@ -737,33 +733,8 @@ func advance() -> void:
 		return
 	var job=active().duplicate(true)
 	if job.get("stage")=="adjudicate":
-		var state=data["state"]
-		var req=job.get("review_request",{})
-		if req.is_empty() or not policy.bound_request(req,job,state):
-			stop("clarification","Contextual request no longer matches current state.")
-			return
-		var context=scene_context(state)
-		if not context.get("ok",false):
-			stop("retry","Contextual scene unavailable.")
-			return
-		var refs: Array=[]
-		for section in REG.TOOLS[req["kind"]][2]:
-			var record=enquiry("rule_record",{"category":"rule-sections","id":section},1)
-			if not record.get("ok",false):
-				stop("clarification","Pinned applicable rule unavailable.")
-				return
-			refs.append(record["data"])
-		var source={}
-		if req["args"].has("source_event_id"):
-			var event=registry.session.source(state,req["args"]["source_event_id"])
-			if registry.session.public_source(event):
-				source={"event_id":req["args"]["source_event_id"],"text":policy.source_text(event)}
-		var pending=job.get("pending_consequence",{})
-		var committed_source=registry.session.source(state,job.get("narration_event_id"))
-		var public_source={}
-		if registry.session.public_source(committed_source):
-			public_source={"event_id":job["narration_event_id"],"text":policy.source_text(committed_source)}
-		ask("adjudicate",job,{"request":req,"original":policy.intent_text(req,job,state),"scene":context["scene"],"rules":refs,"ruling_shape":policy.rule_shape(req),"source":source,"proposed_consequence":{"proposal":pending.get("proposal",{}),"unconfirmed_candidate":pending.get("candidate",{}).get("text","")} if not pending.is_empty() else {},"committed_source":public_source})
+		# Legacy pending assessment cannot authorize a write or restart an obsolete provider stage.
+		stop("clarification","Legacy contextual assessment interrupted. Recover or clarify the pending action.")
 		return
 	super.advance()
 
