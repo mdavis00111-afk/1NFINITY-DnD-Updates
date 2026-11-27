@@ -8,8 +8,8 @@ func _ready() -> void:
 	custom_minimum_size = Vector2(300, 44)
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	add_theme_font_size_override("font_size", 27)
-	add_theme_constant_override("outline_size", 0)
+	add_theme_font_size_override("font_size", 25)
+	add_theme_constant_override("outline_size", 2)
 	flourish = TextureRect.new()
 	flourish.texture = FLOURISH
 	flourish.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -25,7 +25,7 @@ func _ready() -> void:
 	refresh_glow()
 
 func layout_flourish() -> void:
-	var text_width = get_theme_font("font").get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 27).x
+	var text_width = get_theme_font("font").get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 25).x
 	flourish.position = Vector2(-16, size.y - 13)
 	flourish.size = Vector2(minf(size.x + 16, text_width + 32), 20)
 

@@ -20,7 +20,7 @@ var fullscreen = true
 
 const NAV = {
 	"Main": ["Player", "Campaign", "Settings", "Full Screen", "Exit"],
-	"Settings": ["Set and Store API", "Edit AI Prompts", "Edit Content Rules", "Rules Library", "Update from GitHub", "Return to Main"],
+	"Settings": ["Set and Store API", "Edit AI Prompts", "Edit Content Rules", "Rules Library", "Rules Catalogue", "Update from GitHub", "Return to Main"],
 	"Player Manager": ["Generate Character", "Create New", "Manage Players", "Exit"],
 	"Campaign Manager": ["Create New Campaign", "Resume Existing Campaign", "Delete Campaign", "Return to Main"]
 }
@@ -29,6 +29,11 @@ const MASTER = preload("res://rules/master_reference.gd")
 var master = MASTER.new()
 const MECHANICS = preload("res://rules/mechanics.gd")
 const SHEET = preload("res://players/character_sheet.gd")
+const CREATOR = preload("res://players/character_creator.gd")
+const MANAGER = preload("res://players/character_manager.gd")
+const BROWSER = preload("res://rules/catalog_browser.gd")
+var editing_record: Dictionary = {}
+var browser_return: String = "Settings"
 var library = RULES.new()
 const DETAILS = {
 	"Quick Generate Player": "Choose race, class and gender; generate remaining legal fields. RAW character generation is not connected yet.",
@@ -43,12 +48,6 @@ const DETAILS = {
 
 func _ready() -> void:
 	theme = THEME
-	var bitmap: FontFile = preload("res://themes/fonts/italic.fnt")
-	bitmap.fixed_size_scale_mode = TextServer.FIXED_SIZE_SCALE_ENABLED
-	bitmap.modulate_color_glyphs = false
-	var fallback: Array[Font] = [preload("res://themes/fonts/EBGaramond.ttf")]
-	bitmap.fallbacks = fallback
-	theme.default_font = bitmap
 	version = FileAccess.get_file_as_string("res://version.txt").strip_edges()
 	config.load(CONFIG_PATH)
 	fullscreen = bool(config.get_value("display", "fullscreen", false))
@@ -114,7 +113,7 @@ func show_screen(name: String) -> void:
 		art = "castle"
 	elif name == "Settings" or name in NAV["Settings"]:
 		art = "arcane"
-	elif name == "Player Manager" or name in NAV["Player Manager"] or name == "Delete Players":
+	elif name == "Player Manager" or name in NAV["Player Manager"] or name in ["Delete Players","Edit Character"]:
 		art = "hall"
 	elif name == "Campaign Manager" or name in NAV["Campaign Manager"]:
 		art = "valley"
@@ -130,6 +129,24 @@ func show_screen(name: String) -> void:
 				break
 	if not art_loaded:
 		backdrop.texture = load("res://art/" + ("forest" if art == "hall" else art) + ".svg")
+	if name in ["Create New","Generate Character","Edit Character"]:
+		var creator = CREATOR.new()
+		creator.configure(name=="Generate Character",func(): show_screen("Player Manager"),func(): show_screen("Manage Players"),editing_record if name=="Edit Character" else {})
+		screen.add_child(creator)
+		creator.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		return
+	if name in ["Manage Players","Delete Players"]:
+		var manager = MANAGER.new()
+		manager.configure(edit_character,func(): show_screen("Player Manager"),open_catalogue_from_manager)
+		screen.add_child(manager)
+		manager.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		return
+	if name == "Rules Catalogue":
+		var browser = BROWSER.new()
+		browser.configure(func(): show_screen(browser_return))
+		screen.add_child(browser)
+		browser.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		return
 	var margin = MarginContainer.new()
 	screen.add_child(margin)
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -200,6 +217,18 @@ func show_screen(name: String) -> void:
 				menu.add_child(value)
 		menu.add_child(menu_button("Return", func(): show_screen(parent_screen(name))))
 
+func edit_character(rec: Dictionary) -> void:
+	editing_record=rec
+	show_screen("Edit Character")
+
+func open_catalogue_from_manager() -> void:
+	browser_return="Manage Players"
+	show_screen("Rules Catalogue")
+
+func open_catalogue_from_library() -> void:
+	browser_return="Rules Library"
+	show_screen("Rules Catalogue")
+
 func parent_screen(name: String) -> String:
 	for group in ["Settings", "Player Manager", "Campaign Manager"]:
 		if name in NAV[group]:
@@ -216,6 +245,9 @@ func navigate(item: String) -> void:
 		show_screen("Player Manager")
 	elif item == "Campaign":
 		show_screen("Campaign Manager")
+	elif item == "Rules Catalogue":
+		browser_return="Settings"
+		show_screen(item)
 	elif item == "Full Screen":
 		fullscreen = not fullscreen
 		get_window().mode = Window.MODE_FULLSCREEN if fullscreen else Window.MODE_WINDOWED
@@ -269,6 +301,7 @@ func rules_screen(menu: VBoxContainer) -> void:
 	screen.add_child(picker)
 	picker.file_selected.connect(func(path: String):
 		status_line.text = library.import_archive(path))
+	menu.add_child(menu_button("Rules Catalogue - 2014 / 2018", open_catalogue_from_library))
 	menu.add_child(menu_button("Master Reference - Both Editions", func(): show_screen("Master Reference")))
 	menu.add_child(menu_button("Import Personal Rules Library", func(): picker.popup_centered_ratio(0.75)))
 	var query = LineEdit.new()
