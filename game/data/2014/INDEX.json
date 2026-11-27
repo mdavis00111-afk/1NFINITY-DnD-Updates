@@ -1,0 +1,28 @@
+{
+  "ruleset": "5e-2014-2018",
+  "catalog_revision": "srd51-2018-r1",
+  "tables": [
+    "races",
+    "subraces",
+    "classes",
+    "subclasses",
+    "backgrounds",
+    "skills",
+    "spells",
+    "equipment",
+    "equipment-categories",
+    "features",
+    "levels",
+    "languages",
+    "proficiencies",
+    "traits",
+    "ability-scores",
+    "magic-items",
+    "conditions",
+    "feats",
+    "weapon-properties",
+    "rule-sections"
+  ],
+  "source": "2014 SRD 5.1 + 2018 Basic Rules mechanical supplements",
+  "coverage": "SRD subset, not the entire PHB; non-SRD subclasses, feats, spells, backgrounds and optional rules pending. 2024 data not active."
+}
