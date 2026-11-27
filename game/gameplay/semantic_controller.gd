@@ -223,6 +223,22 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 	if not matches(identity,stage) or JSON.stringify(result).length()>65536:
 		return failure("Stale semantic response.")
 	var job=active().duplicate(true)
+	if stage=="adjudicate":
+		var review_req=job.get("review_request",{})
+		var checked=policy.validate_assessment(review_req,result,job,data["state"])
+		if not checked.get("ok",false):
+			stop("clarification",checked.get("error","Contextual assessment unavailable."))
+			return failure(status)
+		job["context_review"]={"request":review_req.duplicate(true),"revision":data["state"]["revision"],"attempt_id":identity["attempt_id"],"report":result.duplicate(true)}
+		job["stage"]=job["review_resume"]
+		job["attempt"]={}
+		job.erase("review_request")
+		job.erase("review_resume")
+		inflight={}
+		if not update_active(job):
+			return failure("Contextual evidence persistence unconfirmed.")
+		advance.call_deferred()
+		return {"ok":true}
 	if stage=="critical":
 		var verified=outcome(job)
 		var context=scene_context(data["state"])
@@ -387,6 +403,8 @@ func process_story() -> void:
 		stop("retry","Discovery settlement unavailable.")
 		return
 	if not prior.get("found",false):
+		if not prepare_review(req,"post_story"):
+			return
 		running=true
 		registry.execute(campaign_id,req,review_tool)
 		running=false
@@ -513,3 +531,56 @@ func settle_verified_only() -> Dictionary:
 # C5b continuation staging is implemented in the next checkpoint.
 func prepare_consequence(job: Dictionary,claim: Dictionary) -> Dictionary:
 	return correction(job,"New effect needs a committed continuation before it can be narrated: "+claim["evidence"].left(240))
+
+func prepare_review(req: Dictionary,resume_stage: String) -> bool:
+	if not reload():
+		return false
+	var job=active().duplicate(true)
+	var state=data["state"]
+	if policy.direct_safe(req,job,state):
+		return true
+	var record=job.get("context_review",{})
+	if record.get("request")==req and record.get("revision")==state["revision"]:
+		var checked=policy.validate_assessment(req,record.get("report"),job,state)
+		if checked.get("ok",false):
+			return true
+		stop("clarification",checked.get("error","Contextual review no longer valid."))
+		return false
+	job["review_request"]=req.duplicate(true)
+	job["review_resume"]=resume_stage
+	job["stage"]="adjudicate"
+	if update_active(job):
+		advance.call_deferred()
+	return false
+
+func advance() -> void:
+	if closed or running or notifying or not reload():
+		return
+	if not inflight.is_empty() and inflight==active().get("attempt"):
+		return
+	var job=active().duplicate(true)
+	if job.get("stage")=="adjudicate":
+		var state=data["state"]
+		var req=job.get("review_request",{})
+		if req.is_empty() or not policy.bound_request(req,job,state):
+			stop("clarification","Contextual request no longer matches current state.")
+			return
+		var context=scene_context(state)
+		if not context.get("ok",false):
+			stop("retry","Contextual scene unavailable.")
+			return
+		var refs: Array=[]
+		for section in REG.TOOLS[req["kind"]][2]:
+			var record=enquiry("rule_record",{"category":"rule-sections","id":section},1)
+			if not record.get("ok",false):
+				stop("clarification","Pinned applicable rule unavailable.")
+				return
+			refs.append(record["data"])
+		var source={}
+		if req["args"].has("source_event_id"):
+			var event=registry.session.source(state,req["args"]["source_event_id"])
+			if registry.session.public_source(event):
+				source={"event_id":req["args"]["source_event_id"],"text":policy.source_text(event)}
+		ask("adjudicate",job,{"request":req,"original":policy.intent_text(req,job,state),"scene":context["scene"],"rules":refs,"ruling_shape":policy.rule_shape(req),"source":source,"proposed_consequence":job.get("pending_consequence",{}),"committed_narration":policy.source_text(registry.session.source(state,job.get("narration_event_id")))})
+		return
+	super.advance()

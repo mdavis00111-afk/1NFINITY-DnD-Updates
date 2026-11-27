@@ -361,6 +361,8 @@ func execute_active() -> void:
 	if data["state"]["revision"]!=req["expected_revision"]:
 		stop("retry","Tool request is stale; no automatic rebase.")
 		return
+	if not prepare_review(req,"execute"):
+		return
 	running=true
 	var result=registry.execute(campaign_id,req,review_tool)
 	running=false
@@ -633,6 +635,8 @@ func process_story() -> void:
 		stop("retry","Deferred story settlement unavailable.")
 		return
 	if not prior.get("found",false):
+		if not prepare_review(req,"post_story"):
+			return
 		running=true
 		registry.execute(campaign_id,req,review_tool)
 		running=false
@@ -762,3 +766,7 @@ func block_view(message: String) -> void:
 
 func preview_text(job: Dictionary,state: Dictionary) -> String:
 	return str(job.get("candidate",{}).get("text","")) if job.get("critical_verified",false) and state["pending_turn_id"]!=null else ""
+
+# C5b overrides this to await independent bounded contextual assessment.
+func prepare_review(_request: Dictionary,_resume_stage: String) -> bool:
+	return true
