@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.20",
-  "source_commit": "58463c24175c814c6c985c83d178033d42e67ab5",
-  "notes": "Incremental SQLite reference imports: 18 NPCs and 8 monsters (core numerical stats only). Existing rules catalogue retained. No manual database installation for these batches. Windows testing pending.",
+  "version": "0.0.21",
+  "source_commit": "871746df1760f7b5b502688e6b327141682be1e2",
+  "notes": "Windows playtest: reconstructed four-stage character creator, searchable choices, and a zoomable portrait character sheet. Windows visual fidelity, production SQLite integration, upgrade, and rollback await playtest results.",
   "files": [
     {
       "path": "main.tscn",
@@ -270,19 +270,19 @@
     },
     {
       "path": "players/character_creator.gd",
-      "blob": "4211a4825d00403e21db02be92223d038b551f5d"
+      "blob": "84302a2773f37f4b1486940a271fab9a4d945489"
     },
     {
       "path": "players/character_manager.gd",
-      "blob": "91b4b556d09e109efdccf1b79c8c7d7df0661afb"
+      "blob": "ec8422460b9397f17c37fccce12312d30e4e7bef"
     },
     {
       "path": "players/full_character_sheet.gd",
-      "blob": "5dbda4e0c84b5f88ab19248f60f847b996abf8a4"
+      "blob": "dae00fe8e4c12240bf6a722d3474574f21dfc2db"
     },
     {
       "path": "project.godot",
-      "blob": "b78f810718ab33809168a2f7c55175366fd9cc45"
+      "blob": "da8c593e5b5bfac420b86f1c0079158d02f1857c"
     },
     {
       "path": "rules/catalog.gd",
@@ -306,11 +306,11 @@
     },
     {
       "path": "tests/layout_smoke.gd",
-      "blob": "0190c6e433c6d3420c851a19facd57b3f2427b6c"
+      "blob": "04c959fdb722ba0e2279b306c1a24a530b04264e"
     },
     {
       "path": "version.txt",
-      "blob": "fe04e7f676f52affb71db407908ea33471a13d24"
+      "blob": "236c7ad084dd691086e1bdb315d136290d2a3355"
     },
     {
       "path": "rules/PRIVATE_REFERENCE_POLICY.md",
