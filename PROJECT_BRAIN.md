@@ -131,6 +131,10 @@ The lead assigns disjoint write scopes and uses read-only investigations for ove
 
 `.codex/config.toml` registers six reusable profiles for a trusted Codex CLI project. Where profile activation is unavailable, the lead delegates through cloud collaboration tools using the corresponding role instructions. The cloud test confirmed that a release specialist can return read-only findings directly to the lead. CLI profile activation remains unverified in the managed cloud environment. See TESTING.md for details.
 
+## 0.0.21 Windows playtest
+
+The playtest packages the creator and sheet reconstruction from `5282fac`. Godot and the production Windows SQLite bridge, updater, and save storage keep their existing contracts. Linux import, startup, smoke checks with a test-only SQLite transport, and two-resolution captures are recorded in TESTING.md. Windows visual acceptance, the stock SQLite adapter, updater staging and rollback, and save preservation through upgrade remain open. The live channel is authoritative for the published version.
+
 ## 7. STRICT RULES FOR AI UPDATES
 - Never break the in-game Git auto-updater. Only publish a release manifest after source commit is complete; ensure every managed game file has correct blob hash and immutable source_commit, synchronize project.godot/version.txt, preserve safe staging, handshakes, rollback and user://. Do not assume changes to root launcher/updater reach existing PCs.
 - Never corrupt .tscn UIDs/sub-resources when editing via Git. Preserve resource IDs, ext_resource/sub_resource references, load_steps and paths; import/smoke-test before release. Do not commit generated .godot cache.
