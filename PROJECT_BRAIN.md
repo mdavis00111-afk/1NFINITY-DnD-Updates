@@ -569,3 +569,7 @@ Instrumented existing mock generate entry point; production controller/workspace
 
 ## v0.0.27 checkpoint 3b.3b.1 — interrupted consumption regression
 Added active production fixture case consuming one owned daily ration, capturing exact settlement and revision, closing during narration, reopening, rejecting interrupted identity and completing narration. Asserts one inventory decrement, unchanged mechanical settlement and revision on reopen, persisted narration and three transport attempts across interruption. Source anchors checked; native/mock runtime and live Gemini tests not executed. No release.
+
+
+## v0.0.27 checkpoint 3b.3b.2 — duplicate and stale response regressions
+Active fixture submits incorrect request, campaign, attempt and revision identities at both stages; repeats interpretation after settlement and narration after persistence. Compares authoritative actor, owned inventory, revision and full gameplay view plus actual transport counts. Uses existing conversation fixture; explicit NPC/discovery-bearing duplicate envelope remains to be added in world regression checkpoint. Source anchors checked; native/mock execution and live Gemini unexecuted. No release.

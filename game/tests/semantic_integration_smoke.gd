@@ -224,6 +224,7 @@ func run() -> void:
 		finish()
 		return
 	await interrupted_consumption(id)
+	await duplicate_response_cases(id,b["id"])
 	await request_count_cases(id,shield)
 	expect(players.load_record(master)==original and base.gameplay_view(b["id"])==sibling,"Master and sibling isolation")
 	ctrl.close_session()
@@ -237,6 +238,48 @@ func wait_frames() -> void:
 
 func combined(text: String) -> Dictionary:
 	return {"text":text,"geography":geography(),"story":[],"discoveries":[]}
+
+func durable_snapshot(id: String) -> Dictionary:
+	var state=session.token(id)
+	var owned=REG.new().noncombat.read_owned(state,state["actor_id"])
+	return {"revision":state["revision"],"actor":state["actor"],"owned":owned,"view":base.gameplay_view(id)}
+
+func rejected_response(id: String,identity: Dictionary,value: Dictionary,interpret: bool,label: String) -> void:
+	var before=durable_snapshot(id)
+	var calls=outbound.size()
+	var result=ctrl.receive_interpretation(identity,value,[]) if interpret else ctrl.receive(identity,value)
+	expect(not result.get("ok",false),label+" rejected")
+	await wait_frames()
+	expect(durable_snapshot(id)==before,label+" authoritative state and public history unchanged")
+	expect(outbound.size()==calls,label+" no additional transport calls")
+
+func duplicate_response_cases(id: String,sibling_id: String) -> void:
+	var text="I ask Mara about the bridge."
+	workspace.composer.text=text
+	workspace.submit_chat()
+	if not await pump("interpret"):
+		return
+	var identity=ctrl.inflight.duplicate(true)
+	var action={"kind":"conversation","args":{"text":text}}
+	for field in ["request_id","campaign_id","attempt_id","revision"]:
+		var wrong=identity.duplicate(true)
+		wrong[field]=int(identity[field])-1 if field=="revision" else (sibling_id if field=="campaign_id" else session.make_id())
+		await rejected_response(id,wrong,action,true,"Incorrect interpretation "+field)
+	reply(action)
+	if not await pump("narrate"):
+		return
+	await rejected_response(id,identity,action,true,"Duplicate settled interpretation")
+	var narration_id=ctrl.inflight.duplicate(true)
+	var narration=combined(TALK)
+	for field in ["request_id","campaign_id","attempt_id","revision"]:
+		var wrong=narration_id.duplicate(true)
+		wrong[field]=int(narration_id[field])-1 if field=="revision" else (sibling_id if field=="campaign_id" else session.make_id())
+		await rejected_response(id,wrong,narration,false,"Incorrect narration "+field)
+	reply(narration)
+	if not await pump("idle"):
+		return
+	await rejected_response(id,narration_id,narration,false,"Duplicate persisted narration")
+	await rejected_response(id,identity,action,true,"Late settled interpretation")
 
 func ration_quantity(id: String) -> int:
 	var owned=REG.new().noncombat.read_owned(session.token(id),ctrl.actor_id)
