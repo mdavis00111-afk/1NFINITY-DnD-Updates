@@ -37,6 +37,12 @@ const DETAILS = {
 
 func _ready() -> void:
 	theme = THEME
+	var bitmap: FontFile = preload("res://themes/fonts/arcane.fnt")
+	bitmap.fixed_size_scale_mode = TextServer.FIXED_SIZE_SCALE_ENABLED
+	bitmap.modulate_color_glyphs = false
+	var fallback: Array[Font] = [preload("res://themes/fonts/EBGaramond.ttf")]
+	bitmap.fallbacks = fallback
+	theme.default_font = bitmap
 	version = FileAccess.get_file_as_string("res://version.txt").strip_edges()
 	config.load(CONFIG_PATH)
 	fullscreen = bool(config.get_value("display", "fullscreen", true))
