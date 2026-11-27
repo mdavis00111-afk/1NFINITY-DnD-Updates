@@ -5,10 +5,10 @@ var flourish: TextureRect
 
 func _ready() -> void:
 	alignment = HORIZONTAL_ALIGNMENT_LEFT
-	custom_minimum_size = Vector2(400, 54)
+	custom_minimum_size = Vector2(300, 44)
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	add_theme_font_size_override("font_size", 38)
+	add_theme_font_size_override("font_size", 27)
 	add_theme_constant_override("outline_size", 0)
 	flourish = TextureRect.new()
 	flourish.texture = FLOURISH
@@ -25,9 +25,9 @@ func _ready() -> void:
 	refresh_glow()
 
 func layout_flourish() -> void:
-	var text_width = get_theme_font("font").get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 38).x
-	flourish.position = Vector2(-16, size.y - 17)
-	flourish.size = Vector2(minf(size.x + 16, text_width + 32), 26)
+	var text_width = get_theme_font("font").get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 27).x
+	flourish.position = Vector2(-16, size.y - 13)
+	flourish.size = Vector2(minf(size.x + 16, text_width + 32), 20)
 
 func refresh_glow() -> void:
 	var lit = not disabled and (is_hovered() or has_focus())

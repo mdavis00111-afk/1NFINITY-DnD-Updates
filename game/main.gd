@@ -19,11 +19,15 @@ var busy = false
 var fullscreen = true
 
 const NAV = {
-	"Main": ["Settings", "Player Manager", "Campaign Manager", "Exit Full Screen", "Exit"],
-	"Settings": ["Set and Store API", "Edit AI Prompts", "Edit Content Rules", "Update from GitHub", "Return to Main"],
-	"Player Manager": ["Quick Generate Player", "Create Player", "Manage / Edit Players", "Delete Players", "Return to Main"],
+	"Main": ["Player", "Campaign", "Settings", "Full Screen", "Exit"],
+	"Settings": ["Set and Store API", "Edit AI Prompts", "Edit Content Rules", "Rules Library", "Update from GitHub", "Return to Main"],
+	"Player Manager": ["Generate Character", "Create New", "Manage Players", "Exit"],
 	"Campaign Manager": ["Create New Campaign", "Resume Existing Campaign", "Delete Campaign", "Return to Main"]
 }
+const RULES = preload("res://rules/library.gd")
+const MECHANICS = preload("res://rules/mechanics.gd")
+const SHEET = preload("res://players/character_sheet.gd")
+var library = RULES.new()
 const DETAILS = {
 	"Quick Generate Player": "Choose race, class and gender; generate remaining legal fields. RAW character generation is not connected yet.",
 	"Create Player": "Full D&D 5e character creation, character sheet and live dice rolls. Rules engine pending.",
@@ -37,7 +41,7 @@ const DETAILS = {
 
 func _ready() -> void:
 	theme = THEME
-	var bitmap: FontFile = preload("res://themes/fonts/arcane.fnt")
+	var bitmap: FontFile = preload("res://themes/fonts/italic.fnt")
 	bitmap.fixed_size_scale_mode = TextServer.FIXED_SIZE_SCALE_ENABLED
 	bitmap.modulate_color_glyphs = false
 	var fallback: Array[Font] = [preload("res://themes/fonts/EBGaramond.ttf")]
@@ -99,10 +103,12 @@ func show_screen(name: String) -> void:
 	add_child(screen)
 	screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var art = "castle"
-	if name == "Settings" or name in NAV["Settings"]:
+	if name == "Main":
+		art = "castle"
+	elif name == "Settings" or name in NAV["Settings"]:
 		art = "arcane"
-	elif name == "Player Manager" or name in NAV["Player Manager"]:
-		art = "forest"
+	elif name == "Player Manager" or name in NAV["Player Manager"] or name == "Delete Players":
+		art = "hall"
 	elif name == "Campaign Manager" or name in NAV["Campaign Manager"]:
 		art = "valley"
 	var painted_title = false
@@ -116,13 +122,13 @@ func show_screen(name: String) -> void:
 				painted_title = name == "Main"
 				break
 	if not art_loaded:
-		backdrop.texture = load("res://art/" + art + ".svg")
+		backdrop.texture = load("res://art/" + ("forest" if art == "hall" else art) + ".svg")
 	var margin = MarginContainer.new()
 	screen.add_child(margin)
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	margin.add_theme_constant_override("margin_left", 220 if painted_title else 120)
 	margin.add_theme_constant_override("margin_top", 226 if painted_title else 64)
-	margin.add_theme_constant_override("margin_right", 540)
+	margin.add_theme_constant_override("margin_right", 100 if name in ["Create New", "Generate Character", "Rules Library"] else 540)
 	margin.add_theme_constant_override("margin_bottom", 44)
 	var scroll = ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -131,7 +137,7 @@ func show_screen(name: String) -> void:
 	menu.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	menu.add_theme_constant_override("separation", 5)
 	scroll.add_child(menu)
-	var title = make_label("1NFINITY D&D" if name == "Main" else name, 54 if name == "Main" else 36)
+	var title = make_label("1NFINITY D&D" if name == "Main" else name, 42 if name == "Main" else 32)
 	if not painted_title:
 		menu.add_child(title)
 		if name == "Main":
@@ -150,9 +156,18 @@ func show_screen(name: String) -> void:
 		for entry in NAV[name]:
 			var item: String = entry
 			var caption = item
-			if item == "Exit Full Screen" and not fullscreen:
-				caption = "Enter Full Screen"
 			menu.add_child(menu_button(caption, func(): navigate(item)))
+	elif name == "Rules Library":
+		rules_screen(menu)
+	elif name in ["Generate Character", "Create New"]:
+		character_screen(menu, name == "Generate Character")
+	elif name == "Manage Players":
+		menu.add_child(make_label("Saved player storage is not yet implemented.", 19))
+		menu.add_child(menu_button("Delete Players", func(): show_screen("Delete Players")))
+		menu.add_child(menu_button("Exit", func(): show_screen("Player Manager")))
+	elif name == "Delete Players":
+		menu.add_child(make_label("No saved players available.", 19))
+		menu.add_child(menu_button("Exit", func(): show_screen("Manage Players")))
 	elif name == "Set and Store API":
 		api_screen(menu)
 	elif name == "Edit AI Prompts":
@@ -184,8 +199,15 @@ func parent_screen(name: String) -> String:
 
 func navigate(item: String) -> void:
 	if item == "Exit":
-		get_tree().quit()
-	elif item == "Exit Full Screen":
+		if active_screen == "Main":
+			get_tree().quit()
+		else:
+			show_screen("Main")
+	elif item == "Player":
+		show_screen("Player Manager")
+	elif item == "Campaign":
+		show_screen("Campaign Manager")
+	elif item == "Full Screen":
 		fullscreen = not fullscreen
 		get_window().mode = Window.MODE_FULLSCREEN if fullscreen else Window.MODE_WINDOWED
 		config.set_value("display", "fullscreen", fullscreen)
@@ -227,6 +249,56 @@ func prompt_screen(menu: VBoxContainer) -> void:
 		note.text = "Saved locally." if config.save(CONFIG_PATH) == OK else "Save failed."))
 	menu.add_child(note)
 	menu.add_child(menu_button("Return to Settings", func(): show_screen("Settings")))
+
+func rules_screen(menu: VBoxContainer) -> void:
+	var status_line = make_label(library.status(), 19)
+	menu.add_child(status_line)
+	var picker = FileDialog.new()
+	picker.access = FileDialog.ACCESS_FILESYSTEM
+	picker.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	picker.filters = PackedStringArray(["*.json ; Personal rules library"])
+	screen.add_child(picker)
+	picker.file_selected.connect(func(path: String):
+		status_line.text = library.import_archive(path))
+	menu.add_child(menu_button("Import Personal Rules Library", func(): picker.popup_centered_ratio(0.75)))
+	var query = LineEdit.new()
+	query.placeholder_text = "Search exact rule text"
+	menu.add_child(query)
+	var results = TextEdit.new()
+	results.editable = false
+	results.custom_minimum_size.y = 240
+	menu.add_child(menu_button("Search", func(): results.text = library.search(query.text)))
+	menu.add_child(results)
+	menu.add_child(menu_button("Exit", func(): show_screen("Settings")))
+
+func character_screen(menu: VBoxContainer, quick: bool) -> void:
+	var choices = HBoxContainer.new()
+	menu.add_child(choices)
+	var race = OptionButton.new()
+	for value in MECHANICS.RACES.keys():
+		race.add_item(value)
+	choices.add_child(race)
+	var role = OptionButton.new()
+	for value in MECHANICS.CLASSES.keys():
+		role.add_item(value)
+	choices.add_child(role)
+	var gender = LineEdit.new()
+	gender.placeholder_text = "Gender"
+	gender.custom_minimum_size.x = 100
+	choices.add_child(gender)
+	var sheet = SHEET.new()
+	var note = make_label("Level 1 draft only. Skills, equipment, spells and other choices still pending.", 19)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	menu.add_child(note)
+	var character_name = LineEdit.new()
+	character_name.placeholder_text = "Character name"
+	menu.add_child(character_name)
+	menu.add_child(menu_button("Roll Ability Scores" if quick else "Roll Draft Ability Scores", func():
+		sheet.display(MECHANICS.draft(race.get_item_text(race.selected), role.get_item_text(role.selected), gender.text, character_name.text, false))))
+	menu.add_child(menu_button("Use Standard Array", func():
+		sheet.display(MECHANICS.draft(race.get_item_text(race.selected), role.get_item_text(role.selected), gender.text, character_name.text, true))))
+	menu.add_child(sheet)
+	menu.add_child(menu_button("Exit", func(): show_screen("Player Manager")))
 
 func install_root() -> String:
 	return ProjectSettings.globalize_path("res://").trim_suffix("/").trim_suffix("\\").get_base_dir()
