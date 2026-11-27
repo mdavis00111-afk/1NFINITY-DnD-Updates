@@ -1840,8 +1840,8 @@
         ],
         "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
       },
-      "git_blob_sha1": "606935f0b2782c534bb73087efc53f8b475ad7fc",
-      "byte_size": 1201
+      "git_blob_sha1": "c4b8bff01430141aff2fcf972e4724ef9222e3dc",
+      "byte_size": 1223
     },
     {
       "id": "decor.fog_cloud.v1",
