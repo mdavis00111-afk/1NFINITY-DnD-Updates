@@ -291,6 +291,45 @@ func exercise_archive(base: Control) -> void:
 	print("Layout smoke exercised save, reload and archive in isolated user data.")
 
 
+func exercise_random(base: Control) -> void:
+	var creator = CREATOR.new()
+	creator.configure(false,func(): pass,func(): pass)
+	base.add_child(creator)
+	creator.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	await settle()
+	var before = STORE.new().list_records()
+	var random_button = check_action(creator,"Random",base.get_global_rect(),"Random creator")
+	expect(random_button != null,"Random action missing")
+	if random_button != null:
+		random_button.pressed.emit()
+		await settle()
+	expect(creator.step == 4,"Random did not open review")
+	if creator.step == 4:
+		for stage in range(1,5):
+			expect(creator.rules.validate_step(creator.draft,stage).is_empty(),"Random invalid stage "+str(stage))
+		var record = creator.rules.full_record(creator.draft)
+		expect(record.get("review_required",[]).is_empty(),"Random needs mechanical review")
+		expect(record.get("dice_history",[]).size()==6,"Random missing six dice rolls")
+		for key in ["name","sex","alignment","description","personality","ideal","bond","flaw","backstory"]:
+			expect(not str(creator.draft.get(key,"")).is_empty(),"Random omitted "+key)
+		check_creator(creator,base.get_global_rect(),"Random review")
+		var prior = creator.draft.duplicate(true)
+		creator.request_random()
+		var dialogs = creator.find_children("*","ConfirmationDialog",true,false)
+		expect(not dialogs.is_empty(),"Replacing changed draft did not ask confirmation")
+		if not dialogs.is_empty():
+			dialogs.back().canceled.emit()
+			await settle()
+		expect(creator.draft==prior,"Cancel changed draft")
+		creator.existing = {"id":"test-existing","draft":prior}
+		creator.render()
+		await settle()
+		expect(find_button(creator,"Random")==null and not creator.random_generate(),"Existing character exposed Random")
+	expect(STORE.new().list_records()==before,"Random changed saved characters")
+	base.remove_child(creator)
+	creator.queue_free()
+
+
 func exercise_viewer(base: Control, records: Array) -> void:
 	var edited: Array[String] = []
 	var manager = MANAGER.new()
@@ -374,6 +413,7 @@ func run() -> void:
 		await exercise_viewer(base, [caster, martial])
 		if resolution.x == 1280 and check_persistence_enabled():
 			await exercise_archive(base)
+		await exercise_random(base)
 		await exercise_catalogue(base)
 		root.remove_child(base)
 		base.queue_free()
