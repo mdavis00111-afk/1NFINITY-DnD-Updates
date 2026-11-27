@@ -50,9 +50,24 @@ func settlement(id: String,request_id: String) -> Dictionary:
 	var row: Dictionary = readback["sets"][0][0]
 	var request = JSON.parse_string(row["request_payload"])
 	var result = JSON.parse_string(row["result_payload"])
-	if not request is Dictionary or not result is Dictionary or request.get("request_id")!=request_id or request.get("campaign_id")!=id or request.get("actor_id")!=state["actor_id"] or request.get("kind")!=row["kind"]:
+	if not (request_valid(request,"1") or request_valid(request,"2")) or not result is Dictionary or request["request_id"]!=request_id or request["campaign_id"]!=id or request["actor_id"]!=state["actor_id"] or request["kind"]!=row["kind"]:
 		return fail("Corrupt request settlement.")
-	return {"ok":true,"found":true,"request":request,"status":row["status"],"logical_turn_id":row["logical_turn_id"],"revision":DTO.sql_int(row["settled_revision"]),"event_id":DTO.sql_int(row["event_id"]),"result":result}
+	# The persisted request and its relational settlement must agree. A failed
+	# read is not evidence of absence and cannot authorize replay or another roll.
+	var expected_revision = DTO.sql_int(row["expected_revision"])
+	var settled_revision = DTO.sql_int(row["settled_revision"])
+	var event_id = DTO.sql_int(row["event_id"])
+	var logical = row["logical_turn_id"]
+	var status = row["status"]
+	if expected_revision==null or expected_revision!=request["expected_revision"] or settled_revision==null or settled_revision<expected_revision or settled_revision>state["revision"] or (logical!=null and not DTO.id_valid(logical)) or not status in ["accepted_pending","committed","rejected","cancelled"]:
+		return fail("Request settlement revision or identity mismatch.")
+	if status=="accepted_pending" and (logical==null or settled_revision!=expected_revision or row["event_id"]!=null):
+		return fail("Invalid pending request settlement.")
+	if status=="committed" and (event_id==null or event_id<1 or (logical!=null and (result.get("turn_id")!=logical or result.get("narration_event_id")!=event_id))):
+		return fail("Committed request provenance mismatch.")
+	if status in ["rejected","cancelled"] and row["event_id"]!=null:
+		return fail("Invalid terminal request settlement.")
+	return {"ok":true,"found":true,"request":request,"status":status,"logical_turn_id":logical,"revision":settled_revision,"event_id":event_id,"result":result}
 
 # All mutations are only called with locally validated, already adjudicated
 # requests. Merely constructing an envelope does not establish authorization.

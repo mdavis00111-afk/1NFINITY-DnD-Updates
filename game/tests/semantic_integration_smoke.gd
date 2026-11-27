@@ -5,6 +5,7 @@ const BASE=preload("res://campaigns/campaign_store.gd")
 const PLAYER=preload("res://players/character_store.gd")
 const CAT=preload("res://rules/catalog.gd")
 const SESSION=preload("res://persistence/gameplay_session.gd")
+const SQL=preload("res://systems/sqlite.gd")
 const MIGRATION=preload("res://persistence/gameplay_migration.gd")
 const CTRL=preload("res://gameplay/semantic_controller.gd")
 const WORKSPACE=preload("res://gameplay/game_workspace.gd")
@@ -291,7 +292,26 @@ func run() -> void:
 		return
 	var source_id=ctrl.active()["narration_event_id"]
 	var pass_serial=ctrl.adapter.serial
+	# Inject a valid-looking committed row under the deferred request ID but
+	# with different arguments. Only this disposable DB is modified.
+	var deferred_req=ctrl.active()["story_request"].duplicate(true)
+	var other_req=deferred_req.duplicate(true)
+	other_req["args"]["definition"]["name"]="Different fixture item"
+	var forged=SQL.run(base.path_for(id),[SQL.stmt("INSERT INTO gameplay_requests(request_id,actor_id,kind,expected_revision,status,request_payload,result_payload,settled_revision,event_id) VALUES(?,?,?,?,'committed',?,?,?,?)",[deferred_req["request_id"],deferred_req["actor_id"],deferred_req["kind"],deferred_req["expected_revision"],JSON.stringify(other_req),JSON.stringify({"definition_id":"wrong-fixture-definition"}),deferred_req["expected_revision"],source_id])])
+	if not expect(forged.get("ok",false),"Deferred mismatch fixture"):
+		finish()
+		return
 	assess("An abandoned carved amber tally lies on the counter, free to take.",source_id,"An abandoned carved amber tally lies on the counter, free to take.")
+	for frame in range(60):
+		await process_frame
+		if ctrl.active().get("stage")=="retry":
+			break
+	if not expect(ctrl.active().get("stage")=="retry" and ctrl.active().get("discovery_index")==0 and ctrl.active().get("story_request")==deferred_req,"Mismatched deferred settlement advanced discovery"):
+		finish()
+		return
+	if not expect(SQL.run(base.path_for(id),[SQL.stmt("DELETE FROM gameplay_requests WHERE request_id=?",[deferred_req["request_id"]])]).get("ok",false) and ctrl.retry().get("ok",false),"Restore disposable fixture and retry"):
+		finish()
+		return
 	if not await pump("adjudicate",pass_serial):
 		finish()
 		return

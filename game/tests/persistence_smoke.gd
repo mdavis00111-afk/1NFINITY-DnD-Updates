@@ -260,6 +260,13 @@ func run() -> void:
 	expect(session.adopt(id,adopted,logical).get("status")=="accepted_pending","Durable request adoption failed")
 	view=base.gameplay_view(id)
 	expect(view["interaction"]["settled_request_id"]==adopted["request_id"] and view["interaction"]["phase"]=="blocked" and view["interaction"]["revision"]==rev,"Pending request view invalid")
+	# Reproduce a structurally legal SQLite row whose revision contradicts its JSON.
+	var original_adoption = session.settlement(id,adopted["request_id"])
+	expect(original_adoption.get("ok",false),"Pending adoption unavailable")
+	expect(SQL.run(base.path_for(id),[SQL.stmt("UPDATE gameplay_requests SET expected_revision=expected_revision+1 WHERE request_id=?",[adopted["request_id"]])]).get("ok",false),"Corrupt revision fixture")
+	expect(not session.settlement(id,adopted["request_id"]).get("ok",false),"Relational/JSON revision mismatch accepted")
+	expect(SQL.run(base.path_for(id),[SQL.stmt("UPDATE gameplay_requests SET expected_revision=? WHERE request_id=?",[adopted["expected_revision"],adopted["request_id"]])]).get("ok",false),"Restore adopted request revision")
+	expect(session.settlement(id,adopted["request_id"])==original_adoption,"Restored adoption differs")
 	expect(session.settle_adopted(id,adopted["request_id"],"cancelled",true).get("status")=="cancelled" and session.token(id)["revision"]==rev,"Request cancellation changed mechanics")
 	expect(query(id,"overview",{}).get("ok",false) and query(id,"history",{"location_id":at,"before_event_id":null}).get("ok",false) and query(id,"geography",{"page":0}).get("ok",false),"Bounded retrieval unavailable")
 	expect(query(id,"rules_search",{"category":"equipment","query":"dagger"}).get("ok",false) and query(id,"actor_template",{"template_id":"commoner"}).get("ok",false),"Pinned rules/template retrieval unavailable")

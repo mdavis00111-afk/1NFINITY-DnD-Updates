@@ -644,6 +644,12 @@ func process_story() -> void:
 	if not prior.get("found",false) or prior["request"]!=req or prior["status"]!="committed" or not reload():
 		stop("retry","Deferred story proposal not committed; retry or explicitly skip.")
 		return
+	# Recovery of an already-present row must prove the EXACT request committed,
+	# just as the fresh-execution branch does. Never advance a deferred cursor
+	# after a rejected/cancelled request or a different request using this ID.
+	if not prior.get("ok",false) or not prior.get("found",false) or prior.get("request")!=req or prior.get("status")!="committed":
+		stop("retry","Deferred settlement differs or was not committed; preserve the pending work.")
+		return
 	job["story_index"]=index+1
 	job.erase("story_request")
 	if update_active(job):
