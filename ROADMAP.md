@@ -14,3 +14,6 @@ Baseline: v0.0.22 Windows playtest (channel authoritative), 2026-11-27. Proposed
 
 ## Coordination
 00 ChatGPT Project lead is primary coordinator; 01 UI/character, 02 SQL/rules, 03 campaign/world, 04 Gemini, 05 QA, 06 Git/build are workstreams, not mandatory chats. Codex is optional for complex implementation and execution. Follow AGENTS.md and HANDOFF.md; checkpoint to remote branches and reconcile before integration. Owner authorizes releases.
+
+## Next gameplay GUI milestone
+Owner requests actual game interface before full turn controller. P2-GUI: three-column workspace over campaign snapshots and persisted opening log, manual informational dice, real inventory and rules references; see design/GAME_GUI_SPEC.md. P3 authoritative turn controller remains separate. Target v0.0.24; no publication or runtime certification yet.
