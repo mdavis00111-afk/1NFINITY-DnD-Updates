@@ -23,7 +23,7 @@ const NAV = {
 	"Main": ["Player", "Campaign", "Settings", "Full Screen", "Exit"],
 	"Settings": ["Set and Store API", "Edit AI Prompts", "Edit Content Rules", "Rules Library", "Rules Catalogue", "Update from GitHub", "Return to Main"],
 	"Player Manager": ["Generate Character", "Create New", "Manage Players", "Exit"],
-	"Campaign Manager": ["Create New Campaign", "Resume Existing Campaign", "Delete Campaign", "Return to Main"]
+	"Campaign Manager": ["New Campaign", "Existing Campaigns"]
 }
 const RULES = preload("res://rules/library.gd")
 const MASTER = preload("res://rules/master_reference.gd")
@@ -33,6 +33,8 @@ const SHEET = preload("res://players/character_sheet.gd")
 const CREATOR = preload("res://players/character_creator.gd")
 const MANAGER = preload("res://players/character_manager.gd")
 const BROWSER = preload("res://rules/catalog_browser.gd")
+const CAMPAIGN = preload("res://campaigns/campaign_manager.gd")
+const MATURITY = preload("res://campaigns/maturity_profiles.gd")
 var editing_record: Dictionary = {}
 var browser_return: String = "Settings"
 var library = RULES.new()
@@ -158,6 +160,12 @@ func show_screen(name: String) -> void:
 		screen.add_child(manager)
 		manager.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		return
+	if name in ["New Campaign","Existing Campaigns"]:
+		var campaign = CAMPAIGN.new()
+		campaign.configure("new" if name=="New Campaign" else "library",func(): show_screen("Campaign Manager"),func(): show_screen("Edit Content Rules"))
+		screen.add_child(campaign)
+		campaign.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		return
 	if name == "Rules Catalogue":
 		var browser = BROWSER.new()
 		browser.configure(func(): show_screen(browser_return))
@@ -170,7 +178,7 @@ func show_screen(name: String) -> void:
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	margin.add_theme_constant_override("margin_left", 220 if painted_title else 120)
 	margin.add_theme_constant_override("margin_top", 226 if painted_title else 64)
-	margin.add_theme_constant_override("margin_right", 100 if name in ["Create New", "Generate Character", "Rules Library", "Master Reference"] else 540)
+	margin.add_theme_constant_override("margin_right", 100 if name in ["Create New", "Generate Character", "Rules Library", "Master Reference","Edit Content Rules"] else 540)
 	margin.add_theme_constant_override("margin_bottom", 44)
 	var scroll = ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -199,6 +207,8 @@ func show_screen(name: String) -> void:
 			var item: String = entry
 			var caption = item
 			menu.add_child(menu_button(caption, func(): navigate(item)))
+		if name=="Campaign Manager":
+			menu.add_child(menu_button("Exit",func(): show_screen("Main")))
 	elif name == "Rules Library":
 		rules_screen(menu)
 	elif name == "Master Reference":
@@ -216,6 +226,8 @@ func show_screen(name: String) -> void:
 		api_screen(menu)
 	elif name == "Edit AI Prompts":
 		prompt_screen(menu)
+	elif name == "Edit Content Rules":
+		content_rules_screen(menu)
 	elif name == "Update from GitHub":
 		check_button = menu_button("Check for Updates", check_updates)
 		menu.add_child(check_button)
@@ -364,6 +376,31 @@ func prompt_screen(menu: VBoxContainer) -> void:
 		note.text = "Saved locally." if config.save(CONFIG_PATH) == OK else "Save failed."))
 	menu.add_child(note)
 	menu.add_child(menu_button("Return to Settings", func(): show_screen("Settings")))
+
+func content_rules_screen(menu: VBoxContainer) -> void:
+	var intro = make_label("Campaign maturity profiles. Edit the approved profile definitions here; changes are read by campaigns using their stable profile IDs.",19)
+	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	menu.add_child(intro)
+	var editor = TextEdit.new()
+	editor.custom_minimum_size.y = 270
+	editor.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	var profiles = MATURITY.load_profiles()
+	editor.text = JSON.stringify(profiles,"  ")
+	editor.placeholder_text = MATURITY.EXAMPLE
+	menu.add_child(editor)
+	var note = make_label("No built-in maturity policy has been assumed. Supply your approved definitions.",17)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	menu.add_child(note)
+	menu.add_child(menu_button("Save Content Rules",func():
+		var parsed = JSON.parse_string(editor.text)
+		var error = MATURITY.save_profiles(parsed)
+		if error.is_empty():
+			config.load(CONFIG_PATH)
+			note.text="Saved locally. Campaigns resolve the current profile by ID."
+		else:
+			note.text=error))
+	menu.add_child(menu_button("Return to Settings",func(): show_screen("Settings")))
+	menu.add_child(menu_button("Return to Campaign",func(): show_screen("New Campaign")))
 
 func rules_screen(menu: VBoxContainer) -> void:
 	var status_line = make_label(library.status(), 19)
