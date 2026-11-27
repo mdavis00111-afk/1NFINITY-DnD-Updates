@@ -1,5 +1,11 @@
 extends RefCounted
 ## SQLite is authoritative. JSON is only the local transport and structured record payload.
+static var bridge_calls: int=0
+static var bridge_elapsed_ms: int=0
+
+static func metrics() -> Dictionary:
+	return {"calls":bridge_calls,"elapsed_ms":bridge_elapsed_ms}
+
 static func stmt(sql: String, values: Array = []) -> Dictionary:
 	return {"sql":sql,"params":values}
 
@@ -18,7 +24,10 @@ static func run(database: String, statements: Array, readonly: bool = false) -> 
 	file.store_string(JSON.stringify({"database":ProjectSettings.globalize_path(database),"readonly":readonly,"statements":statements}))
 	file.close()
 	var output: Array = []
+	var started=Time.get_ticks_msec()
 	OS.execute("powershell.exe",PackedStringArray(["-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-File",ProjectSettings.globalize_path("res://systems/sqlite_bridge.ps1"),"-RequestFile",ProjectSettings.globalize_path(req),"-ResponseFile",ProjectSettings.globalize_path(res)]),output,true)
+	bridge_calls+=1
+	bridge_elapsed_ms+=Time.get_ticks_msec()-started
 	var response: Variant = null
 	if FileAccess.file_exists(res):
 		response = JSON.parse_string(FileAccess.get_file_as_string(res))

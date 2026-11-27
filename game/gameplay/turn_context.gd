@@ -13,12 +13,16 @@ var cache_key: Array=[]
 var cached_memory: Dictionary={}
 var cached_catalogue: Dictionary={}
 var cached_world: Dictionary={}
+var memory_reads=0
+var memory_hits=0
 var rules_catalogue=CAT.new()
 
 func memory(state: Dictionary,session) -> Dictionary:
 	var key=[state["campaign_id"],state["actor_id"],state["revision"],state["pending_turn_id"],state["metadata"]]
 	if key==cache_key and not cached_memory.is_empty():
+		memory_hits+=1
 		return cached_memory.duplicate(true)
+	memory_reads+=1
 	var rows=session.read(state,[
 		SQL.stmt("SELECT e.id,e.turn,e.kind,e.payload,r.payload AS receipt_event FROM events e LEFT JOIN turn_narrations n ON n.event_id=e.id LEFT JOIN turn_receipts tr ON tr.turn_id=n.turn_id LEFT JOIN events r ON r.id=tr.event_id WHERE "+PUBLIC+" AND ((e.kind='narration' AND "+LINKED+") OR (e.kind='gameplay_change' AND EXISTS(SELECT 1 FROM gameplay_requests q WHERE q.event_id=e.id AND q.status='committed' AND q.kind IN ("+DIRECT_KINDS+") AND NOT EXISTS(SELECT 1 FROM meta m WHERE m.key='c5_narration:'||q.request_id)))) ORDER BY e.id DESC LIMIT 10"),
 		SQL.stmt("SELECT e.id,json_extract(e.payload,'$.narrative_recap') AS recap FROM events e WHERE e.kind='narration' AND "+PUBLIC+" AND "+LINKED+" AND json_type(e.payload,'$.narrative_recap')='text' AND length(json_extract(e.payload,'$.narrative_recap')) BETWEEN 1 AND 3000 ORDER BY e.id DESC LIMIT 1")
@@ -65,14 +69,14 @@ func world_catalogue(registry) -> Dictionary:
 
 # Text hints only choose which references to INCLUDE; never dispatch a command
 # or determine mechanics from keywords. Typed resolved kind takes precedence.
-func situational(text: String,kind: String,scene: Dictionary,extension: Dictionary) -> Dictionary:
+func situational(text: String,kind: String,_scene: Dictionary,_extension: Dictionary) -> Dictionary:
 	var lower=text.to_lower()
 	var travel=kind in ["move","travel"] or ["travel","road","walk","route","journey","ride"].any(func(word): return lower.contains(word))
 	var trade=kind in ["item_transfer","currency_transfer","loot_pickup","loot_take_all"] or ["buy","sell","shop","merchant","trade","price","pay","take"].any(func(word): return lower.contains(word))
 	var casting=kind in ["spell_cast","spell_prepare","spell_unprepare"] or ["cast","spell","magic"].any(func(word): return lower.contains(word))
 	var rest=kind in ["rest","resource_use"] or ["rest","sleep","recover"].any(func(word): return lower.contains(word))
 	var combat=kind in ["saving_throw"] or ["fight","attack","combat","strike","defend"].any(func(word): return lower.contains(word))
-	return {"travel":travel,"trade":trade,"casting":casting,"rest":rest,"combat":combat,"combat_supported":false,"available_local_loot":extension.get("loot_containers",[]).slice(0,16) if trade else [],"established_routes":scene.get("routes",[]).slice(0,24) if travel else []}
+	return {"travel":travel,"trade":trade,"casting":casting,"rest":rest,"combat":combat,"combat_supported":false}
 
 func rules(situation: Dictionary,kind: String) -> Array:
 	var ids: Array=["ability-checks","using-each-ability","saving-throws"]

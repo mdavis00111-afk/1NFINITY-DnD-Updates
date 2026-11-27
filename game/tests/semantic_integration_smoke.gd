@@ -248,6 +248,7 @@ func run() -> void:
 	await candidate_reopen(id)
 	await actor_generation_reopen(id)
 	await legacy_unsettled_authorization(id)
+	await context_memory_case(id,b["id"])
 	expect(players.load_record(master)==original and base.gameplay_view(b["id"])==sibling,"Master and sibling isolation")
 	ctrl.close_session()
 	workspace.queue_free()
@@ -633,6 +634,56 @@ func legacy_unsettled_authorization(id: String) -> void:
 	expect(not session.settlement(id,req["request_id"]).get("found",false),"No settlement created from legacy authorization")
 	ctrl.cancel()
 	await pump("idle")
+
+func context_memory_case(id: String,sibling_id: String) -> void:
+	var builder=ctrl.context_builder
+	var state=session.token(id)
+	var first=builder.memory(state,session)
+	if not expect(first.get("ok",false) and first["moves"].size()==10 and not first["recap"].is_empty(),"Ten completed moves and persisted recap"):
+		return
+	var reads=builder.memory_reads
+	var metrics=SQL.metrics()
+	expect(builder.memory(state,session)==first and builder.memory_reads==reads and SQL.metrics()==metrics,"Same revision memory cache avoids bridge call")
+	var scene=ctrl.scene_context(state)
+	var scene_reads=ctrl.scene_reads
+	metrics=SQL.metrics()
+	expect(scene.get("ok",false) and ctrl.scene_context(state)==scene and ctrl.scene_reads==scene_reads and SQL.metrics()==metrics,"Same revision scene cache avoids bridge calls")
+	var original="  I ask Mara about the road, and the merchant.  "
+	var calls=outbound.size()
+	workspace.composer.text=original
+	workspace.submit_chat()
+	if not await pump("interpret"):
+		return
+	expect(ctrl.adapter.payload["intent"]["args"]["text"]==original and ctrl.adapter.payload["recent_moves"].size()==10,"Rules-Check receives original input and ten moves")
+	expect(ctrl.adapter.payload["situational_context"]["travel"] and ctrl.adapter.payload["situational_context"]["trade"],"Situational context hints select travel and trade references")
+	reply({"kind":"conversation","args":{"text":original}})
+	if not await pump("narrate"):
+		return
+	expect(ctrl.adapter.payload["player_text"]==original and ctrl.adapter.payload["narrative_recap"]==first["recap"],"Storyteller receives unchanged input and durable recap")
+	var response=combined("Mara points toward the Willow Road.")
+	response["recap"]="Mara knows Willow Road; the party is still at Oak Inn."
+	reply(response)
+	if not await pump("idle"):
+		return
+	var latest=builder.memory(session.token(id),session)
+	expect(latest.get("recap",{}).get("text")==response["recap"] and latest["moves"].size()==10 and latest["moves"].back()["player_text"]==original and latest!=first,"New revision refreshes ten moves and recap")
+	expect(outbound.size()-calls==2,"Memory update adds no provider request")
+	ctrl.close_session()
+	workspace.queue_free()
+	ctrl.queue_free()
+	await process_frame
+	if not bind(id):
+		return
+	expect(ctrl.context_builder.memory(session.token(id),session)==latest,"Recap and recent moves survive reopening")
+	var before_full=workspace.full_refreshes
+	var before_light=workspace.status_refreshes
+	var composer_ref=workspace.composer
+	ctrl.status="Fixture progress text only."
+	ctrl.refresh()
+	await wait_frames()
+	expect(workspace.full_refreshes==before_full and workspace.status_refreshes>before_light and workspace.composer==composer_ref,"Status-only refresh preserves composer and workspace nodes")
+	expect(not ctrl.context_builder.memory(session.token(sibling_id),session).get("ok",false),"Unmigrated sibling context cannot reuse active campaign memory")
+	print("v027 metrics: ",JSON.stringify({"sql":SQL.metrics(),"context_reads":builder.memory_reads,"context_hits":builder.memory_hits,"scene_reads":ctrl.scene_reads,"scene_hits":ctrl.scene_hits,"gui_full":workspace.full_refreshes,"gui_status":workspace.status_refreshes,"provider_calls":outbound.size()}))
 
 func wait_frames() -> void:
 	for i in range(12):

@@ -267,13 +267,13 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 
 func scene_context(state: Dictionary) -> Dictionary:
 	var world=WORLD.new()
-	var dm=world.dm_geography(campaign_id)
+	var dm=world.scene_seed(state)
 	if not dm.get("ok",false):
 		return dm
 	var ids: Array=[]
 	for place in dm["locations"]:
 		ids.append(place["id"])
-	return PACK.public_world(state,dm,world.public_context(campaign_id,ids))
+	return PACK.public_world(state,dm,world.public_context_from_token(state,ids))
 
 func advance() -> void:
 	if closed or running or notifying or not reload():

@@ -310,7 +310,7 @@ func gameplay_view(id: String) -> Dictionary:
 		SQL.stmt("SELECT value FROM meta WHERE key='campaign'"),
 		SQL.stmt("SELECT payload,location_id,master_character_id FROM actors WHERE id=? AND kind='player'",[actor_id]),
 		SQL.stmt("SELECT item_id,quantity,payload FROM inventory WHERE actor_id=? ORDER BY item_id",[actor_id]),
-		SQL.stmt("SELECT id,turn,kind,payload FROM events WHERE kind IN ('campaign_created','narration') ORDER BY id"),
+		SQL.stmt("SELECT NULL WHERE 0" if gameplay_version=="1" else "SELECT id,turn,kind,payload FROM events WHERE kind IN ('campaign_created','narration') ORDER BY id"),
 		location_command,
 		SQL.stmt("SELECT id,status,payload FROM quests ORDER BY id"),
 		available,

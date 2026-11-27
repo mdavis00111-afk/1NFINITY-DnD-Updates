@@ -69,6 +69,8 @@ var center_panel: PanelContainer
 var right_panel: PanelContainer
 var nav_bar: HBoxContainer
 var icon_rects: Dictionary = {}
+var status_refreshes=0
+var full_refreshes=0
 
 func configure(snapshot: Dictionary, metadata: Dictionary, on_leave: Callable, on_settings: Callable, on_retry: Callable, is_pending: bool, error: String = "", intent_handler: Callable = Callable()) -> void:
 	intents.configure(snapshot,intent_handler)
@@ -116,6 +118,31 @@ func build_workspace() -> void:
 
 # Called only by the trusted future controller with a fresh, committed full view.
 # Do not reconstruct the adapter or clear a request lock on ordinary redraws.
+# Same visible committed state: avoid destroying the scene and chat controls
+# solely for progress/status text. Do not reuse a popup or an old revision.
+func status_only_refresh(previous: Dictionary,next: Dictionary) -> bool:
+	if previous.is_empty() or previous.keys().size()!=next.keys().size():
+		return false
+	for child in get_children():
+		if child is Window:
+			return false
+	for key in previous:
+		if not next.has(key):
+			return false
+		if key in ["interaction","interaction_extension"]:
+			var old=previous[key]
+			var fresh=next[key]
+			if not old is Dictionary or not fresh is Dictionary or old.keys().size()!=fresh.keys().size():
+				return false
+			for field in old:
+				if not fresh.has(field):
+					return false
+				if not field in ["status_text","work_stage","processing","draft","accepted_request_ids","request_history","last_terminal","settled_request_id","settled_status"] and old[field]!=fresh[field]:
+					return false
+		elif previous[key]!=next[key]:
+			return false
+	return true
+
 func apply_authoritative_view(snapshot: Dictionary) -> bool:
 	if not intents.accept_view(snapshot):
 		show_status(intents.last_error)
@@ -141,12 +168,21 @@ func apply_authoritative_view(snapshot: Dictionary) -> bool:
 			draft = ""
 		if intents.interaction.get("settled_status") in ["committed","rejected","cancelled"]:
 			last_chat_request_id = ""
+	var lightweight=is_instance_valid(development_controller) and is_instance_valid(composer) and status_only_refresh(view,intents.snapshot)
 	view = intents.snapshot
 	campaign = view["campaign"]
 	actor = view["actor"]
 	items = view.get("inventory",[])
 	pending = false
 	data_error = ""
+	if lightweight:
+		status_refreshes+=1
+		composer.text=draft
+		composer.caret_column=mini(caret,draft.length())
+		refresh_intent_controls()
+		show_status(str(extension().get("status_text","Campaign view refreshed.")))
+		return true
+	full_refreshes+=1
 	for child in get_children():
 		remove_child(child)
 		child.queue_free()

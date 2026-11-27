@@ -22,13 +22,7 @@ func path(id: String) -> String:
 	return BASE.new().path_for(id)
 
 func token(id: String) -> Dictionary:
-	var state = TURN.new().snapshot(id)
-	if not state.get("ok",false):
-		return state
-	var result = WORLD.new().read_sets(state,[SQL.stmt("SELECT value FROM meta WHERE key='gameplay_schema'")])
-	if not result.get("ok",false) or result["sets"][0].size()!=1 or result["sets"][0][0]["value"]!="1":
-		return fail("C2 gameplay migration required.")
-	return state
+	return TURN.new().snapshot(id,true)
 
 func read(state: Dictionary, statements: Array) -> Dictionary:
 	return WORLD.new().read_sets(state,statements)

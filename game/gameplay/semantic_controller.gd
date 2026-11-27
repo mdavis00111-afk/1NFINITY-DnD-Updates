@@ -5,6 +5,10 @@ const POLICY=preload("res://gameplay/semantic_policy.gd")
 const REVIEW=preload("res://gameplay/independent_review.gd")
 const CONTEXT=preload("res://gameplay/turn_context.gd")
 var context_builder=CONTEXT.new()
+var scene_cache_key: Array=[]
+var scene_cache: Dictionary={}
+var scene_reads=0
+var scene_hits=0
 const DISCOVERY=["define_official","define_custom","actor_generate","loot_discover"]
 const NARRATABLE=["equip","quick_equip","swap","unequip","attune","unattune","item_use","item_drop","item_transfer","currency_transfer","loot_pickup","loot_take_all","spell_cast","spell_prepare","spell_unprepare","resource_use","rest","object_interact","reconcile_legacy_slots","party_membership"]
 var policy=POLICY.new()
@@ -30,6 +34,18 @@ func bind_ai(id: String,context_reviewer: Callable=Callable(),prose_reviewer: Ca
 
 func matches(identity: Dictionary,stage: String) -> bool:
 	return not closed and not running and not notifying and reload() and not active().is_empty() and identity==inflight and identity==active().get("attempt") and identity.get("stage")==stage and active().get("stage")==stage and identity.get("revision")==data["state"]["revision"]
+
+func scene_context(state: Dictionary) -> Dictionary:
+	var key=[state["campaign_id"],state["actor_id"],state["revision"],state["pending_turn_id"],state["metadata"],state["location_id"]]
+	if key==scene_cache_key and not scene_cache.is_empty():
+		scene_hits+=1
+		return scene_cache.duplicate(true)
+	var result=super.scene_context(state)
+	scene_reads+=1
+	if result.get("ok",false):
+		scene_cache_key=key
+		scene_cache=result.duplicate(true)
+	return result
 
 func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	var rid=job["intent"]["request_id"]
@@ -62,7 +78,10 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	expanded["narrative_recap"]=memory["recap"]
 	# Public scene keeps older local evidence but does not repeat recent moves.
 	var scene=expanded.get("scene",{}).duplicate(true)
-	scene.erase("recent_events")
+	var move_ids=memory["moves"].map(func(row): return row["event_id"])
+	# Retain bounded older evidence, including the opening, with exact source IDs.
+	scene["recent_events"]=scene.get("recent_events",[]).filter(func(row): return not row.get("event_id") in move_ids).slice(0,6)
+	scene["location_history"]=scene.get("location_history",[]).filter(func(row): return not row.get("event_id") in move_ids).slice(0,6)
 	expanded["scene"]=scene
 	expanded.erase("actor")
 	expanded.erase("inventory")
@@ -79,6 +98,7 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	expanded["original_player_text"]=job["intent"]["args"].get("text",payload.get("player_text",""))
 	expanded["campaign_context"]={"id":campaign_id,"title":state["campaign"].get("title",""),"maturity_id":state["campaign"].get("maturity_id","standard"),"elapsed_seconds":state["elapsed_seconds"]}
 	expanded["situational_context"]=context_builder.situational(expanded["original_player_text"],job.get("tool",{}).get("kind",""),scene,ext)
+	expanded["local_loot"]=ext.get("loot_containers",[]).slice(0,16)
 	expanded["rules"]=context_builder.rules(expanded["situational_context"],job.get("tool",{}).get("kind",""))
 	expanded["correction"]=job.get("correction","")
 	expanded["prior_outcome"]=job.get("prior_outcome",{})
@@ -583,7 +603,7 @@ func finish(status_code: String,message: String) -> void:
 	if status_code=="committed" and job.has("pending_consequence") and job.get("narration_event_id")!=null:
 		process_consequence()
 		return
-	if status_code=="committed" and standalone(job) and job.get("narration_event_id")==null:
+	if status_code=="committed" and standalone(job) and job["intent"]["kind"]=="chat" and job.get("narration_event_id")==null:
 		recover_active()
 		return
 	if status_code=="committed" and not job.get("remaining",[]).is_empty():

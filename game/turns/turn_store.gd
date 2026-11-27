@@ -11,26 +11,31 @@ func failure(message: String) -> Dictionary:
 	return {"ok":false,"error":message}
 
 # B2 freezes this token BEFORE resolving. It stays local, never enters an AI packet.
-func snapshot(id: String) -> Dictionary:
+func snapshot(id: String,require_gameplay: bool = false) -> Dictionary:
 	var base = BASE.new()
 	var record = base.load_campaign(id)
 	if record.is_empty() or not DTO.id_valid(record.get("actor_id")):
 		return failure("Campaign or actor unavailable.")
 	var raw = base.loaded_metadata
-	var result = SQL.run(base.path_for(id),[
+	var commands: Array = [
 		SQL.stmt("BEGIN"),
 		SQL.stmt("SELECT value FROM meta WHERE key='campaign'"),
 		SQL.stmt("SELECT value FROM meta WHERE key='world_schema'"),
 		SQL.stmt("SELECT campaign_id,revision,turn_number,pending_turn_id,elapsed_seconds FROM world_state"),
 		SQL.stmt("SELECT id,location_id,payload,master_character_id FROM actors WHERE id=? AND kind='player'",[record["actor_id"]]),
-		SQL.stmt("SELECT item_id,quantity,payload FROM inventory WHERE actor_id=? ORDER BY item_id",[record["actor_id"]]),
-		SQL.stmt("COMMIT")
-	],true)
+		SQL.stmt("SELECT item_id,quantity,payload FROM inventory WHERE actor_id=? ORDER BY item_id",[record["actor_id"]])
+	]
+	if require_gameplay:
+		commands.append(SQL.stmt("SELECT value FROM meta WHERE key='gameplay_schema'"))
+	commands.append(SQL.stmt("COMMIT"))
+	var result=SQL.run(base.path_for(id),commands,true)
 	if not result.get("ok",false):
 		return failure("World state unavailable. Run migration first.")
 	var sets: Array = result["results"]
-	if sets.size()!=7 or sets[1].size()!=1 or sets[1][0]["value"]!=raw or sets[2].size()!=1 or sets[2][0]["value"]!=MIGRATION.VERSION or sets[3].size()!=1 or sets[4].size()!=1:
+	if sets.size()!=commands.size() or sets[1].size()!=1 or sets[1][0]["value"]!=raw or sets[2].size()!=1 or sets[2][0]["value"]!=MIGRATION.VERSION or sets[3].size()!=1 or sets[4].size()!=1:
 		return failure("Campaign changed or world state incomplete.")
+	if require_gameplay and (sets[6].size()!=1 or sets[6][0]["value"]!="1"):
+		return failure("C2 gameplay migration required.")
 	var state = sets[3][0]
 	var actor = sets[4][0]
 	var revision = DTO.sql_int(state["revision"])

@@ -98,6 +98,11 @@ func public_context(id: String, related_ids: Array) -> Dictionary:
 	var token = TURN.new().snapshot(id)
 	if not token.get("ok",false):
 		return token
+	return public_context_from_token(token,related_ids)
+
+# Same read transaction guard as the public API; only local controller tokens.
+func public_context_from_token(token: Dictionary,related_ids: Array) -> Dictionary:
+	var id=str(token["campaign_id"])
 	if related_ids.size()>DM_LIMIT+1:
 		return failure("Too many relevant places.")
 	var ids: Array = [token["location_id"]]
@@ -190,6 +195,19 @@ func public_context(id: String, related_ids: Array) -> Dictionary:
 			continue
 		local_history.append({"event_id":DTO.sql_int(row["event_id"]),"turn":DTO.sql_int(row["turn"]),"kind":"narration","text":event["text"],"location_id":event["location_id"]})
 	return {"ok":true,"campaign_id":id,"revision":token["revision"],"locations":typed_rows(sets[0]),"aliases":sets[1],"relationships":typed_rows(sets[2]),"routes":typed_rows(sets[3]),"party_location":party[0] if not party.is_empty() else null,"travel":typed_rows(sets[5]),"local_facts":local_facts,"region":typed_rows(sets[7]),"opening_events":typed_rows(sets[8]),"local_npcs":public_npcs,"local_quests":public_quests,"location_history":local_history}
+
+# The controller needs only relevant IDs and recent event evidence before
+# projecting the public scene. Avoid constructing unused private routes,
+# actor sheets, quest payloads, terrain points and audit rows.
+func scene_seed(token: Dictionary) -> Dictionary:
+	var at=token["location_id"]
+	var radius=25.0
+	var relevant="SELECT l.id FROM locations l JOIN world_places w ON w.location_id=l.id LEFT JOIN world_discovery d ON d.location_id=l.id"+DM_RELEVANT+" ORDER BY CASE WHEN l.id=? THEN 0 WHEN l.id IN (SELECT to_id FROM geographic_relationships WHERE from_id=? UNION SELECT from_id FROM geographic_relationships WHERE to_id=? UNION SELECT to_id FROM world_routes WHERE from_id=? UNION SELECT from_id FROM world_routes WHERE to_id=?) THEN 1 WHEN l.parent_id=? THEN 2 ELSE 3 END,w.source_event_id DESC,l.id LIMIT ?"
+	var args=[at,at,at,at,at,at,at,"\"location_id\":\""+at+"\"",at,at,at,at,at,radius,radius,radius*radius,at,at,at,at,at,at,DM_LIMIT]
+	var result=read_sets(token,[SQL.stmt(relevant,args),SQL.stmt("SELECT id AS event_id,turn,kind,payload FROM events WHERE kind IN ('campaign_created','narration','mechanical_receipt') ORDER BY id DESC LIMIT 12")])
+	if not result.get("ok",false):
+		return result
+	return {"ok":true,"campaign_id":token["campaign_id"],"actor_id":token["actor_id"],"revision":token["revision"],"current_location_id":at,"locations":result["sets"][0],"recent_events":typed_rows(result["sets"][1])}
 
 # Separate private DM read model. Only current, connected or geographically
 # nearby places; no whole-campaign dump. Distances are not inferred.
