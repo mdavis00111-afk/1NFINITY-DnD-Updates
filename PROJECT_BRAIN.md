@@ -453,3 +453,6 @@ Base 28c3f6908b2e4fd85e7e9106dde09390bc1d356a; refined durable queue/in-flight r
 
 ## C4 stage 3 — development GUI linkage
 Base 31fdcfc6e304d33b11de3d4159e2cd0836b70d87; explicit mount_workspace links real C2 snapshot/C3 controller to approved workspace without modifying production manager. Added World menu, disclosed actor sheet/loot selection and take-all/overview/history dialogs, explicit target, rest/preparation, route/pace, legacy-slot review and processing/queue controls; existing HUD rebuild from committed state, pending critically reviewed preview separate from log. No Gemini prompts, live activation or release. Native GUI verification pending.
+
+## C4 stage 4 — controller safety and recovery review
+Base a3a9ee5371573b6d929426fdb05209cabac93e48; local single-controller binding, provider cancellation/failure boundary, stale view blocking, idle adoption gate, capability filtering, durable preview lifetime, delivery recovery and queued input handling refined. Independent Python SQLite 3.46.1 fixture executed 9/9 using verbatim relevant DDL and exact journal CAS/TurnStore guard: initial write, stale journal rollback, reopen queue, late-attempt CAS, stale revision, receipt+candidate reopen, duplicate narration rollback, deferred history uniqueness, integrity/FK/sibling hash. SQL-level only; native Godot and live provider not run. No release.

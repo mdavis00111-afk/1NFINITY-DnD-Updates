@@ -38,7 +38,6 @@ var last_chat_request_id = ""
 var development_controller: Node
 var local_pending_id=""
 var local_pending_text=""
-var preview_note: Label
 var view: Dictionary = {}
 var actor: Dictionary = {}
 var campaign: Dictionary = {}
@@ -128,6 +127,8 @@ func apply_authoritative_view(snapshot: Dictionary) -> bool:
 	if is_instance_valid(development_controller):
 		var ext=snapshot.get("interaction_extension",{})
 		if not local_pending_id.is_empty() and (local_pending_id in ext.get("accepted_request_ids",[]) or ext.get("request_history",[]).any(func(row): return row.get("request_id")==local_pending_id)):
+			if not local_pending_text.is_empty() and draft==local_pending_text:
+				draft=""
 			local_pending_id=""
 			local_pending_text=""
 	var previous_dice = last_roll.duplicate(true)
@@ -163,7 +164,7 @@ func apply_authoritative_view(snapshot: Dictionary) -> bool:
 	dice_count.value = previous_count
 	dice_result.text = previous_dice_text
 	dice_result.tooltip_text = previous_dice_tip
-	show_status(str(intents.interaction.get("status_text","Campaign view refreshed.")))
+	show_status(str(extension().get("status_text","Campaign view refreshed.")) if is_instance_valid(development_controller) else str(intents.interaction.get("status_text","Campaign view refreshed.")))
 	return true
 
 func box_style(lit: bool = false, margin: int = 6, opacity: float = 0.94) -> StyleBoxTexture:
@@ -743,7 +744,7 @@ func build_center(parent: VBoxContainer) -> void:
 		label(log_list,data_error,16,GOLD)
 	log_scroll.set_deferred("scroll_vertical",2147483647)
 	var actions = hbox(parent,4)
-	if view.get("opening_available",false):
+	if view.get("opening_available",false) and not is_instance_valid(development_controller):
 		opening_button = button(actions,"Generate Opening",retry_action,15,"wand")
 		opening_button.disabled = pending or not data_error.is_empty()
 	button(actions,"Turn / Retry",show_turn_controls,15)
@@ -751,7 +752,7 @@ func build_center(parent: VBoxContainer) -> void:
 		button(actions,"World",show_world_menu,15)
 	var save_exit = button(actions,"Save & Exit",request_leave,15)
 	save_exit.tooltip_text = "Committed campaign data and accepted work are saved. Manual dice are not saved." if is_instance_valid(development_controller) else "Committed campaign data is already saved. Pending opening generation is canceled; manual dice are not saved."
-	var status_text = str(intents.interaction.get("status_text","Turn controller pending — action submission unavailable."))
+	var status_text = str(extension().get("status_text","Development controller pending.")) if is_instance_valid(development_controller) else str(intents.interaction.get("status_text","Turn controller pending — action submission unavailable."))
 	if not data_error.is_empty():
 		status_text = "Campaign data unavailable. Return to Campaign and reopen."
 	elif pending:
@@ -1680,7 +1681,12 @@ func show_processing() -> void:
 	var queued=str(extension().get("queued_text",""))
 	if not queued.is_empty():
 		label(col,"Saved next action: "+queued,16,GOLD)
-		button(col,"Resume queued action when settled",func(): development_controller.resume_queue(); popup.queue_free())
+		var resume=button(col,"Resume queued action when settled",func():
+			var result=development_controller.resume_queue()
+			if not result.get("ok",false): show_status(str(result.get("error","Queue unavailable.")))
+			popup.queue_free()
+		)
+		resume.disabled=not extension().get("queue_wait",false)
 		button(col,"Return queued text to draft",func():
 			var result=development_controller.discard_queue()
 			if result.get("ok",false):
@@ -1703,8 +1709,16 @@ func show_processing() -> void:
 				show_status(str(result.get("error","Retry unavailable.")))
 		popup.queue_free()
 	)
-	button(col,"Cancel uncommitted request",func(): development_controller.cancel(); popup.queue_free())
-	button(col,"Skip optional deferred story proposals",func(): development_controller.skip_deferred(); popup.queue_free())
+	button(col,"Cancel uncommitted request",func():
+		var result=development_controller.cancel()
+		if not result.get("ok",false): show_status(str(result.get("error","Cancellation unavailable.")))
+		popup.queue_free()
+	)
+	button(col,"Skip optional deferred story proposals",func():
+		var result=development_controller.skip_deferred()
+		if not result.get("ok",false): show_status(str(result.get("error","No optional work available.")))
+		popup.queue_free()
+	)
 	popup.popup_centered(Vector2i(580,420))
 
 func show_world_menu() -> void:
@@ -1887,8 +1901,9 @@ func show_rest(kind: String) -> void:
 	var prepare=CheckBox.new()
 	prepare.text="Choose a new complete prepared list"
 	var choices: Array=[]
-	if kind=="long" and actor.get("class_id") in ["cleric","druid","wizard"]:
-		col.add_child(prepare)
+	col.add_child(prepare)
+	prepare.visible=kind=="long" and actor.get("class_id") in ["cleric","druid","wizard"]
+	if prepare.visible:
 		choices=preparation_choices(col)
 	var confirm=button(col,"Submit rest intention",func(): dev_submit("rest",{"rest_kind":kind,"hit_dice":int(dice.value),"prepared_ids":selected_preparation(choices) if prepare.button_pressed else null}))
 	confirm.disabled=not can_choice("rest")

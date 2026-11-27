@@ -2,6 +2,8 @@ extends Node
 ## Explicit development-only binding. No live Gemini, no production manager wiring.
 signal view_changed(snapshot: Dictionary)
 signal semantic_requested(stage: String, packet: Dictionary)
+signal semantic_cancelled(identity: Dictionary)
+static var bindings: Dictionary={}
 const REG=preload("res://gameplay/tool_registry.gd")
 const JOURNAL=preload("res://gameplay/work_journal.gd")
 const BASE=preload("res://campaigns/campaign_store.gd")
@@ -36,6 +38,9 @@ func failure(message: String) -> Dictionary:
 func bind_campaign(id: String, reviewer: Callable, prose_reviewer: Callable) -> Dictionary:
 	if not is_inside_tree() or not campaign_id.is_empty() or not DTO.id_valid(id) or not reviewer.is_valid() or not prose_reviewer.is_valid():
 		return failure("Explicit local development binding and reviewers required.")
+	var existing=bindings.get(id)
+	if existing is WeakRef and is_instance_valid(existing.get_ref()):
+		return failure("Campaign already bound to another local controller.")
 	var migrated=MIGRATE.new().ensure(id)
 	if not migrated.get("ok",false):
 		return migrated
@@ -47,10 +52,12 @@ func bind_campaign(id: String, reviewer: Callable, prose_reviewer: Callable) -> 
 	local_review=reviewer
 	critical_review=prose_reviewer
 	data=found
+	bindings[id]=weakref(self)
 	# An old adopted turn without a C4 journal needs explicit recovery rather
 	# than a new action. Never silently adopt another controller's work.
 	var pending=registry.session.read(found["state"],[SQL.stmt("SELECT request_id FROM gameplay_requests WHERE status='accepted_pending'")])
 	if not pending.get("ok",false):
+		close_session()
 		return failure("Pending request lookup failed.")
 	if data["work"]["active"].is_empty() and (found["state"]["pending_turn_id"]!=null or not pending["sets"][0].is_empty()):
 		status="Existing pending turn requires original controller recovery."
@@ -94,12 +101,15 @@ func enquiry(kind: String,args: Dictionary,limit: int=64) -> Dictionary:
 # Only the committed read model is passed to the workspace. Pending preview is
 # a separate presentation field, never inserted into canonical event history.
 func refresh() -> void:
-	if closed or not reload():
+	if closed:
+		return
+	if not reload():
+		block_view("Campaign work readback unavailable.")
 		return
 	var fresh=BASE.new().gameplay_view(campaign_id)
 	var ext=fresh.get("interaction_extension",{})
 	if ext.get("revision")!=data["state"]["revision"] or ext.get("actor_id")!=actor_id:
-		status="Committed view unavailable; actions disabled."
+		block_view("Committed view unavailable; actions disabled.")
 		return
 	var job=active()
 	var work=data["work"]
@@ -112,9 +122,9 @@ func refresh() -> void:
 		phase="blocked"
 	var caps: Array=[]
 	if phase=="idle":
-		caps=DIRECT+["chat","skill_check","ability_check","saving_throw","quest_interact"]
-		if fresh.has("interaction") and fresh["interaction"] is Dictionary:
-			caps+=["rest","resource_use","spell_prepare","spell_unprepare","travel"]
+		caps=["chat","skill_check","ability_check","saving_throw"]
+		if fresh.get("interaction") is Dictionary:
+			caps+=DIRECT+["rest","resource_use","spell_prepare","spell_unprepare","travel","quest_interact"]
 	# One durable queued chat, not a rebase of an old mechanical selection.
 	if busy and work["queued"].is_empty():
 		caps.append("chat")
@@ -134,7 +144,7 @@ func refresh() -> void:
 	ext["queued_text"]=work["queued"].get("intent",{}).get("args",{}).get("text","")
 	ext["can_queue"]=busy and work["queued"].is_empty()
 	ext["processing"]=busy
-	ext["reviewed_preview"]=job.get("candidate",{}).get("text","") if job.get("critical_verified",false) else ""
+	ext["reviewed_preview"]=job.get("candidate",{}).get("text","") if job.get("critical_verified",false) and data["state"]["pending_turn_id"]!=null else ""
 	ext["work_stage"]=job.get("stage","")
 	ext["last_terminal"]=last
 	ext["accepted_request_ids"]=[job.get("intent",{}).get("request_id"),work["queued"].get("intent",{}).get("request_id")]
@@ -142,7 +152,7 @@ func refresh() -> void:
 	ext["queue_wait"]=queue_wait
 	ext["draft"]=work["draft"]
 	ext["local_binding"]=true
-	ext["choice_tools"]=DIRECT+CHOICES if phase=="idle" else []
+	ext["choice_tools"]=(DIRECT+CHOICES if fresh.get("interaction") is Dictionary else ["reconcile_legacy_slots"]) if phase=="idle" else []
 	var packet=fresh.get("interaction")
 	if packet is Dictionary:
 		for key in ["phase","supported_intents","settled_request_id","settled_status","status_text","active_turn_id"]:
@@ -185,7 +195,7 @@ func submit(intent: Dictionary) -> Dictionary:
 			guard.configure(view)
 			if not kind in DIRECT+SEMANTIC+CHOICES or not guard.validate_args(kind,intent["args"]):
 				return acknowledge(intent,false,"Selection is not offered.")
-	elif not kind in DIRECT+CHOICES or not REG.TOOLS.has(kind) or not registry.arguments_valid(intent["args"],REG.TOOLS[kind][0]):
+	elif not kind in view.get("interaction_extension",{}).get("choice_tools",[]) or not REG.TOOLS.has(kind) or not registry.arguments_valid(intent["args"],REG.TOOLS[kind][0]):
 		return acknowledge(intent,false,"Explicit registered choice required.")
 	var work=data["work"].duplicate(true)
 	if intent["request_id"] in [work["active"].get("intent",{}).get("request_id"),work["queued"].get("intent",{}).get("request_id"),work["last"].get("request_id")] or work["history"].any(func(row): return row.get("request_id")==intent["request_id"]):
@@ -199,7 +209,7 @@ func submit(intent: Dictionary) -> Dictionary:
 			return acknowledge(intent,false,"Only one next natural-language action may be queued.")
 		work["queued"]=job
 	else:
-		if state["pending_turn_id"]!=null or not work["queued"].is_empty() or view.get("interaction_extension",{}).get("phase")!="idle" or view.get("interaction_extension",{}).get("revision")!=state["revision"]:
+		if state["pending_turn_id"]!=null or not idle_database() or not work["queued"].is_empty() or view.get("interaction_extension",{}).get("phase")!="idle" or view.get("interaction_extension",{}).get("revision")!=state["revision"]:
 			return acknowledge(intent,false,"Previous turn must be recovered.")
 		work["active"]=job
 	if kind=="chat":
@@ -213,6 +223,7 @@ func submit(intent: Dictionary) -> Dictionary:
 	return acknowledge(intent,true,"Saved for processing, not yet resolved.")
 
 func finish(status_code: String,message: String) -> void:
+	retire_attempt()
 	var work=data["work"].duplicate(true)
 	var job=work["active"]
 	work["last"]={"request_id":job["intent"]["request_id"],"status":status_code,"text":job["intent"]["args"].get("text",""),"message":message}
@@ -271,7 +282,7 @@ func advance() -> void:
 		return
 	var work=data["work"]
 	if work["active"].is_empty():
-		if work["queued"].is_empty() or data["state"]["pending_turn_id"]!=null or work["last"].get("status")!="committed":
+		if work["queued"].is_empty() or data["state"]["pending_turn_id"]!=null or work["last"].get("status")!="committed" or not idle_database():
 			return
 		var next=work.duplicate(true)
 		next["active"]=next["queued"]
@@ -282,6 +293,8 @@ func advance() -> void:
 			return
 	var job=active().duplicate(true)
 	var state=data["state"]
+	if job.is_empty():
+		return
 	match job["stage"]:
 		"new","interpret":
 			if job["intent"]["schema_version"]=="2" or job["intent"]["kind"] in DIRECT:
@@ -494,10 +507,12 @@ func reconcile(job: Dictionary,receipt: Dictionary,known: Array) -> void:
 func retry() -> Dictionary:
 	if running or notifying or not reload() or active().is_empty():
 		return failure("No recoverable request.")
-	inflight={}
+	retire_attempt()
 	var job=active().duplicate(true)
 	job["attempt"]={}
 	if job.get("stage")=="critical_blocked":
+		job.erase("geography")
+		job.erase("story")
 		job.erase("candidate")
 		job.erase("critical_verified")
 		job.erase("critical_claims")
@@ -533,7 +548,14 @@ func cancel() -> Dictionary:
 
 func close_session() -> void:
 	closed=true
-	# All accepted work is already durable. Provider callbacks are ignored.
+	retire_attempt()
+	# All accepted work is durable. No callback can mutate after closure.
+	var existing=bindings.get(campaign_id)
+	if existing is WeakRef and existing.get_ref()==self:
+		bindings.erase(campaign_id)
+
+func _exit_tree() -> void:
+	close_session()
 
 # Trusted local adapter receives original intention independently of tool args.
 func review_tool(req: Dictionary,scope: Dictionary) -> Dictionary:
@@ -636,7 +658,7 @@ func skip_deferred() -> Dictionary:
 	return {"ok":true}
 
 func resume_queue() -> Dictionary:
-	if not reload() or not active().is_empty() or data["work"]["queued"].is_empty() or data["state"]["pending_turn_id"]!=null:
+	if closed or notifying or not reload() or not active().is_empty() or data["work"]["queued"].is_empty() or data["state"]["pending_turn_id"]!=null or not idle_database():
 		return failure("No available queued action.")
 	var work=data["work"].duplicate(true)
 	work["active"]=work["queued"]
@@ -648,7 +670,7 @@ func resume_queue() -> Dictionary:
 	return {"ok":true}
 
 func discard_queue() -> Dictionary:
-	if not reload() or data["work"]["queued"].is_empty():
+	if closed or notifying or not reload() or data["work"]["queued"].is_empty():
 		return failure("No queued action.")
 	var work=data["work"].duplicate(true)
 	work["draft"]=work["queued"]["intent"]["args"]["text"]
@@ -659,7 +681,7 @@ func discard_queue() -> Dictionary:
 	return {"ok":true}
 
 func save_draft(text: String) -> Dictionary:
-	if text.length()>2000 or not reload():
+	if closed or notifying or text.length()>2000 or not reload():
 		return failure("Draft unavailable.")
 	var work=data["work"].duplicate(true)
 	work["draft"]=text
@@ -700,3 +722,40 @@ func request_status(id: String) -> Dictionary:
 	if not prior.get("ok",false):
 		return prior
 	return {"ok":true,"recorded":prior.get("found",false),"status":prior.get("status")}
+
+func idle_database() -> bool:
+	var read=registry.session.read(data["state"],[SQL.stmt("SELECT request_id FROM gameplay_requests WHERE status='accepted_pending' LIMIT 1")])
+	return read.get("ok",false) and read["sets"][0].is_empty()
+
+func retire_attempt() -> void:
+	var previous=inflight.duplicate(true)
+	inflight={}
+	if not previous.is_empty():
+		semantic_cancelled.emit(previous)
+
+func provider_failed(identity: Dictionary) -> Dictionary:
+	if closed or notifying or not reload() or identity!=inflight or identity!=active().get("attempt"):
+		return failure("Stale provider failure ignored.")
+	retire_attempt()
+	stop("retry","Semantic service unavailable. Retry the saved request.")
+	return {"ok":true}
+
+func block_view(message: String) -> void:
+	status=message
+	if view.is_empty():
+		return
+	var blocked=view.duplicate(true)
+	var ext=blocked.get("interaction_extension",{})
+	ext["phase"]="blocked"
+	ext["supported_intents"]=[]
+	ext["choice_tools"]=[]
+	ext["can_queue"]=false
+	ext["status_text"]=message
+	if blocked.get("interaction") is Dictionary:
+		blocked["interaction"]["phase"]="blocked"
+		blocked["interaction"]["supported_intents"]=[]
+		blocked["interaction"]["status_text"]=message
+	view=blocked
+	notifying=true
+	view_changed.emit(blocked.duplicate(true))
+	notifying=false
