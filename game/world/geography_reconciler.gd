@@ -5,7 +5,9 @@ const SQL = preload("res://systems/sqlite.gd")
 const DTO = preload("res://world/world_dto.gd")
 const WORLD = preload("res://world/world_store.gd")
 const PACK = preload("res://turns/agent_packets.gd")
-const PLACE_KINDS = ["house","cottage","hamlet","village","town","city","capital","port","harbour","castle","keep","fortress","watchtower","guard_post","inn","tavern","church","cathedral","temple","shrine","monastery","windmill","watermill","mill","farm","field","blacksmith","trading_post","bridge","dock","lighthouse","plain","grassland","hill","mountain","mountain_range","mountain_pass","cliff","valley","ravine","canyon","plateau","forest","woods","jungle","swamp","marsh","desert","dune","tundra","glacier","volcano","beach","coast","ocean","sea","lake","pond","river","stream","waterfall","spring","island","archipelago","reef","shipwreck","ship","boat","cave","cavern","mine","crypt","tomb","graveyard","ruin","ruins","dungeon","standing_stone","stone_circle","portal","camp","lair","battlefield","monument","well","entrance","landmark","market","court","road","settlement","building","region"]
+const TURN = preload("res://turns/turn_store.gd")
+const BASE = preload("res://campaigns/campaign_store.gd")
+const PLACE_KINDS = ["house","cottage","hamlet","village","town","city","capital","port","harbour","castle","keep","fortress","watchtower","guard_post","inn","tavern","church","cathedral","temple","shrine","monastery","windmill","watermill","mill","farm","field","blacksmith","trading_post","bridge","dock","lighthouse","plain","grassland","hill","mountain","mountain_range","mountain_pass","cliff","valley","ravine","canyon","plateau","forest","woods","jungle","swamp","marsh","desert","dune","tundra","glacier","volcano","beach","coast","ocean","sea","lake","pond","river","stream","waterfall","spring","island","archipelago","reef","shipwreck","ship","boat","cave","cavern","mine","crypt","tomb","graveyard","ruin","ruins","dungeon","standing_stone","stone_circle","portal","camp","lair","battlefield","monument","well","entrance","landmark","market","court","road","settlement","building","region","wilderness"]
 const ROUTE_KINDS = ["road","track","path","trail","trade_route","sea_route","river","stream","crossing","mountain_pass"]
 const RELATION_KINDS = ["relative","near","adjacent","bank","on","within","connected","upstream","downstream"]
 const DIRECTIONS = ["north","south","east","west","northeast","northwest","southeast","southwest"]
@@ -13,7 +15,7 @@ const OPPOSITE = {"north":"south","south":"north","east":"west","west":"east","n
 const RANK = {"unknown":0,"reported":1,"observed":2,"visited":3,"surveyed":4}
 const WORD_NUMBERS = ["zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen","twenty"]
 const EVENT = "(SELECT event_id FROM turn_narrations WHERE turn_id=?)"
-const PLACE_SELECT = "SELECT l.id,l.name,l.kind,l.parent_id,w.region_id,w.precision,w.public_description,d.status,d.visibility FROM locations l JOIN world_places w ON w.location_id=l.id LEFT JOIN world_discovery d ON d.location_id=l.id"
+const PLACE_SELECT = "SELECT l.id,l.name,l.kind,l.parent_id,w.region_id,w.precision,l.x,l.y,w.uncertainty_miles,w.public_description,d.status,d.visibility FROM locations l JOIN world_places w ON w.location_id=l.id LEFT JOIN world_discovery d ON d.location_id=l.id"
 const REGION_SELECT = "SELECT r.id,r.name,r.kind,r.parent_id,r.public_description,d.status,d.visibility FROM terrain_regions r LEFT JOIN world_discovery d ON d.region_id=r.id"
 const ROUTE_SELECT = "SELECT r.id,r.name,r.kind,r.from_id,r.to_id,r.distance_miles,r.precision,d.status,d.visibility FROM world_routes r LEFT JOIN world_discovery d ON d.route_id=r.id"
 var token: Dictionary
@@ -26,6 +28,7 @@ var entities: Dictionary = {}
 var accepted_aliases: Array = []
 var accepted_relations: Array = []
 var db_error = false
+var offered_ids: Array = []
 
 func make_id() -> String:
 	return Crypto.new().generate_random_bytes(16).hex_encode()
@@ -43,8 +46,8 @@ func norm(value: String) -> String:
 # Names and kinds are labels, not narrative instructions or sentence payloads.
 func label_valid(value: String) -> bool:
 	var re = RegEx.new()
-	re.compile("^[\\p{L}\\p{N}][\\p{L}\\p{N} '\\u2019-]{0,79}$")
-	return re.search(value.strip_edges())!=null and value.split(" ",false).size()<=10
+	re.compile("^[\\p{L}\\p{N}][\\p{L}\\p{N} '’-]{0,79}$")
+	return re.search(value.strip_edges())!=null and value.split(" ",false).size()<=10 and not evidence_has(value,"you") and not evidence_has(value,"your") and not evidence_has(value,"player")
 
 func evidence_has(evidence: String, value: String) -> bool:
 	# Match complete phrase, not substrings of other names.
@@ -96,7 +99,7 @@ func bind(ref: Dictionary, row: Dictionary) -> bool:
 
 func record(index: int, status: String, subject: Variant, detail: String) -> void:
 	audit.append({"index":index,"status":status,"subject":subject,"detail":detail})
-	commands.append(SQL.stmt("INSERT INTO geography_audit(id,request_id,source_event_id,proposal_index,revision,status,subject_id,detail) VALUES(?,?,"+EVENT+",?,?,?,?,?)",[make_id(),packet["request_id"],packet["turn_id"],index,token["revision"]+1,status,subject,detail]))
+	commands.append(SQL.stmt("INSERT INTO geography_audit(id,request_id,source_event_id,proposal_index,revision,status,subject_id,detail) VALUES(?,?,"+EVENT+",?,?,?,?,?)",[make_id(),packet["request_id"],packet["turn_id"],index,token["revision"]+1,status,subject,JSON.stringify({"reason":detail,"proposal":packet["facts"][index]})]))
 
 func discover(kind: String, row: Dictionary, status: String) -> void:
 	var col = {"place":"location_id","route":"route_id","terrain_region":"region_id"}[kind]
@@ -136,12 +139,31 @@ func identity_candidates(kind: String, name: String, parent: Variant, region: Va
 		candidates.append(row)
 	return candidates
 
+# Persist safe static descriptive prose rather than dropping every ordinary
+# detail. The source excerpt must contain the exact proposed description.
+func static_description(f: Dictionary, name: String) -> String:
+	var description = f.get("description")
+	if not description is String or not str(f["evidence"]).contains(description):
+		return ""
+	var clean = description.strip_edges()
+	var lower = norm(clean)
+	# Subject-specific static materials/appearance. No coordinates, outcomes,
+	# player decisions, secrets, NPC behaviour or claims of movement.
+	for subject in [norm(name),"the "+str(f.get("place_kind",f.get("terrain_kind",""))).replace("_"," ")]:
+		for suffix in [" is built of stone."," is built of timber."," is built of brick."," is wooden."," is weathered."," is ivy-covered."," is thatched."," has a slate roof."," has an oak door."," has stone walls."," has a wooden roof."]:
+			if lower==subject+suffix:
+				return clean
+	var flavor = sensory_lines(clean)
+	if flavor.size()==1 and flavor[0]==clean:
+		return clean
+	return ""
+
 func place_or_region(f: Dictionary, index: int) -> bool:
 	var kind = "place" if f["kind"]=="place" else "terrain_region"
 	var ref: Dictionary = f["subject"]
 	var name = str(f["name"]).strip_edges()
 	var type = str(f["place_kind"] if kind=="place" else f["terrain_kind"]).to_lower()
-	if not label_valid(name) or not type in PLACE_KINDS or not evidence_has(f["evidence"],name):
+	if not label_valid(name) or not type in PLACE_KINDS or not evidence_has(f["evidence"],name) or (not evidence_has(f["evidence"],type.replace("_"," ")) and ref["id"]==null):
 		record(index,"deferred",null,"Name, vocabulary or evidence not established.")
 		return true
 	var parent = lookup(f["parent"],kind)
@@ -159,7 +181,7 @@ func place_or_region(f: Dictionary, index: int) -> bool:
 		if ref["id"]!=null or keys.has(ref["local_key"]):
 			record(index,"conflict",null,"Reference unavailable or ambiguous.")
 			return true
-		if candidates.size()>1 or (candidates.size()==1 and not visible(candidates[0])):
+		if candidates.size()>1 or (candidates.size()==1 and (not visible(candidates[0]) or (not candidates[0]["id"] in offered_ids and not candidates[0].get("staged",false) and parent_id==null and region_id==null))):
 			record(index,"conflict",null,"Name resolution unavailable or ambiguous.")
 			return true
 		if candidates.size()==1:
@@ -176,8 +198,19 @@ func place_or_region(f: Dictionary, index: int) -> bool:
 		# from a new narrative. Record a conflict when a differing description
 		# claims to replace canon; new descriptive prose stays a candidate.
 		var description = f.get("description")
-		if description!=null and not str(existing.get("public_description","")).is_empty() and description!=existing["public_description"]:
-			record(index,"deferred",existing["id"],"Existing description retained; additional prose not adjudicated.")
+		var extra = f.get("population")!=null or f.get("elevation_feet")!=null or f.get("terrain")!=null or f.get("asset_id")!=null or f.get("occupancy","unknown")!="unknown"
+		var safe = static_description(f,name)
+		var old = str(existing.get("public_description",""))
+		if old.is_empty() and not safe.is_empty():
+			var col = "location_id" if kind=="place" else "id"
+			var table = "world_places" if kind=="place" else "terrain_regions"
+			commands.append(SQL.stmt("UPDATE "+table+" SET description=CASE WHEN description='' THEN ? ELSE description END,public_description=? WHERE "+col+"=? AND public_description=''",[safe,safe,existing["id"]]))
+			existing["public_description"]=safe
+			lines.append(safe)
+		if extra or (description!=null and description!=old and description!=safe):
+			record(index,"deferred",existing["id"],"Identity retained; unverified descriptive fields not applied.")
+		elif description!=null and not old.is_empty() and description!=old:
+			record(index,"conflict",existing["id"],"Existing description retained.")
 		else:
 			record(index,"accepted",existing["id"],"Existing identity reused.")
 		lines.append(existing["name"]+" — "+existing["kind"].replace("_"," ")+".")
@@ -185,18 +218,22 @@ func place_or_region(f: Dictionary, index: int) -> bool:
 	# Only unresolved positioning is accepted from B3. Do not set population,
 	# terrain, footprint, elevation, occupancy or asset from unreviewed prose.
 	var id = make_id()
-	var row = {"id":id,"name":name,"kind":type,"parent_id":parent_id,"region_id":region_id,"precision":"provisional","public_description":"","status":"unknown","visibility":"player","entity_kind":kind}
+	var description = static_description(f,name)
+	var row = {"id":id,"name":name,"kind":type,"parent_id":parent_id,"region_id":region_id,"precision":"provisional","public_description":description,"status":"unknown","visibility":"player","entity_kind":kind,"staged":true}
 	if not bind(ref,row):
 		record(index,"conflict",null,"Proposal-local key collision.")
 		return true
 	if kind=="place":
 		commands.append(SQL.stmt("INSERT INTO locations(id,parent_id,kind,name,x,y,payload) VALUES(?,?,?,?,NULL,NULL,'{}')",[id,parent_id,type,name]))
-		commands.append(SQL.stmt("INSERT INTO world_places(location_id,region_id,precision,source_event_id) VALUES(?,?,'provisional',"+EVENT+")",[id,region_id,packet["turn_id"]]))
+		commands.append(SQL.stmt("INSERT INTO world_places(location_id,region_id,precision,description,public_description,source_event_id) VALUES(?,?,'provisional',?,?,"+EVENT+")",[id,region_id,description,description,packet["turn_id"]]))
 	else:
-		commands.append(SQL.stmt("INSERT INTO terrain_regions(id,parent_id,name,kind,precision,source_event_id) VALUES(?,?,?,?,'provisional',"+EVENT+")",[id,parent_id,name,type,packet["turn_id"]]))
+		commands.append(SQL.stmt("INSERT INTO terrain_regions(id,parent_id,name,kind,precision,description,public_description,source_event_id) VALUES(?,?,?,?,'provisional',?,?,"+EVENT+")",[id,parent_id,name,type,description,description,packet["turn_id"]]))
 	discover(kind,row,"reported")
-	record(index,"accepted",id,"New named entity, unresolved coordinates; descriptive extras require separate validation.")
+	var extras = f.get("population")!=null or f.get("elevation_feet")!=null or f.get("terrain")!=null or f.get("asset_id")!=null or f.get("occupancy","unknown")!="unknown" or (f.get("description")!=null and description.is_empty())
+	record(index,"deferred" if extras else "accepted",id,"Named entity recorded with unresolved coordinates; unverified optional fields deferred." if extras else "New named entity, unresolved coordinates.")
 	lines.append(name+" — "+type.replace("_"," ")+".")
+	if not description.is_empty():
+		lines.append(description)
 	return true
 
 func distance_supported(evidence: String, value: Variant) -> bool:
@@ -209,6 +246,32 @@ func distance_supported(evidence: String, value: Variant) -> bool:
 		var n = float(word) if word.is_valid_float() else float(WORD_NUMBERS.find(word))
 		if is_equal_approx(n,float(value)):
 			return true
+	return false
+
+# Compare claims to already established positions, without deriving any new
+# coordinate from narrative. Allow stated positional uncertainty.
+func geometry_conflict(a: Dictionary,b: Dictionary,direction: Variant,dist: Variant,route: bool) -> bool:
+	if not DTO.known_position(str(a.get("precision","unknown"))) or not DTO.known_position(str(b.get("precision","unknown"))):
+		return false
+	var ax = DTO.sql_number(a.get("x"))
+	var ay = DTO.sql_number(a.get("y"))
+	var bx = DTO.sql_number(b.get("x"))
+	var by = DTO.sql_number(b.get("y"))
+	var au = DTO.sql_number(a.get("uncertainty_miles"))
+	var bu = DTO.sql_number(b.get("uncertainty_miles"))
+	if ax==null or ay==null or bx==null or by==null or au==null or bu==null:
+		return true
+	var dx = bx-ax
+	var dy = by-ay
+	var uncertainty = au+bu+0.000001
+	if direction!=null:
+		if (direction.contains("north") and dy < -uncertainty) or (direction.contains("south") and dy > uncertainty) or (direction.contains("east") and dx < -uncertainty) or (direction.contains("west") and dx > uncertainty):
+			return true
+	if dist!=null:
+		var separation = sqrt(dx*dx+dy*dy)
+		if route:
+			return float(dist)+uncertainty<separation
+		return absf(float(dist)-separation)>uncertainty
 	return false
 
 func endpoints(f: Dictionary) -> Array:
@@ -242,11 +305,17 @@ func relation_or_route(f: Dictionary,index: int) -> bool:
 		# or 'A ... south of B' evidence. The stored direction is from A to B.
 		if direction!=null:
 			var e = norm(evidence)
-			var forward = e.find(norm(b["name"]))<e.find(direction+" of "+norm(a["name"])) and e.contains(direction+" of "+norm(a["name"]))
-			var reverse = e.find(norm(a["name"]))<e.find(OPPOSITE[direction]+" of "+norm(b["name"])) and e.contains(OPPOSITE[direction]+" of "+norm(b["name"]))
+			var forward = e.find(norm(b["name"]))>=0 and e.find(norm(b["name"]))<e.find(direction+" of "+norm(a["name"])) and e.contains(direction+" of "+norm(a["name"]))
+			var reverse = kind=="relative" and e.find(norm(a["name"]))<e.find(OPPOSITE[direction]+" of "+norm(b["name"])) and e.contains(OPPOSITE[direction]+" of "+norm(b["name"]))
+			if kind=="bank" and direction in ["north","south","east","west"]:
+				var bank = direction+"ern bank of "+norm(a["name"])
+				forward=e.contains(bank) and e.find(norm(b["name"]))<e.find(bank)
 			if not forward and not reverse:
 				record(index,"deferred",null,"Direction orientation requires clearer evidence.")
 				return true
+		if geometry_conflict(a,b,direction,dist if kind=="relative" else null,false):
+			record(index,"conflict",null,"Claim contradicts established position or uncertainty.")
+			return true
 		var rows = query("SELECT id,from_id,to_id,kind,direction,distance_miles,visibility FROM geographic_relationships WHERE kind=? AND ((from_id=? AND to_id=?) OR (from_id=? AND to_id=?)) LIMIT 65",[kind,a["id"],b["id"],b["id"],a["id"]])
 		for row in accepted_relations:
 			if row["kind"]==kind and ((row["from_id"]==a["id"] and row["to_id"]==b["id"]) or (row["from_id"]==b["id"] and row["to_id"]==a["id"])):
@@ -254,8 +323,12 @@ func relation_or_route(f: Dictionary,index: int) -> bool:
 		if not rows.is_empty():
 			for row in rows:
 				var old_direction = row["direction"]
-				if row["from_id"]!=a["id"] and old_direction!=null:
-					old_direction=OPPOSITE.get(old_direction)
+				if row["from_id"]!=a["id"]:
+					if not kind in ["relative","near","adjacent","connected"]:
+						record(index,"conflict",null,"Asymmetric relationship orientation preserved.")
+						return true
+					if old_direction!=null:
+						old_direction=OPPOSITE.get(old_direction)
 				var old_dist = DTO.sql_number(row["distance_miles"])
 				if row["visibility"]!="player" or (direction!=null and old_direction!=direction) or (dist!=null and (old_dist==null or not is_equal_approx(float(dist),old_dist))):
 					record(index,"conflict",null,"Established relationship preserved.")
@@ -266,7 +339,9 @@ func relation_or_route(f: Dictionary,index: int) -> bool:
 			commands.append(SQL.stmt("INSERT INTO geographic_relationships(id,from_id,to_id,kind,direction,distance_miles,precision,visibility,source_event_id) VALUES(?,?,?,?,?,?,'provisional','player',"+EVENT+")",[id,a["id"],b["id"],kind,direction,dist,packet["turn_id"]]))
 			accepted_relations.append({"id":id,"from_id":a["id"],"to_id":b["id"],"kind":kind,"direction":direction,"distance_miles":str(dist) if dist!=null else null,"visibility":"player"})
 			record(index,"accepted",id,"Established relative knowledge; no absolute coordinates.")
-		if direction!=null:
+		if kind=="bank" and direction!=null:
+			lines.append(b["name"]+" stands on the "+direction+"ern bank of "+a["name"]+".")
+		elif direction!=null:
 			lines.append(b["name"]+" lies "+(str(dist)+" miles " if dist!=null else "")+direction+" of "+a["name"]+".")
 		else:
 			lines.append(a["name"]+" and "+b["name"]+" — "+kind.replace("_"," ")+".")
@@ -275,6 +350,9 @@ func relation_or_route(f: Dictionary,index: int) -> bool:
 	var kind = str(f["route_kind"]).to_lower()
 	if not label_valid(name) or not kind in ROUTE_KINDS or not evidence_has(evidence,name) or not (evidence_has(evidence,"connects") or evidence_has(evidence,"between") or evidence_has(evidence,"from")):
 		record(index,"deferred",null,"Route label or vocabulary not established.")
+		return true
+	if geometry_conflict(a,b,null,dist,true):
+		record(index,"conflict",null,"Route distance contradicts established endpoint positions.")
 		return true
 	var ref: Dictionary = f["subject"]
 	var rows = query(ROUTE_SELECT+" WHERE ((r.from_id=? AND r.to_id=?) OR (r.from_id=? AND r.to_id=?)) AND r.kind=? LIMIT 65",[a["id"],b["id"],b["id"],a["id"],kind])
@@ -305,6 +383,68 @@ func relation_or_route(f: Dictionary,index: int) -> bool:
 		discover("route",row,"reported")
 		record(index,"accepted",id,"Known route proposal; not traveled or mechanically cleared.")
 	lines.append(name+" connects "+a["name"]+" and "+b["name"]+((" ("+str(dist)+" miles)") if dist!=null else "")+".")
+	return true
+
+# Optional descriptive NPC proposal. Local identity only; never assign
+# statistics, attitude, movement, quest or mechanical relationships.
+func npc_fact(f: Dictionary,index: int) -> bool:
+	var location = lookup(f["location"],"place")
+	if location.is_empty():
+		return false
+	var name = str(f["name"]).strip_edges()
+	var occupation = str(f["occupation"]).strip_edges()
+	var evidence = norm(f["evidence"])
+	if location["id"]!=token["location_id"] or not label_valid(name) or not label_valid(occupation) or not (evidence.contains(norm(name)+", the "+norm(occupation)) or evidence.contains(norm(name)+" is the "+norm(occupation)) or evidence.contains(norm(name)+" — "+norm(occupation))):
+		record(index,"deferred",null,"NPC introduction not explicitly local and descriptive.")
+		return true
+	var ref: Dictionary = f["subject"]
+	var rows = query("SELECT id,location_id,payload FROM actors WHERE kind='npc' AND (id=? OR instr(lower(payload),lower(?))>0) LIMIT 65",[ref["id"],name])
+	if rows.size()>=65:
+		db_error=true
+	var matches: Array = []
+	for raw in rows:
+		var data = JSON.parse_string(raw["payload"])
+		if data is Dictionary and data.get("name") is String and norm(data["name"])==norm(name):
+			matches.append({"id":raw["id"],"name":name,"occupation":data.get("occupation"),"location_id":raw["location_id"],"payload":data,"entity_kind":"npc_description"})
+	for row in entities.values():
+		if row.get("entity_kind")=="npc_description" and norm(row["name"])==norm(name) and not matches.any(func(other): return other["id"]==row["id"]):
+			matches.append(row)
+	if not matches.is_empty():
+		if matches.size()!=1 or matches[0]["location_id"]!=location["id"] or matches[0]["occupation"]!=occupation or (ref["id"]!=null and ref["id"]!=matches[0]["id"]):
+			record(index,"conflict",null,"NPC identity or established location/role differs.")
+			return true
+		var row: Dictionary = matches[0]
+		# Existing actor is not made public by a new model claim. Require
+		# a committed disclosure or a staged public introduction.
+		if not row.get("staged",false):
+			var disclosures = query("SELECT e.payload FROM world_links w JOIN events e ON e.id=w.source_event_id WHERE w.actor_id=? AND w.location_id=? AND e.kind='narration' ORDER BY e.id LIMIT 32",[row["id"],location["id"]])
+			var disclosed = false
+			for item in disclosures:
+				var event = JSON.parse_string(item["payload"])
+				var data = row["payload"]
+				if event is Dictionary and event.get("text") is String and event["text"].contains(name+" — "+occupation) and ((event.get("phase")=="opening" and data.get("descriptive_only")==true) or (event.get("b4_reconciled")==true and data.get("public")==true)):
+					disclosed=true
+			if not disclosed:
+				record(index,"conflict",null,"NPC disclosure unavailable.")
+				return true
+		if not bind(ref,row):
+			record(index,"conflict",null,"NPC local key collision.")
+			return true
+		record(index,"accepted",row["id"],"Existing disclosed NPC reused.")
+	elif ref["id"]!=null or keys.has(ref["local_key"]):
+		record(index,"conflict",null,"NPC reference unavailable.")
+		return true
+	else:
+		var id = make_id()
+		var row = {"id":id,"name":name,"occupation":occupation,"location_id":location["id"],"entity_kind":"npc_description","staged":true}
+		if not bind(ref,row):
+			record(index,"conflict",null,"NPC local key collision.")
+			return true
+		var data = {"id":id,"name":name,"occupation":occupation,"location_id":location["id"],"descriptive_only":true,"public":true}
+		commands.append(SQL.stmt("INSERT INTO actors(id,kind,location_id,payload) VALUES(?,'npc',?,?)",[id,location["id"],JSON.stringify(data)]))
+		commands.append(SQL.stmt("INSERT INTO world_links(id,location_id,actor_id,source_event_id) VALUES(?,?,?,"+EVENT+")",[make_id(),location["id"],id,packet["turn_id"]]))
+		record(index,"accepted",id,"Descriptive NPC introduced at current location.")
+	lines.append(name+" — "+occupation+".")
 	return true
 
 func other_fact(f: Dictionary,index: int) -> bool:
@@ -347,6 +487,7 @@ func other_fact(f: Dictionary,index: int) -> bool:
 func plan(state: Dictionary, proposal: Dictionary, text: String, known_ids: Array) -> Dictionary:
 	token=state
 	packet=proposal
+	offered_ids=known_ids.duplicate()
 	if not PACK.valid_geography(proposal,PACK.identity(state,proposal.get("turn_id",""),proposal.get("request_id","")),text,known_ids) or proposal["turn_id"]!=state["pending_turn_id"]:
 		return {"ok":false,"error":"Invalid geography envelope."}
 	var pending: Array = []
@@ -361,6 +502,7 @@ func plan(state: Dictionary, proposal: Dictionary, text: String, known_ids: Arra
 			match f["kind"]:
 				"place","terrain_region": done=place_or_region(f,i)
 				"relationship","route": done=relation_or_route(f,i)
+				"npc_description": done=npc_fact(f,i)
 				_: done=other_fact(f,i)
 			if not done:
 				next.append(i)
@@ -376,3 +518,82 @@ func plan(state: Dictionary, proposal: Dictionary, text: String, known_ids: Arra
 		if not line in unique:
 			unique.append(line)
 	return {"ok":true,"commands":commands,"lines":unique,"audit":audit}
+
+
+# The automatic path renders committed mechanics plus accepted facts. Free-form
+# prose cannot be proven semantically safe by substring/schema validation.
+# A trusted local reviewer may supply approval for the EXACT bundle; ordinary
+# descriptions and discoveries never require a player confirmation.
+func receipt_line(receipt: Dictionary) -> String:
+	var action: Dictionary = receipt["results"][0]
+	match action["kind"]:
+		"ability_check","saving_throw":
+			return "The "+action["kind"].replace("_"," ")+" "+("succeeds." if action["outcome"]=="success" else "fails.")
+		"move","travel":
+			return "The resolved journey is complete."
+		"wait":
+			return "The resolved wait is complete."
+	return "You observe your surroundings."
+
+# Limited static sensory grammar. No player action, mechanics, geography,
+# dialogue, figures, hidden references, or mutable state implied.
+func sensory_lines(text: String) -> PackedStringArray:
+	var out: PackedStringArray = []
+	var re = RegEx.new()
+	re.compile("(?i)^(?:the air (?:smells of|is scented with) (?:woodsmoke|rain|pine|salt|earth|fresh bread|lavender|hay)|(?:soft|warm|pale|dim|golden) (?:light|sunlight|lantern light) (?:fills|illuminates) the (?:room|hall|inn)|(?:a|the) (?:gentle|cool|warm|soft) breeze (?:stirs|drifts) (?:the leaves|through the air)|(?:the )?(?:walls|beams|floor) (?:are|is) (?:weathered|rough|smooth|old|dark|pale))\\.$")
+	for sentence in text.replace("\n"," ").split(".",false):
+		var line = sentence.strip_edges()+"."
+		if re.search(line)!=null and not line in out:
+			out.append(line)
+		if out.size()>=4:
+			break
+	return out
+
+# Invoked with the frozen local controller bundle and known IDs, not a provider
+# action. The receipt, event, revision, all accepted facts and audit are checked
+# and persisted together. No commands from the input dictionary are executed.
+func commit_bundle(id: String, bundle: Dictionary, known_ids: Array, reviewed_prose: bool = false) -> Dictionary:
+	var store = TURN.new()
+	var state = store.snapshot(id)
+	if not state.get("ok",false) or not DTO.exact_keys(bundle,["campaign_id","actor_id","turn_id","expected_revision","receipt","narration","geography"]):
+		return {"ok":false,"error":"Invalid reconciliation state."}
+	var turn_id = bundle["turn_id"]
+	if not DTO.id_valid(turn_id) or bundle["campaign_id"]!=id or bundle["actor_id"]!=state["actor_id"] or not DTO.whole(bundle["expected_revision"],1,DTO.MAX_INT-1):
+		return {"ok":false,"error":"Invalid reconciliation identity."}
+	var prior = store.receipt_by_id(id,turn_id)
+	if not prior.get("ok",false) or not prior.get("found",false) or prior["receipt"]!=bundle["receipt"] or not PACK.committed_receipt_usable(prior["receipt"]):
+		return {"ok":false,"error":"Committed receipt unavailable."}
+	if prior.get("narration_event_id")!=null:
+		return {"ok":true,"replayed":true,"revision":state["revision"]}
+	if state["pending_turn_id"]!=turn_id or state["revision"]!=bundle["expected_revision"] or state["revision"]!=prior["receipt"]["next_revision"]:
+		return {"ok":false,"error":"Stale reconciliation revision."}
+	var narration = bundle["narration"]
+	var geography = bundle["geography"]
+	if not narration is Dictionary or not geography is Dictionary or not DTO.id_valid(narration.get("request_id")) or not DTO.id_valid(geography.get("request_id")) or narration["request_id"]==geography["request_id"] or not PACK.valid_narration(narration,PACK.identity(state,turn_id,narration["request_id"])):
+		return {"ok":false,"error":"Invalid narrative envelope."}
+	var planned = plan(state,geography,narration["text"],known_ids)
+	if not planned.get("ok",false):
+		return planned
+	var clean = true
+	for item in planned["audit"]:
+		if item["status"]!="accepted":
+			clean=false
+	var text = narration["text"] if reviewed_prose and clean else receipt_line(prior["receipt"])
+	if not (reviewed_prose and clean):
+		var flavor = sensory_lines(narration["text"]) if clean else PackedStringArray()
+		var passages: PackedStringArray = [text]
+		passages.append_array(flavor)
+		passages.append_array(planned["lines"])
+		text="\n\n".join(passages)
+	var game_time = "Unspecified" if state["elapsed_seconds"]==null else "Elapsed "+str(state["elapsed_seconds"])+" seconds (tracked epoch)"
+	var batch: Array = [store.guard(state),SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(?,?,'narration',?)",[state["turn"],game_time,JSON.stringify({"turn_id":turn_id,"location_id":state["location_id"],"text":text,"b4_reconciled":true})]),SQL.stmt("INSERT INTO turn_narrations(turn_id,event_id,revision) VALUES(?,last_insert_rowid(),?)",[turn_id,state["revision"]+1])]
+	batch.append_array(planned["commands"])
+	batch.append(SQL.stmt("UPDATE world_state SET revision=?,pending_turn_id=NULL WHERE campaign_id=?",[state["revision"]+1,id]))
+	batch.append(SQL.stmt("DELETE FROM meta WHERE key='turn_write_guard'"))
+	var result = SQL.run(BASE.new().path_for(id),batch)
+	if not result.get("ok",false):
+		var confirmed = store.receipt_by_id(id,turn_id)
+		if confirmed.get("found",false) and confirmed.get("narration_event_id")!=null:
+			return {"ok":true,"replayed":true}
+		return {"ok":false,"error":"World/narration transaction rejected. Receipt retained; retry reconciliation."}
+	return {"ok":true,"revision":state["revision"]+1,"audit_count":planned["audit"].size()}

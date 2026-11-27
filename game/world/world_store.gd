@@ -12,7 +12,7 @@ const MAP_ROUTES = "SELECT r.id,r.from_id,r.to_id,r.name,r.kind,r.precision,r.di
 const MAP_REGIONS = "SELECT r.id,r.name,r.kind,r.precision,r.public_description,d.status FROM terrain_regions r JOIN world_discovery d ON d.region_id=r.id WHERE "+VISIBLE
 const MAP_TRAVEL = "SELECT m.turn_id,m.seq,m.from_id,m.to_id,CASE WHEN rd.visibility='player' AND rd.status<>'unknown' THEN m.route_id END AS route_id,m.distance_miles,m.elapsed_seconds,m.precision,t.turn_number FROM movement_history m JOIN turn_receipts t ON t.turn_id=m.turn_id JOIN world_discovery a ON a.location_id=m.from_id JOIN world_discovery b ON b.location_id=m.to_id LEFT JOIN world_discovery rd ON rd.route_id=m.route_id WHERE m.actor_id=? AND a.visibility='player' AND a.status<>'unknown' AND b.visibility='player' AND b.status<>'unknown'"
 const DM_PLACES = "SELECT l.id,l.parent_id,l.name,l.kind,CASE WHEN w.precision IN ('approximate','surveyed') THEN l.x END AS x,CASE WHEN w.precision IN ('approximate','surveyed') THEN l.y END AS y,w.precision,w.uncertainty_miles,w.elevation_feet,w.terrain,w.region_id,w.occupancy,w.population,w.description,w.source_event_id,d.status,d.visibility FROM locations l JOIN world_places w ON w.location_id=l.id LEFT JOIN world_discovery d ON d.location_id=l.id"
-const DM_RELEVANT = " WHERE l.id=? OR l.id=(SELECT parent_id FROM locations WHERE id=?) OR l.parent_id=? OR l.id IN (SELECT to_id FROM geographic_relationships WHERE from_id=? UNION SELECT from_id FROM geographic_relationships WHERE to_id=? UNION SELECT to_id FROM world_routes WHERE from_id=? UNION SELECT from_id FROM world_routes WHERE to_id=?) OR (w.precision IN ('approximate','surveyed') AND EXISTS(SELECT 1 FROM locations c JOIN world_places cw ON cw.location_id=c.id WHERE c.id=? AND cw.precision IN ('approximate','surveyed') AND abs(l.x-c.x)<=? AND abs(l.y-c.y)<=? AND ((l.x-c.x)*(l.x-c.x)+(l.y-c.y)*(l.y-c.y))<=?))"
+const DM_RELEVANT = " WHERE l.id=? OR l.id=(SELECT parent_id FROM locations WHERE id=?) OR l.parent_id=? OR l.id IN (SELECT to_id FROM geographic_relationships WHERE from_id=? UNION SELECT from_id FROM geographic_relationships WHERE to_id=? UNION SELECT to_id FROM world_routes WHERE from_id=? UNION SELECT from_id FROM world_routes WHERE to_id=?) OR w.source_event_id IN (SELECT id FROM events WHERE kind='narration' AND instr(payload,?)>0) OR (w.precision IN ('approximate','surveyed') AND EXISTS(SELECT 1 FROM locations c JOIN world_places cw ON cw.location_id=c.id WHERE c.id=? AND cw.precision IN ('approximate','surveyed') AND abs(l.x-c.x)<=? AND abs(l.y-c.y)<=? AND ((l.x-c.x)*(l.x-c.x)+(l.y-c.y)*(l.y-c.y))<=?))"
 const DM_RELATIONS = "SELECT id,from_id,to_id,kind,direction,distance_miles,precision,source_event_id,visibility FROM geographic_relationships WHERE from_id=? OR to_id=? ORDER BY id LIMIT ?"
 const DM_ROUTES = "SELECT id,from_id,to_id,name,kind,precision,distance_miles,source_event_id FROM world_routes WHERE from_id=? OR to_id=? ORDER BY id LIMIT ?"
 
@@ -115,7 +115,12 @@ func public_context(id: String, related_ids: Array) -> Dictionary:
 		SQL.stmt(MAP_TRAVEL+" ORDER BY t.turn_number DESC,m.seq DESC LIMIT ?",[token["actor_id"],DM_LIMIT]),
 		SQL.stmt("SELECT substr(l.payload,1,6000) AS payload FROM locations l JOIN world_discovery d ON d.location_id=l.id WHERE l.id=? AND d.visibility='player' AND d.first_event_id=(SELECT min(id) FROM events WHERE kind='campaign_created' AND turn=0)",[at]),
 		SQL.stmt(MAP_REGIONS+" AND r.id=(SELECT region_id FROM world_places WHERE location_id=?)",[at]),
-		SQL.stmt("SELECT id AS event_id,turn,kind,substr(payload,1,4000) AS payload FROM events WHERE turn=0 AND kind IN ('campaign_created','narration') ORDER BY id LIMIT 2")
+		SQL.stmt("SELECT id AS event_id,turn,kind,substr(payload,1,4000) AS payload FROM events WHERE turn=0 AND kind IN ('campaign_created','narration') ORDER BY id LIMIT 2"),
+		# Only explicit provenance links, not all local actors or quests. Their
+		# payloads stay local until projected below.
+		SQL.stmt("SELECT DISTINCT a.id,a.location_id,substr(a.payload,1,4000) AS payload,e.id AS source_event_id,substr(e.payload,1,12000) AS evidence FROM actors a JOIN world_links w ON w.actor_id=a.id AND w.location_id=a.location_id JOIN world_discovery d ON d.location_id=a.location_id JOIN events e ON e.id=w.source_event_id WHERE a.kind='npc' AND d.visibility='player' AND d.status<>'unknown' AND a.location_id IN ("+marks+") AND e.kind='narration' ORDER BY a.id,e.id LIMIT ?",ids+[DM_LIMIT]),
+		SQL.stmt("SELECT DISTINCT q.id,q.status,w.location_id,substr(q.payload,1,4000) AS payload,e.id AS source_event_id,substr(e.payload,1,12000) AS evidence FROM quests q JOIN world_links w ON w.quest_id=q.id JOIN world_discovery d ON d.location_id=w.location_id JOIN events e ON e.id=w.source_event_id WHERE d.visibility='player' AND d.status<>'unknown' AND w.location_id IN ("+marks+") AND e.kind='narration' ORDER BY q.id,e.id LIMIT ?",ids+[DM_LIMIT]),
+		SQL.stmt("SELECT id AS event_id,turn,kind,substr(payload,1,16000) AS payload FROM events WHERE kind='narration' AND (instr(payload,?)>0 OR id IN (SELECT w.source_event_id FROM world_places w WHERE w.location_id IN ("+marks+")) OR id IN (SELECT source_event_id FROM world_links WHERE location_id IN ("+marks+"))) ORDER BY id DESC LIMIT ?",["\"location_id\":\""+at+"\""]+ids+ids+[DM_LIMIT])
 	])
 	if not result.get("ok",false):
 		return result
@@ -124,11 +129,58 @@ func public_context(id: String, related_ids: Array) -> Dictionary:
 	var local_facts: Array = []
 	if not sets[6].is_empty():
 		var legacy = JSON.parse_string(str(sets[6][0]["payload"]))
-		if legacy is Dictionary and legacy.get("world_facts") is Array:
+		if legacy is Dictionary and legacy.get("opening_generated")==true and legacy.get("world_facts") is Array:
 			for fact in legacy["world_facts"].slice(0,16):
 				if DTO.bounded_text(fact,500):
 					local_facts.append(fact)
-	return {"ok":true,"campaign_id":id,"revision":token["revision"],"locations":typed_rows(sets[0]),"aliases":sets[1],"relationships":typed_rows(sets[2]),"routes":typed_rows(sets[3]),"party_location":party[0] if not party.is_empty() else null,"travel":typed_rows(sets[5]),"local_facts":local_facts,"region":typed_rows(sets[7]),"opening_events":typed_rows(sets[8])}
+	var public_npcs: Array = []
+	var npc_seen: Array = []
+	for row in sets[9]:
+		var data = JSON.parse_string(row["payload"])
+		var event = JSON.parse_string(row["evidence"])
+		if not data is Dictionary or not event is Dictionary or not DTO.bounded_text(data.get("name"),80) or not DTO.bounded_text(data.get("occupation"),80):
+			continue
+		# The original opening contract publicly names descriptive NPCs. Future
+		# local adjudication may explicitly mark a disclosed descriptive record;
+		# in either case require the linked event to establish the name.
+		if not event.get("text") is String or row["id"] in npc_seen:
+			continue
+		var disclosed = (event.get("phase")=="opening" and data.get("descriptive_only")==true and event["text"].contains(data["name"]+" — "+data["occupation"])) or (data.get("public")==true and event["text"].contains(data["name"]) and event["text"].contains(data["occupation"]))
+		if not disclosed:
+			continue
+		npc_seen.append(row["id"])
+		public_npcs.append({"id":row["id"],"location_id":row["location_id"],"name":data["name"],"occupation":data["occupation"],"source_event_id":DTO.sql_int(row["source_event_id"])})
+	var public_quests: Array = []
+	var quest_seen: Array = []
+	for row in sets[10]:
+		var data = JSON.parse_string(row["payload"])
+		var event = JSON.parse_string(row["evidence"])
+		if not data is Dictionary or not event is Dictionary or data.get("public")!=true or row["id"] in quest_seen:
+			continue
+		var title = data.get("title",data.get("name"))
+		var description = data.get("public_description","")
+		if not DTO.bounded_text(title,120) or not event.get("text") is String or not event["text"].contains(title) or not description is String or description.length()>1000:
+			continue
+		# Public quest text must also have appeared in committed narration.
+		if not description.is_empty() and not event["text"].contains(description):
+			description=""
+		quest_seen.append(row["id"])
+		public_quests.append({"id":row["id"],"location_id":row["location_id"],"title":title,"status":row["status"],"description":description,"source_event_id":DTO.sql_int(row["source_event_id"])})
+	var visible_ids: Array = []
+	for row in sets[0]:
+		visible_ids.append(row["id"])
+	var local_history: Array = []
+	for row in sets[11]:
+		var event = JSON.parse_string(row["payload"])
+		if not event is Dictionary or not DTO.bounded_text(event.get("text"),12000):
+			continue
+		# Only committed opening or B4-reconciled text; never audit/candidate prose.
+		if event.get("phase")!="opening" and event.get("b4_reconciled")!=true:
+			continue
+		if not event.get("location_id") in visible_ids:
+			continue
+		local_history.append({"event_id":DTO.sql_int(row["event_id"]),"turn":DTO.sql_int(row["turn"]),"kind":"narration","text":event["text"],"location_id":event["location_id"]})
+	return {"ok":true,"campaign_id":id,"revision":token["revision"],"locations":typed_rows(sets[0]),"aliases":sets[1],"relationships":typed_rows(sets[2]),"routes":typed_rows(sets[3]),"party_location":party[0] if not party.is_empty() else null,"travel":typed_rows(sets[5]),"local_facts":local_facts,"region":typed_rows(sets[7]),"opening_events":typed_rows(sets[8]),"local_npcs":public_npcs,"local_quests":public_quests,"location_history":local_history}
 
 # Separate private DM read model. Only current, connected or geographically
 # nearby places; no whole-campaign dump. Distances are not inferred.
@@ -140,7 +192,7 @@ func dm_geography(id: String, radius_miles: float = 25.0) -> Dictionary:
 		return token
 	var at = token["location_id"]
 	var relevant = DM_PLACES+DM_RELEVANT+" ORDER BY CASE WHEN l.id=? THEN 0 ELSE 1 END,l.id LIMIT ?"
-	var args = [at,at,at,at,at,at,at,at,radius_miles,radius_miles,radius_miles*radius_miles,at,DM_LIMIT]
+	var args = [at,at,at,at,at,at,at,"\"location_id\":\""+at+"\"",at,radius_miles,radius_miles,radius_miles*radius_miles,at,DM_LIMIT]
 	var result = read_sets(token,[
 		SQL.stmt(relevant,args),
 		SQL.stmt("SELECT a.location_id,a.alias,a.visibility,a.source_event_id FROM location_aliases a JOIN ("+relevant+") p ON p.id=a.location_id ORDER BY a.location_id,a.alias LIMIT ?",args+[DM_LIMIT*4]),

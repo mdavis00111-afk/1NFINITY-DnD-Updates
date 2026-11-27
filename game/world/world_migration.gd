@@ -55,6 +55,26 @@ func ensure(id: String) -> Dictionary:
 	# Only actual saved player position plus an existing committed start event is
 	# evidence of a visited place. Other legacy locations remain undisclosed.
 	commands.append(SQL.stmt("INSERT INTO world_discovery(id,location_id,status,visibility,first_event_id,last_visit_event_id) SELECT l.id,l.id,'visited','player',e.id,e.id FROM locations l JOIN actors a ON a.location_id=l.id JOIN events e ON e.id=(SELECT min(id) FROM events WHERE kind='campaign_created' AND turn=0) WHERE a.id=? AND a.kind='player' AND l.id=?",[record.get("actor_id",""),record.get("location_id","")]))
+	# Seed only committed turn-zero descriptive data and provenance. Preserve
+	# raw legacy coordinates, actor payloads and original event records.
+	var opening = SQL.run(path,[SQL.stmt("SELECT e.id,e.payload,l.id AS location_id,l.payload AS location_payload FROM events e JOIN locations l ON l.id=? WHERE e.kind='narration' AND e.turn=0 ORDER BY e.id LIMIT 1",[record.get("location_id","")])],true)
+	if not opening.get("ok",false):
+		return failure("Cannot read opening provenance.")
+	if not opening["results"][0].is_empty():
+		var row = opening["results"][0][0]
+		var event = JSON.parse_string(row["payload"])
+		var place = JSON.parse_string(row["location_payload"])
+		if event is Dictionary and event.get("phase")=="opening" and event.get("location_id")==row["location_id"] and place is Dictionary and place.get("opening_generated")==true and place.get("description") is String:
+			commands.append(SQL.stmt("UPDATE world_places SET description=?,public_description=?,source_event_id=? WHERE location_id=?",[place["description"],place["description"],row["id"],row["location_id"]]))
+			# Opening NPC names/occupations are public only when explicitly in
+			# that committed opening log. No other actor payload is disclosed.
+			var npcs = SQL.run(path,[SQL.stmt("SELECT id,payload FROM actors WHERE kind='npc' AND location_id=? ORDER BY id LIMIT 32",[row["location_id"]])],true)
+			if not npcs.get("ok",false):
+				return failure("Cannot read opening NPC provenance.")
+			for npc in npcs["results"][0]:
+				var data = JSON.parse_string(npc["payload"])
+				if data is Dictionary and data.get("descriptive_only")==true and data.get("name") is String and data.get("occupation") is String and str(event.get("text","")).contains(data["name"]+" — "+data["occupation"]):
+					commands.append(SQL.stmt("INSERT INTO world_links(id,location_id,actor_id,source_event_id) VALUES(?,?,?,?)",[Crypto.new().generate_random_bytes(16).hex_encode(),row["location_id"],npc["id"],row["id"]]))
 	commands.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('world_schema',?)",[VERSION]))
 	commands.append(SQL.stmt("DELETE FROM meta WHERE key='world_migration_guard'"))
 	var result = SQL.run(path,commands)

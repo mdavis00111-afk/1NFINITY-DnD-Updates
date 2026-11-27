@@ -10,11 +10,15 @@ const STORE = preload("res://turns/turn_store.gd")
 const WORLD = preload("res://world/world_store.gd")
 const MIGRATION = preload("res://world/world_migration.gd")
 const GEMINI = preload("res://systems/gemini.gd")
+const RECONCILER = preload("res://world/geography_reconciler.gd")
 
 var store = STORE.new()
 var world = WORLD.new()
 var resolver = RESOLVER.new()
 var provider_factory: Callable
+# Optional trusted LOCAL semantic reviewer; never populated from provider JSON.
+# Receives exact bundle, returns true only if prose is independently verified.
+var prose_reviewer: Callable
 var transport: Node
 var campaign_id = ""
 var actor_id = ""
@@ -239,7 +243,8 @@ func received(ok: bool, message: String, source: Node, epoch: int) -> void:
 				set_phase("geography_failed","Geographical proposal rejected. No narrative or geography saved.")
 				return
 			geography=parsed.duplicate(true)
-			set_phase("reconcile_pending","Candidate narration and geography await trusted review/B4 reconciliation.")
+			set_phase("reconcile_pending","Reconciling established geography and narration.")
+			reconcile_current()
 
 # Read only by a trusted local adjudication adapter, never a provider tool.
 func approval_request() -> Dictionary:
@@ -330,7 +335,27 @@ func reconciliation_bundle() -> Dictionary:
 		return {}
 	return {"campaign_id":campaign_id,"actor_id":actor_id,"turn_id":turn_id,"expected_revision":token["revision"],"receipt":receipt.duplicate(true),"narration":candidate.duplicate(true),"geography":geography.duplicate(true)}
 
-# Interim B3 text-only boundary. Explicit trusted review must verify prose
+# Automatic ordinary geography and safe narrative projection. No player
+# confirmation required for descriptive discoveries; B2 approvals unchanged.
+func reconcile_current() -> Dictionary:
+	if notifying or phase!="reconcile_pending":
+		return fail("No current reconciliation bundle.")
+	var bundle = reconciliation_bundle()
+	if bundle.is_empty():
+		return fail("Narration or geography unavailable.")
+	var approved_prose = false
+	if prose_reviewer.is_valid():
+		notifying=true
+		var decision = prose_reviewer.call(bundle.duplicate(true))
+		notifying=false
+		approved_prose=decision is bool and decision
+	# Reentrant or stale trusted callback cannot commit a departed bundle.
+	if bundle!=reconciliation_bundle():
+		return fail("Reconciliation bundle changed.")
+	var result = RECONCILER.new().commit_bundle(campaign_id,bundle,known_ids,approved_prose)
+	return confirm_reconciled() if result.get("ok",false) else check_narration_ack(result)
+
+# Legacy explicit text-only boundary. Explicit trusted review must verify prose
 # against receipt, established world and audience. Nonempty geography cannot
 # be accepted here: B4 owns atomic fact/narration reconciliation.
 func accept_reviewed_text(bundle: Dictionary) -> Dictionary:
@@ -339,7 +364,7 @@ func accept_reviewed_text(bundle: Dictionary) -> Dictionary:
 	var current = reconciliation_bundle()
 	if current.is_empty() or bundle!=current or not geography["facts"].is_empty():
 		return fail("Exact reviewed text-only bundle required; geography requires B4.")
-	var result = store.commit_narration(campaign_id,turn_id,token["revision"],candidate["text"])
+	var result = RECONCILER.new().commit_bundle(campaign_id,current,known_ids,true)
 	return confirm_reconciled() if result.get("ok",false) else check_narration_ack(result)
 
 func check_narration_ack(failure: Dictionary) -> Dictionary:
@@ -383,7 +408,7 @@ func retry() -> Dictionary:
 		"geography_failed":
 			return start_geography()
 		"reconcile_pending":
-			return confirm_reconciled()
+			return reconcile_current()
 	return fail("No retry available.")
 
 # Cancel never abandons an unresolved prepared roll or committed receipt.

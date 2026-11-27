@@ -190,8 +190,10 @@ func commit_opening(id: String, previous: String, raw: String) -> String:
 	commands.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('opening_commit_guard',("+guard["sql"]+"))",guard["params"]))
 	commands.append(SQL.stmt("UPDATE locations SET name=?,payload=? WHERE id=?",[scene["location_name"],JSON.stringify(location),location_id]))
 	var maker = PLAYER.new()
+	var opening_npc_ids: Array = []
 	for npc in scene["npcs"]:
 		var npc_id = maker.make_id()
+		opening_npc_ids.append(npc_id)
 		var payload = {"id":npc_id,"name":npc["name"],"occupation":npc["occupation"],"attitude":npc["attitude"],"location_id":location_id,"descriptive_only":true}
 		commands.append(SQL.stmt("INSERT INTO actors(id,master_character_id,kind,catalog_id,location_id,payload) VALUES(?,NULL,'npc',NULL,?,?)",[npc_id,location_id,JSON.stringify(payload)]))
 	record["opening_committed"]=true
@@ -200,6 +202,22 @@ func commit_opening(id: String, previous: String, raw: String) -> String:
 	record["updated_at"]=Time.get_datetime_string_from_system(true)
 	commands.append(SQL.stmt("UPDATE meta SET value=? WHERE key='campaign'",[JSON.stringify(record)]))
 	commands.append(SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(0,?,'narration',?)",["Unstarted",JSON.stringify({"text":OPENING.log_text(scene),"phase":"opening","location_id":location_id})]))
+	# If the world extension is present, synchronize the opening in this same
+	# transaction. A concurrent migration/turn cannot leave split provenance.
+	var marker = SQL.run(path_for(id),[SQL.stmt("SELECT value FROM meta WHERE key='world_schema'")],true)
+	if not marker.get("ok",false):
+		return "Cannot inspect world schema. No opening saved."
+	if marker["results"][0].is_empty():
+		commands.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('opening_world_guard',(SELECT 'ok' WHERE NOT EXISTS(SELECT 1 FROM meta WHERE key='world_schema')))"))
+	else:
+		if marker["results"][0][0]["value"]!="1":
+			return "Unsupported world schema. No opening saved."
+		commands.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('opening_world_guard',(SELECT 'ok' FROM world_state WHERE campaign_id=? AND revision=0 AND turn_number=0 AND pending_turn_id IS NULL AND EXISTS(SELECT 1 FROM world_places WHERE location_id=?)))",[id,location_id]))
+		commands.append(SQL.stmt("UPDATE world_places SET description=?,public_description=?,source_event_id=(SELECT max(id) FROM events WHERE turn=0 AND kind='narration') WHERE location_id=?",[scene["atmosphere"],scene["atmosphere"],location_id]))
+		for npc_id in opening_npc_ids:
+			commands.append(SQL.stmt("INSERT INTO world_links(id,location_id,actor_id,source_event_id) VALUES(?,?,?,(SELECT max(id) FROM events WHERE turn=0 AND kind='narration'))",[maker.make_id(),location_id,npc_id]))
+		commands.append(SQL.stmt("UPDATE world_state SET revision=revision+1 WHERE campaign_id=?",[id]))
+	commands.append(SQL.stmt("DELETE FROM meta WHERE key='opening_world_guard'"))
 	commands.append(SQL.stmt("DELETE FROM meta WHERE key='opening_commit_guard'"))
 	var result = SQL.run(path_for(id),commands)
 	if not result.get("ok",false):
