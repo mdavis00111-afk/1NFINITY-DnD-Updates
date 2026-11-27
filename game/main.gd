@@ -38,6 +38,7 @@ const MATURITY = preload("res://campaigns/maturity_profiles.gd")
 const NARRATOR = preload("res://campaigns/narrator_prompt.gd")
 var editing_record: Dictionary = {}
 var browser_return: String = "Settings"
+var settings_campaign_id = ""
 var library = RULES.new()
 const DETAILS = {
 	"Quick Generate Player": "Choose race, class and gender; generate remaining legal fields. RAW character generation is not connected yet.",
@@ -130,7 +131,7 @@ func show_screen(name: String) -> void:
 		art = "hall" # Reuse approved artwork until dedicated Settings art is supplied.
 	elif name == "Player Manager" or name in NAV["Player Manager"] or name in ["Delete Players","Edit Character"]:
 		art = "hall"
-	elif name == "Campaign Manager" or name in NAV["Campaign Manager"]:
+	elif name == "Campaign Manager" or name in NAV["Campaign Manager"] or name=="Game Workspace":
 		art = "valley"
 	var painted_title = false
 	var art_loaded = false
@@ -173,9 +174,11 @@ func show_screen(name: String) -> void:
 		screen.add_child(manager)
 		manager.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		return
-	if name in ["New Campaign","Existing Campaigns"]:
+	if name in ["New Campaign","Existing Campaigns","Game Workspace"]:
 		var campaign = CAMPAIGN.new()
-		campaign.configure("new" if name=="New Campaign" else "library",func(): show_screen("Campaign Manager"),func(): show_screen("Edit Content Rules"))
+		var resume_id = settings_campaign_id if name=="Game Workspace" else ""
+		settings_campaign_id = ""
+		campaign.configure("new" if name=="New Campaign" else "library",func(): show_screen("Campaign Manager"),func(): show_screen("Edit Content Rules"),open_game_settings,resume_id)
 		screen.add_child(campaign)
 		campaign.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		return
@@ -218,7 +221,7 @@ func show_screen(name: String) -> void:
 	if NAV.has(name):
 		for entry in NAV[name]:
 			var item: String = entry
-			var caption = item
+			var caption = "Return to Campaign" if name=="Settings" and item=="Return to Main" and not settings_campaign_id.is_empty() else item
 			menu.add_child(menu_button(caption, func(): navigate(item)))
 		if name=="Campaign Manager":
 			menu.add_child(menu_button("Exit",func(): show_screen("Main")))
@@ -260,6 +263,10 @@ func show_screen(name: String) -> void:
 				menu.add_child(value)
 		menu.add_child(menu_button("Return", func(): show_screen(parent_screen(name))))
 
+func open_game_settings(id: String) -> void:
+	settings_campaign_id = id
+	show_screen("Settings")
+
 func edit_character(rec: Dictionary) -> void:
 	editing_record=rec
 	show_screen("Edit Character")
@@ -298,7 +305,7 @@ func navigate(item: String) -> void:
 		config.save(CONFIG_PATH)
 		show_screen("Main")
 	elif item == "Return to Main":
-		show_screen("Main")
+		show_screen("Game Workspace" if not settings_campaign_id.is_empty() else "Main")
 	else:
 		show_screen(item)
 
@@ -449,7 +456,7 @@ func content_rules_screen(menu: VBoxContainer) -> void:
 		note.text = "Default restored." if error.is_empty() else error))
 	menu.add_child(note)
 	menu.add_child(menu_button("Return to Settings",func(): show_screen("Settings")))
-	menu.add_child(menu_button("Return to Campaign",func(): show_screen("New Campaign")))
+	menu.add_child(menu_button("Return to Campaign",func(): show_screen("Game Workspace" if not settings_campaign_id.is_empty() else "New Campaign")))
 
 func rules_screen(menu: VBoxContainer) -> void:
 	var status_line = make_label(library.status(), 19)

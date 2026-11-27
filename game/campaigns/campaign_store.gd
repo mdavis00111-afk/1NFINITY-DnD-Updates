@@ -5,6 +5,8 @@ const PLAYER = preload("res://players/character_store.gd")
 const STARTS = preload("res://campaigns/campaign_starts.gd")
 const MATURITY = preload("res://campaigns/maturity_profiles.gd")
 const OPENING = preload("res://campaigns/opening_scene.gd")
+const DISPLAY = preload("res://gameplay/display_values.gd")
+const CATALOG = preload("res://rules/catalog.gd")
 const ROOT = "user://campaigns/v1"
 const SCHEMA = "1"
 var last_error = ""
@@ -157,20 +159,20 @@ func opening_guard(record: Dictionary, previous: String) -> Dictionary:
 	var start = STARTS.find_start(str(record.get("start_id","")))
 	return SQL.stmt("SELECT value FROM meta WHERE key='campaign' AND value=? AND EXISTS(SELECT 1 FROM locations WHERE id=? AND kind=? AND parent_id IS NULL AND x IS NULL AND y IS NULL) AND (SELECT count(*) FROM locations)=1 AND EXISTS(SELECT 1 FROM actors WHERE id=? AND kind='player' AND location_id=?) AND (SELECT count(*) FROM actors)=1 AND (SELECT count(*) FROM events)=1 AND EXISTS(SELECT 1 FROM events WHERE kind='campaign_created' AND turn=0) AND NOT EXISTS(SELECT 1 FROM quests) AND NOT EXISTS(SELECT 1 FROM encounters) AND NOT EXISTS(SELECT 1 FROM relationships)",[previous,record["location_id"],start.get("kind",""),record["actor_id"],record["location_id"]])
 
+func opening_eligible(record: Dictionary) -> bool:
+	return not record.is_empty() and record.get("status")=="active" and record.get("turn") == 0 and not record.get("opening_committed",false) and valid_id(str(record.get("actor_id",""))) and valid_id(str(record.get("location_id",""))) and not STARTS.find_start(str(record.get("start_id",""))).is_empty()
+
 func prepare_opening(id: String) -> Dictionary:
 	var record = load_campaign(id)
-	if record.is_empty() or record.get("turn")!=0 or record.get("opening_committed",false):
+	if not opening_eligible(record):
 		last_error="Campaign opening is unavailable or already committed."
-		return {}
-	if not valid_id(str(record.get("actor_id",""))) or not valid_id(str(record.get("location_id",""))) or STARTS.find_start(str(record.get("start_id",""))).is_empty():
-		last_error="Invalid opening metadata."
 		return {}
 	var previous = loaded_metadata
 	var check = SQL.run(path_for(id),[opening_guard(record,previous)],true)
 	if not check.get("ok",false) or check["results"][0].is_empty():
 		last_error="Campaign is no longer in its original opening state."
 		return {}
-	return {"record":record,"previous":previous,"prompt":OPENING.prompt(record)}
+	return {"record":record,"previous":previous,"prompt":OPENING.prompt(record),"response_schema":OPENING.response_schema(str(record["start_id"]))}
 
 func commit_opening(id: String, previous: String, raw: String) -> String:
 	var prepared = prepare_opening(id)
@@ -247,3 +249,113 @@ func actor_record(id: String) -> Dictionary:
 		return {}
 	var actor = JSON.parse_string(str(result["results"][0][0]["payload"]))
 	return actor if actor is Dictionary else {}
+
+# Read-only workspace projection. Inventory quantities come from normalized rows,
+# not the actor's original inventory snapshot. No master player access or writes.
+func gameplay_view(id: String) -> Dictionary:
+	var record = load_campaign(id)
+	if record.is_empty():
+		return {}
+	var actor_id = str(record.get("actor_id",""))
+	if not valid_id(actor_id):
+		last_error = "Invalid campaign player identifier."
+		return {}
+	var expected_metadata = loaded_metadata
+	# Use the exact same eligibility guard as the opening write, in the read snapshot.
+	var available = opening_guard(record,expected_metadata) if opening_eligible(record) else SQL.stmt("SELECT NULL WHERE 0")
+	var result = SQL.run(path_for(id),[
+		SQL.stmt("BEGIN"),
+		SQL.stmt("SELECT value FROM meta WHERE key='campaign'"),
+		SQL.stmt("SELECT payload,location_id,master_character_id FROM actors WHERE id=? AND kind='player'",[actor_id]),
+		SQL.stmt("SELECT item_id,quantity,payload FROM inventory WHERE actor_id=? ORDER BY item_id",[actor_id]),
+		SQL.stmt("SELECT id,turn,kind,payload FROM events WHERE kind IN ('campaign_created','narration') ORDER BY id"),
+		SQL.stmt("SELECT id,name,kind,x,y,payload FROM locations ORDER BY name COLLATE NOCASE,id"),
+		SQL.stmt("SELECT id,status,payload FROM quests ORDER BY id"),
+		available,
+		SQL.stmt("COMMIT")
+	],true)
+	if not result.get("ok",false):
+		last_error = result_error(result,"Cannot read campaign workspace.")
+		return {}
+	var sets: Array = result.get("results",[])
+	if sets.size()!=9 or sets[1].size()!=1 or str(sets[1][0]["value"])!=expected_metadata or sets[2].size()!=1:
+		last_error = "Campaign changed or player data unavailable. Reopen and retry."
+		return {}
+	# One read-only transaction on the bridge connection.
+	var can_open = not sets[7].is_empty()
+	sets = sets.slice(2,7)
+	var actor = JSON.parse_string(str(sets[0][0]["payload"]))
+	if not actor is Dictionary or actor.get("id")!=actor_id or not valid_id(str(record.get("master_character_id",""))) or actor.get("master_character_id")!=record["master_character_id"] or sets[0][0].get("master_character_id")!=record["master_character_id"]:
+		last_error = "Invalid campaign player identity."
+		return {}
+	if not display_shape_valid(actor):
+		last_error = "Campaign player data is malformed. No saved data was changed."
+		return {}
+	actor["location_id"] = sets[0][0]["location_id"]
+	var items: Array = []
+	for row in sets[1]:
+		var payload = JSON.parse_string(str(row["payload"]))
+		if not payload is Dictionary:
+			payload = {}
+		payload["item_id"] = str(row["item_id"])
+		# SQLite affinity and CHECK(quantity>0) alone do not exclude REAL or text.
+		var quantity_text = str(row["quantity"])
+		if not quantity_text.is_valid_int() or int(quantity_text)<=0:
+			last_error = "Campaign inventory quantity is invalid. No saved data was changed."
+			return {}
+		payload["quantity"] = int(quantity_text)
+		items.append(payload)
+	DISPLAY.project_inventory(CATALOG.new(),actor,items)
+	var events: Array = []
+	for row in sets[2]:
+		var payload = JSON.parse_string(str(row["payload"]))
+		if payload is Dictionary and payload.get("text") is String:
+			events.append({"id":int(row["id"]),"turn":int(row["turn"]),"kind":str(row["kind"]),"text":payload["text"]})
+	var locations: Array = []
+	var current: Dictionary = {}
+	for row in sets[3]:
+		var payload = JSON.parse_string(str(row["payload"]))
+		if not payload is Dictionary:
+			payload = {}
+		var location = {"id":str(row["id"]),"name":str(row["name"]),"kind":str(row["kind"]),"x":row["x"],"y":row["y"],"payload":payload}
+		locations.append(location)
+		if location["id"]==actor["location_id"]:
+			current=location
+	var quests: Array = []
+	for row in sets[4]:
+		var payload = JSON.parse_string(str(row["payload"]))
+		quests.append({"id":str(row["id"]),"status":str(row["status"]),"payload":payload if payload is Dictionary else {}})
+	return {"campaign":record,"actor":actor,"inventory":items,"events":events,"locations":locations,"location":current,"quests":quests,"opening_available":can_open}
+
+# Reject malformed present containers before display code dereferences them. Missing
+# optional fields remain supported for older snapshots; never rewrite saved data.
+func display_shape_valid(actor: Dictionary) -> bool:
+	for key in ["combat","ability_scores","ability_modifiers","saving_throws","skills","coins","equipment","spellcasting","resources","background_feature"]:
+		if actor.has(key) and not actor[key] is Dictionary:
+			return false
+	for key in ["attacks","proficiency_ids","expertise_ids","racial_trait_ids","class_feature_ids","language_ids"]:
+		if actor.has(key) and not actor[key] is Array:
+			return false
+	for value in actor.get("attacks",[]):
+		if not value is Dictionary:
+			return false
+	for key in ["skills","resources"]:
+		for value in actor.get(key,{}).values():
+			if not value is Dictionary:
+				return false
+	var equipment = actor.get("equipment",{})
+	if not equipment.get("weapon_ids",[]) is Array:
+		return false
+	var spellcasting = actor.get("spellcasting",{})
+	var slots = spellcasting.get("slots",{})
+	if not slots is Dictionary:
+		return false
+	for slot in slots.values():
+		if not slot is Dictionary:
+			return false
+	for key in ["cantrip_ids","racial_cantrip_ids","known_ids","prepared_ids","always_prepared_ids"]:
+		if not spellcasting.get(key,[]) is Array:
+			return false
+	if not actor.get("combat",{}).get("conditions",[]) is Array:
+		return false
+	return true

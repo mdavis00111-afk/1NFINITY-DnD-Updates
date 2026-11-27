@@ -25,12 +25,19 @@ static func find_start(id: String) -> Dictionary:
 
 static func texture_for(id: String) -> Texture2D:
 	var path = str(ART.get(id,ART["road"]))
-	var texture = load(path) as Texture2D
+	# Optional missing/corrupt scenery must not prevent navigation.
+	var texture: Texture2D = load(path) as Texture2D if ResourceLoader.exists(path,"Texture2D") else null
+	if texture==null:
+		var fallback = str(ART["road"])
+		return load(fallback) as Texture2D if ResourceLoader.exists(fallback,"Texture2D") else null
 	if id=="market":
-		var crop = AtlasTexture.new()
-		crop.atlas=texture
-		crop.region=Rect2(900,14,760,570)
-		return crop
+		var region = Rect2(900,14,760,570)
+		# An asset replacement may be smaller than the original approved crop.
+		if Rect2(Vector2.ZERO,texture.get_size()).encloses(region):
+			var crop = AtlasTexture.new()
+			crop.atlas=texture
+			crop.region=region
+			return crop
 	return texture
 
 static func valid_art(id: String) -> bool:

@@ -1,6 +1,7 @@
 extends Control
 ## Campaign creation, library and saved opening workspace. No turn adjudication yet.
 const STORE = preload("res://campaigns/campaign_store.gd")
+const WORKSPACE = preload("res://gameplay/game_workspace.gd")
 const PLAYERS = preload("res://players/character_store.gd")
 const STARTS = preload("res://campaigns/campaign_starts.gd")
 const MATURITY = preload("res://campaigns/maturity_profiles.gd")
@@ -35,21 +36,56 @@ var opening_button: Button
 var listing_error = ""
 var roster_buttons: Array[Button] = []
 var layout: MarginContainer
+var workspace: Control
+var workspace_settings_action: Callable
+var resume_id = ""
+var return_error = ""
 
-func configure(initial_mode: String, on_exit: Callable, on_settings: Callable) -> void:
+func configure(initial_mode: String, on_exit: Callable, on_settings: Callable, on_workspace_settings: Callable = Callable(), campaign_id: String = "") -> void:
 	mode = initial_mode
 	exit_action = on_exit
 	settings_action = on_settings
+	workspace_settings_action = on_workspace_settings
+	resume_id = campaign_id
 
 func _ready() -> void:
 	var local_theme = load("res://themes/master_theme.tres").duplicate() as Theme
 	local_theme.default_font = FONT
 	local_theme.default_font_size = 19
 	theme = local_theme
+	ensure_gemini()
+	if not resume_id.is_empty():
+		active = store.load_campaign(resume_id)
+		mode = "workspace" if not active.is_empty() else "library"
+		if active.is_empty():
+			return_error = store.last_error if not store.last_error.is_empty() else "Requested campaign is no longer available."
+	render.call_deferred()
+
+func ensure_gemini() -> void:
+	if is_instance_valid(gemini):
+		return
 	gemini = GEMINI.new()
 	add_child(gemini)
-	gemini.completed.connect(opening_received)
-	render.call_deferred()
+	gemini.completed.connect(opening_received.bind(gemini))
+
+# Each request belongs to its originating workspace. Retire its transport on exit
+# so an old completion cannot be mistaken for a later request.
+func cancel_opening() -> void:
+	if pending_campaign.is_empty():
+		return
+	pending_campaign=""
+	pending_metadata=""
+	var retired = gemini
+	gemini=null
+	if is_instance_valid(retired):
+		if retired.active and is_instance_valid(retired.request):
+			retired.request.cancel_request()
+		retired.queue_free()
+
+func _exit_tree() -> void:
+	# The child HTTPRequest is destroyed on screen exit; ignore any late signal.
+	pending_campaign=""
+	pending_metadata=""
 
 func surface(opacity: float = 0.58) -> StyleBoxFlat:
 	var style = StyleBoxFlat.new()
@@ -146,9 +182,17 @@ func render() -> void:
 	add_child(layout)
 	layout.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for edge in ["left","right","top","bottom"]:
-		layout.add_theme_constant_override("margin_"+edge,12)
+		layout.add_theme_constant_override("margin_"+edge,6 if mode=="workspace" else 12)
+	workspace = null
+	opening_button = null
+	note = null
+	resume_button = null
+	delete_button = null
+	if mode=="workspace":
+		build_workspace(layout)
+		return
 	var root = column(layout,8)
-	var title = "Existing Campaigns" if mode=="library" else ("New Campaign" if mode=="new" else str(active.get("title","Campaign")))
+	var title = "Existing Campaigns" if mode=="library" else "New Campaign"
 	var title_label = text_label(title,34,true)
 	title_label.max_lines_visible=2
 	root.add_child(title_label)
@@ -156,7 +200,6 @@ func render() -> void:
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	match mode:
 		"new": build_new(body)
-		"workspace": build_workspace(body)
 		_: build_library(body)
 	note = text_label("",16)
 	note.max_lines_visible = 2
@@ -164,13 +207,16 @@ func render() -> void:
 	root.add_child(note)
 	var nav = row(root,8)
 	nav.alignment = BoxContainer.ALIGNMENT_BEGIN
-	action(nav,"Exit" if mode!="workspace" else "Save & Exit",leave)
+	action(nav,"Exit",leave)
 	if mode=="library":
 		resume_button = action(nav,"Resume",resume)
 		delete_button = action(nav,"Delete",confirm_delete)
 		resume_button.disabled = active.is_empty()
 		delete_button.disabled = active.is_empty()
-		if not listing_error.is_empty():
+		if not return_error.is_empty():
+			show_note(return_error)
+			return_error=""
+		elif not listing_error.is_empty():
 			show_note(listing_error)
 	elif mode=="new":
 		action(nav,"Content Rules",func(): settings_action.call())
@@ -181,21 +227,24 @@ func render() -> void:
 			show_note("Configure maturity profiles in Content Rules first.")
 		elif players.is_empty():
 			show_note("Create and finalize a ready character first.")
-	else:
-		if not active.get("opening_committed",false) and active.get("turn",0)==0:
-			opening_button = action(nav,"Generate Opening",request_opening)
-			opening_button.disabled = not pending_campaign.is_empty()
-		show_note("Generating opening… Saved campaign is safe." if pending_campaign==active.get("id") else "Opening workspace saved. Gameplay turn resolution is not implemented yet.")
+
 
 func show_note(value: String) -> void:
+	if mode=="workspace" and is_instance_valid(workspace):
+		workspace.show_status(value)
+		return
 	if is_instance_valid(note):
 		note.text = value
 		note.visible = not value.is_empty()
 
 func leave() -> void:
 	if mode=="workspace":
+		var was_pending = not pending_campaign.is_empty()
+		cancel_opening()
 		mode="library"
 		render()
+		if was_pending:
+			show_note("Opening request canceled. Your saved campaign is unchanged; resume to retry.")
 	else:
 		exit_action.call()
 
@@ -241,7 +290,7 @@ func build_library(parent: Container) -> void:
 		update_library()
 
 func select_campaign(index: int) -> void:
-	if index<0 or index>=rows.size():
+	if mode!="library" or index<0 or index>=rows.size():
 		return
 	active=rows[index]
 	update_library()
@@ -320,12 +369,14 @@ func build_new(parent: Container) -> void:
 	synopsis.custom_minimum_size.y=80
 
 func select_start(id: String) -> void:
+	if mode!="new" or STARTS.find_start(id).is_empty():
+		return
 	selected_start=id
 	var start = STARTS.find_start(id)
 	synopsis.text=str(start.get("description",""))
 
 func create() -> void:
-	if not pending_campaign.is_empty():
+	if mode!="new" or not pending_campaign.is_empty():
 		return
 	if maturity_choice.selected<0:
 		show_note("Select a maturity profile.")
@@ -343,6 +394,7 @@ func create() -> void:
 	# Save first; provider failure leaves the original opening intact.
 	var config = ConfigFile.new()
 	config.load("user://settings.cfg")
+	ensure_gemini()
 	if gemini.key_valid(str(config.get_value("gemini","api_key","")).strip_edges()):
 		request_opening()
 
@@ -352,49 +404,62 @@ func request_opening() -> void:
 	var id = str(active["id"])
 	var prepared = store.prepare_opening(id)
 	if prepared.is_empty():
-		show_note(store.last_error)
+		# Another session may have committed the opening or deleted this campaign
+		# since rendering the retry button. Refresh instead of keeping a stale UI.
+		var failure = store.last_error
+		var refreshed = store.load_campaign(id)
+		if refreshed.is_empty():
+			active={}
+			mode="library"
+			return_error="Campaign is no longer available. Reopen it from the library."
+			render()
+		else:
+			active=refreshed
+			render()
+			show_note(failure)
 		return
+	ensure_gemini()
 	pending_campaign=id
 	pending_metadata=prepared["previous"]
 	if is_instance_valid(opening_button):
 		opening_button.disabled=true
 	show_note("Generating opening… Saved campaign is safe.")
-	gemini.generate(prepared["prompt"],"","",true)
+	gemini.generate(prepared["prompt"],"","",true,prepared["response_schema"])
 
-func opening_received(ok: bool, message: String) -> void:
+func opening_received(ok: bool, message: String, source: Node) -> void:
+	if not is_inside_tree() or source!=gemini or pending_campaign.is_empty():
+		return
 	var id = pending_campaign
 	var previous = pending_metadata
-	pending_campaign=""
-	pending_metadata=""
-	if id.is_empty():
+	cancel_opening() # Retire completed transport as well; never reuse its signal.
+	# No state change if the originating workspace has been left.
+	if mode!="workspace" or active.get("id")!=id:
 		return
 	var error = "Opening generation unavailable. Your saved opening is unchanged."
 	if ok:
 		error = store.commit_opening(id,previous,message)
-	if mode=="workspace" and active.get("id")==id:
-		if error.is_empty():
-			var refreshed = store.load_campaign(id)
-			if not refreshed.is_empty():
-				active=refreshed
-				render()
-				show_note("Opening saved. Gameplay turn resolution is not implemented yet.")
-			else:
-				show_note("Opening saved. Reopen the campaign to reload it.")
-		else:
-			if is_instance_valid(opening_button):
-				opening_button.disabled=false
-			show_note(error)
-	elif mode=="library":
+	# Refresh even on rejection: another session may have committed or deleted it.
+	var refreshed = store.load_campaign(id)
+	if refreshed.is_empty():
+		return_error = "Campaign is no longer available. Reopen it from the library."
+		active={}
+		mode="library"
 		render()
-	elif mode=="workspace" and is_instance_valid(opening_button):
-		opening_button.disabled=false
+		return
+	active=refreshed
+	render()
+	if error.is_empty():
+		show_note("Opening saved. Gameplay turn resolution is not implemented yet.")
+	else:
+		show_note(error)
 
 func resume() -> void:
-	if active.is_empty():
+	if mode!="library" or active.is_empty():
 		return
 	var record = store.load_campaign(str(active["id"]))
 	if record.is_empty():
-		show_note(store.last_error)
+		return_error = store.last_error if not store.last_error.is_empty() else "Requested campaign is no longer available."
+		render()
 		return
 	active=record
 	open_workspace()
@@ -404,27 +469,28 @@ func open_workspace() -> void:
 	render()
 
 func build_workspace(parent: Container) -> void:
-	var left = panel(parent,250,false)
-	var actor = store.actor_record(str(active["id"]))
-	left.add_child(text_label(str(active.get("player_name","Character")),25,true))
-	var picture = TextureRect.new()
-	picture.texture = PORTRAIT.texture_for(str(actor.get("portrait",actor.get("draft",{}).get("portrait",""))))
-	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	picture.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	left.add_child(picture)
-	left.add_child(text_label(str(active.get("location_name",active.get("start_name",""))),20,true))
-	var right = panel(parent)
-	right.add_child(text_label("Adventure Log",24,true))
-	synopsis = read_only_text(right,store.synopsis(str(active["id"])))
-	var profile = MATURITY.resolve(str(active.get("maturity_id","")))
-	if profile.is_empty():
-		right.add_child(text_label("Maturity profile missing. Restore it in Settings before gameplay.",17))
+	var snapshot = store.gameplay_view(str(active["id"]))
+	var error = store.last_error
+	if not snapshot.is_empty():
+		active = snapshot["campaign"]
+	elif error.is_empty():
+		error = "Campaign workspace unavailable. Return to Campaign and reopen."
+	workspace = WORKSPACE.new()
+	workspace.configure(snapshot,active,leave,open_workspace_settings,request_opening,not pending_campaign.is_empty(),error)
+	parent.add_child(workspace)
+	opening_button = workspace.opening_button
+
+func open_workspace_settings() -> void:
+	if not pending_campaign.is_empty():
+		show_note("Wait for the opening request to finish before opening Settings, or return to Campaign.")
+		return
+	if workspace_settings_action.is_valid():
+		workspace_settings_action.call(str(active["id"]))
 	else:
-		right.add_child(text_label("Maturity: "+str(profile["name"]),17))
+		show_note("Settings are available from the main menu; your campaign is already saved.")
 
 func confirm_delete() -> void:
-	if active.is_empty():
+	if mode!="library" or active.is_empty():
 		return
 	var id = str(active["id"])
 	var dialog = ConfirmationDialog.new()
