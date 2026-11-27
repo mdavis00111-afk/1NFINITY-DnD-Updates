@@ -1,28 +1,12 @@
 {
   "channel": "godot",
-  "version": "0.0.6",
-  "source_commit": "abf094364c7a851665931792b12395d335136b7f",
-  "notes": "Includes actual approved coastal castle painting with ornate gold title, cleaned of menu labels and encoded as a high-quality JPEG. No manual artwork installation required. Other screens still use temporary art.",
+  "version": "0.0.7",
+  "source_commit": "cb8002b338bc3e8d4147a370cc3713e67e52c2ce",
+  "notes": "Shared Arcane menu typography based on approved gold specimen: bundled EB Garamond, text-only controls, bright gold hover/focus with luminous star flourish. All existing artwork and menus retained.",
   "files": [
-    {
-      "path": "project.godot",
-      "blob": "73813551d9f97e4e197dcba19870d23fa41d8ace"
-    },
     {
       "path": "main.tscn",
       "blob": "e31f2d10cc1c617542e2e21fc01e4bd09561e7e6"
-    },
-    {
-      "path": "version.txt",
-      "blob": "1750564f270b91dbcbd20a6e91b49ca281b350c3"
-    },
-    {
-      "path": "main.gd",
-      "blob": "7faf8b4e4f93fd3b00474bdd372fe0d8f0d6e0c3"
-    },
-    {
-      "path": "themes/master_theme.tres",
-      "blob": "bb994eeef6f5bda2faeeb18e0076abbda2623fa0"
     },
     {
       "path": "art/castle.svg",
@@ -43,6 +27,42 @@
     {
       "path": "art/castle.jpg",
       "blob": "c7f6e5a9d24d3e43d7d0fb2029a84439cf308592"
+    },
+    {
+      "path": "main.gd",
+      "blob": "d35b89dd2b5eb04f816e6d45bac05517c9c1a491"
+    },
+    {
+      "path": "project.godot",
+      "blob": "2a5e6953cd1a0dad73016c60090a6052e431c65a"
+    },
+    {
+      "path": "version.txt",
+      "blob": "5a5831ab6bf692d5c93e7784852b0b5a05c153b4"
+    },
+    {
+      "path": "themes/master_theme.tres",
+      "blob": "24b02723fe5889cf3660810d78f8a52518666b9b"
+    },
+    {
+      "path": "themes/gold_flourish.svg",
+      "blob": "b18833292ef5dd034e1c7b6f3fb4bf57a18023a9"
+    },
+    {
+      "path": "themes/menu_button.gd",
+      "blob": "ee99bade3f5f2b852be87a93ed2156b400306b4c"
+    },
+    {
+      "path": "themes/fonts/OFL.txt",
+      "blob": "c1ec5e1818415eab6f8fca95a230af477d64eb61"
+    },
+    {
+      "path": "themes/TYPOGRAPHY.md",
+      "blob": "aae43bfacce3c3e739c867ecd246065fecd404ac"
+    },
+    {
+      "path": "themes/fonts/EBGaramond.ttf",
+      "blob": "52d34b86ec20977f222ce37e8158e6b3002c0a31"
     }
   ]
 }
