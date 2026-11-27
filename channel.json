@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.12",
-  "source_commit": "38daec3604ad7b86f3d02037b2fab5be327bcd7a",
-  "notes": "Fix bundled castle and Hall background loading using Godot imported Texture2D resources; user images still loaded externally. Character data and artwork unchanged. Runtime test pending.",
+  "version": "0.0.13",
+  "source_commit": "32669ee20e90c3085368e61a3ea905fd69352573",
+  "notes": "Fix vertical character creator header collapse: non-wrapping expanding title, deferred full-screen layout, minimum panel widths for creator and player manager. Includes layout regression test script; Windows runtime testing pending. Includes v0.0.12 artwork fix.",
   "files": [
     {
       "path": "main.tscn",
@@ -205,32 +205,8 @@
       "blob": "96343e93c0eaa8e6010348fd2ab7247f26b3b24a"
     },
     {
-      "path": "players/character_creator.gd",
-      "blob": "0ad9e94f4c9a2a1b9d55baeb27f77cf47a1b4b63"
-    },
-    {
-      "path": "players/character_manager.gd",
-      "blob": "65344fe25c52d4ff276bfaff3f9c950e4c74708d"
-    },
-    {
       "path": "players/character_store.gd",
       "blob": "b6dbc0349d6d62f1163c2ed534b3ea1532359748"
-    },
-    {
-      "path": "rules/catalog_browser.gd",
-      "blob": "709175f10f5c64e66c1eeed6c9f1aba3f0f1fba5"
-    },
-    {
-      "path": "main.gd",
-      "blob": "12ffd05fb1992301cff1ce23f407cdb258b8b278"
-    },
-    {
-      "path": "project.godot",
-      "blob": "e8186cac8ed92129fad5302cdaa9a73299979960"
-    },
-    {
-      "path": "version.txt",
-      "blob": "8cbf02c396d6a33cd86257bec57bade7a1a63614"
     },
     {
       "path": "themes/master_theme.tres",
@@ -251,6 +227,34 @@
     {
       "path": "themes/TYPOGRAPHY.md",
       "blob": "eac8bb8e11a693fbc6eff88c7cbd428c6cfadc2e"
+    },
+    {
+      "path": "main.gd",
+      "blob": "d118c88270a89362b1c4bde34739c42b0e218d8e"
+    },
+    {
+      "path": "players/character_creator.gd",
+      "blob": "bafbc75115182fe4f1739a4354c71e43c89d17b1"
+    },
+    {
+      "path": "players/character_manager.gd",
+      "blob": "54074168b6c857cb45bbb8c23635dae6f78154bf"
+    },
+    {
+      "path": "rules/catalog_browser.gd",
+      "blob": "b1f9d8b6ed3ec4b54b31c5e03d7492f01d78ce07"
+    },
+    {
+      "path": "project.godot",
+      "blob": "cedd070b146de046b2541a5395da7e2ed24afcb7"
+    },
+    {
+      "path": "version.txt",
+      "blob": "43b29618309bc6aa441848513d5dd3554a32c7c1"
+    },
+    {
+      "path": "tests/layout_smoke.gd",
+      "blob": "3d565a8d9bca828a9a8c260e73935f3cda7f0096"
     }
   ]
 }
