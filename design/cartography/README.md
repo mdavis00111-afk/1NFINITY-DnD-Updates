@@ -1,0 +1,13 @@
+# A1 — Cartography art library
+
+250 registered standalone SVG assets; 993451 source bytes (excluding registry and styles). {"settlements":70,"adventure":54,"terrain":53,"decor":21,"tools":17,"water":30,"markers":5}. Provenance breakdown {"original_vector":215,"reference_vector_crop":33,"open_license_reference_crop":2}. 13 separate geometry stroke recipes, not counted as illustrations. All named geographic categories from WORLD_CARTOGRAPHY_SPEC.md covered; no missing named category. No actual geography encoded.
+
+- `game/cartography/art/catalog.json` is stable ID registry with source provenance, dimensions, normalized anchor, display scale/LOD, exact byte size and Git blob SHA-1. Two blank parchment textures are intentionally opaque; other art intended transparent. Art is not a visibility mask or authoritative location.
+- `navigation_styles.json` is purely visual; A2 renders authoritative committed route/water/region geometry and only actual movement in red. Never assign coordinates from a stamp. Keep secret locations excluded from renderer inputs.
+- Open `contact_sheet.html` in a checkout to inspect every actual SVG at a common display size. It is a catalogue proof, not a map. Original generator JS is development-only, never a Godot dependency. Do not regenerate stable IDs without review.
+- After importing the project in native Godot, run `godot --headless --path game --script res://tests/cartography_assets_smoke.gd`. This suite is read-only and tests source bytes, SVG decode, dimensions, alpha and imported textures; **not run here**. Manually inspect clipping, stroke weight, symbol legibility, parchment seams, and map fidelity at both target resolutions during A2/QA. No Godot or direct repo clone available in current container; full contact sheet not rendered here.
+- Owner approved mockup harvest SHA256 6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567. Vintage pack SHA256 b130371612dcac0c3c83aa8b22398605f53fe94246a8bf18098c1d93427cfc28, owner confirmed open licence; exact original author, licence identifier and attribution requirements are not independently verified. Verify and satisfy before distribution. Two vintage crops are included; remaining candidates not needed to reach 250.
+
+Remaining review gates: full SVG decode/import and per-asset visual proof, exact licensing attribution, A2 world projection and renderer (including fog, scale, navigation and all controls), integration and Windows visual/runtime acceptance. No fixed world, no publication.
+
+Independent proof: 41 hash-verified SVG samples rasterized with CairoSVG; one fog contour corrected. Full Godot import and visual review, including architectural edge clipping, remain pending.
