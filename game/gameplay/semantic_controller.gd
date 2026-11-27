@@ -245,6 +245,7 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 		job["story_index"]=0
 		job["discovery_index"]=0
 		job["definition_refs"]={}
+		job["discovery_receipts"]={}
 		job["local_candidate_hash"]=result["text"].sha256_text()
 		job["local_outcome_hash"]=JSON.stringify(verified).sha256_text()
 		job["critical_verified"]=true
@@ -314,6 +315,7 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 			job["story_index"]=0
 			job["discovery_index"]=0
 			job["definition_refs"]={}
+			job["discovery_receipts"]={}
 			job["stage"]="reconcile"
 		job["attempt"]={}
 		inflight={}
@@ -329,6 +331,7 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 		job["discoveries"]=result["discoveries"].duplicate(true)
 		job["discovery_index"]=0
 		job["definition_refs"]={}
+		job["discovery_receipts"]={}
 		if not update_active(job):
 			return failure("Discovery work persistence unconfirmed.")
 		return super.receive(identity,{"geography":result["geography"],"story":result["story"]})
@@ -395,6 +398,74 @@ func valid_discoveries(value: Variant,text: String) -> bool:
 			return false
 	return true
 
+func discovery_arguments(job: Dictionary,state: Dictionary,index: int,request_id: String,recovered: Dictionary={}) -> Dictionary:
+	var entries=job.get("discoveries",[])
+	if index<0 or index>=entries.size() or not DTO.id_valid(request_id):
+		return {}
+	var entry=entries[index]
+	var event_id=job.get("narration_event_id")
+	if not DTO.whole(event_id,1):
+		return {}
+	var source=registry.session.source(state,event_id)
+	if source.get("kind")!="narration" or not registry.session.public_source(source) or not valid_discoveries([entry],str(source.get("data",{}).get("text",""))):
+		return {}
+	var args=entry["args"].duplicate(true)
+	args["source_event_id"]=event_id
+	if entry["kind"]=="actor_generate":
+		args["generation_key"]=request_id
+		# B4 may already have created the descriptive identity from the same
+		# narration. Upgrade that actual scoped actor rather than duplicate it.
+		if args.get("existing_actor_id")==null and args.get("name") is String:
+		var found=enquiry("actors",{"location_id":args["location_id"]},64)
+		if not found.get("ok",false) or found.get("data",{}).get("truncated",true):
+			stop("retry","Actor identity enquiry incomplete.")
+			return
+		var matches_found: Array=[]
+		for individual in found["data"].get("actors",[]):
+			if str(individual.get("name","")).strip_edges().to_lower()==str(args["name"]).strip_edges().to_lower():
+			matches_found.append(individual)
+		if matches_found.size()>1 or (matches_found.size()==1 and (matches_found[0].get("occupation")!=args["occupation"] or matches_found[0].get("kind")!=args["kind"])):
+			stop("retry","Actor identity ambiguous; preserve established actor.")
+			return
+		if matches_found.size()==1:
+			args["existing_actor_id"]=matches_found[0]["actor_id"]
+				if not recovered.is_empty() and recovered.get("result",{}).get("actor_id")==args["existing_actor_id"] and recovered.get("request",{}).get("args",{}).get("existing_actor_id")==null:
+					args["existing_actor_id"]=null
+
+	if entry["kind"]=="loot_discover":
+		for item in args["items"]:
+			if item["definition_id"].begins_with("@"):
+				var reference=item["definition_id"].trim_prefix("@")
+				if not reference.is_valid_int() or str(int(reference))!=reference or int(reference)<0 or int(reference)>=index:
+					return {}
+				var original=entries[int(reference)]
+				if not original["kind"] in ["define_custom","define_official"]:
+					return {}
+				var recorded=job.get("discovery_receipts",{}).get(reference,{})
+				var prior=registry.session.settlement(state["campaign_id"],str(recorded.get("request_id","")))
+				var expected=original["args"].duplicate(true)
+				expected["source_event_id"]=event_id
+				if not prior.get("ok",false) or not prior.get("found",false) or prior.get("status")!="committed" or prior.get("request")!=recorded or recorded.get("kind")!=original["kind"] or recorded.get("args")!=expected or prior["revision"]>state["revision"]:
+					return {}
+				var definition=prior["result"].get("definition_id")
+				if not definition is String or definition.is_empty() or definition.begins_with("@"):
+					return {}
+				item["definition_id"]=definition
+	return args
+
+func discovery_request_valid(req: Dictionary,job: Dictionary,state: Dictionary,settled: Dictionary={}) -> bool:
+	var index=int(job.get("discovery_index",0))
+	var entries=job.get("discoveries",[])
+	if index<0 or index>=entries.size() or req!=job.get("story_request") or req.get("kind")!=entries[index]["kind"] or req.get("campaign_id")!=state["campaign_id"] or req.get("actor_id")!=state["actor_id"]:
+		return false
+	if settled.is_empty():
+		if req.get("expected_revision")!=state["revision"]:
+			return false
+	elif settled.get("request")!=req or settled.get("status")!="committed" or settled.get("revision")!=state["revision"]:
+		return false
+	var expected=discovery_arguments(job,state,index,req.get("request_id",""),settled)
+	return not expected.is_empty() and req.get("args")==expected and registry.arguments_valid(expected,REG.TOOLS[req["kind"]][0])
+
 func process_story() -> void:
 	if not reload():
 		return
@@ -417,36 +488,13 @@ func process_story() -> void:
 		return
 	var req=job.get("story_request",{})
 	if req.is_empty():
-		var args=entry["args"].duplicate(true)
-		args["source_event_id"]=job["narration_event_id"]
-		if entry["kind"]=="actor_generate":
-			args["generation_key"]=registry.session.make_id()
-			# B4 may already have created the descriptive identity from the same
-			# narration. Upgrade that actual scoped actor rather than duplicate it.
-			if args.get("existing_actor_id")==null and args.get("name") is String:
-				var found=enquiry("actors",{"location_id":args["location_id"]},64)
-				if not found.get("ok",false) or found.get("data",{}).get("truncated",true):
-					stop("retry","Actor identity enquiry incomplete.")
-					return
-				var matches_found: Array=[]
-				for individual in found["data"].get("actors",[]):
-					if str(individual.get("name","")).strip_edges().to_lower()==str(args["name"]).strip_edges().to_lower():
-						matches_found.append(individual)
-				if matches_found.size()>1 or (matches_found.size()==1 and (matches_found[0].get("occupation")!=args["occupation"] or matches_found[0].get("kind")!=args["kind"])):
-					stop("retry","Actor identity ambiguous; preserve established actor.")
-					return
-				if matches_found.size()==1:
-					args["existing_actor_id"]=matches_found[0]["actor_id"]
-		if entry["kind"]=="loot_discover":
-			for item in args["items"]:
-				if item["definition_id"].begins_with("@"):
-					var reference=item["definition_id"].trim_prefix("@")
-					if not job.get("definition_refs",{}).has(reference):
-						stop("retry","Unresolved discovery definition reference.")
-						return
-					item["definition_id"]=job["definition_refs"][reference]
+		var request_id=registry.session.make_id()
+		var args=discovery_arguments(job,data["state"],index,request_id)
+		if args.is_empty():
+			stop("retry","Discovery arguments cannot be reconstructed.")
+			return
 		req=tool_for(job["intent"],data["state"],entry["kind"],args)
-		req["request_id"]=registry.session.make_id()
+		req["request_id"]=request_id
 		job["story_request"]=req
 		if not update_active(job):
 			return
@@ -455,6 +503,9 @@ func process_story() -> void:
 		stop("retry","Discovery settlement unavailable.")
 		return
 	if not prior.get("found",false):
+		if not discovery_request_valid(req,job,data["state"]):
+			stop("retry","Discovery arguments differ from staged proposal.")
+			return
 		if not prepare_review(req,"post_story"):
 			return
 		running=true
@@ -470,6 +521,12 @@ func process_story() -> void:
 	if not prior.get("ok",false) or not prior.get("found",false) or prior.get("request")!=req or prior.get("status")!="committed":
 		stop("retry","Deferred settlement differs or was not committed; preserve the pending work.")
 		return
+	if not discovery_request_valid(req,job,data["state"],prior):
+		stop("retry","Committed discovery differs from staged proposal.")
+		return
+	if not job.has("discovery_receipts"):
+		job["discovery_receipts"]={}
+	job["discovery_receipts"][str(index)]=req.duplicate(true)
 	if entry["kind"] in ["define_official","define_custom"] and prior["result"].has("definition_id"):
 		job["definition_refs"][str(index)]=prior["result"]["definition_id"]
 	job["discovery_index"]=index+1

@@ -6,3 +6,5 @@ Branch godot; live v0.0.26, target v0.0.27; no intermediate publication. Read PR
 3b.3c.1 follow-up source check: SQLite bridge returns arrays directly in results, corrected fixture decoding. Runtime remains unexecuted.
 
 3b.3c.2 positive regression authored; negative binding/forgery cases outstanding before 3b.3c.3. Native execution not run.
+
+3b.3c.2b production binding correction committed. Next 3b.3c.2c negative regressions, including recovered actor generation and forged receipt provenance; native validation outstanding. No release.

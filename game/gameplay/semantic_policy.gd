@@ -51,6 +51,8 @@ func validate_assessment(req: Dictionary,report: Variant,job: Dictionary,state: 
 	if not bound_request(req,job,state) or not DTO.exact_keys(report,["disposition","intent_evidence","context","ruling","reason"]) or report["disposition"]!="supported" or not DTO.bounded_text(report["reason"],1000) or not report["ruling"] is Dictionary or not report["context"] is Array or report["context"].size()>12:
 		return {"ok":false,"error":"Contextual action not established."}
 	var kind=req["kind"]
+	if kind in DESCRIPTIVE and kind!="story_update" and not controller.discovery_request_valid(req,job,state):
+		return {"ok":false,"error":"Discovery arguments differ from staged proposal."}
 	var args=req["args"]
 	var original=intent_text(req,job,state)
 	if not DTO.bounded_text(report["intent_evidence"],2000) or not original.contains(report["intent_evidence"]):
@@ -130,6 +132,8 @@ func validate_assessment(req: Dictionary,report: Variant,job: Dictionary,state: 
 # The registry still validates the typed operation and performs its own transaction.
 func descriptive_assessment(req: Dictionary,job: Dictionary,state: Dictionary) -> Dictionary:
 	if not req["kind"] in DESCRIPTIVE or req!=job.get("story_request") or not bound_request(req,job,state):
+		return {}
+	if req["kind"]!="story_update" and not controller.discovery_request_valid(req,job,state):
 		return {}
 	var event_id=job.get("narration_event_id")
 	if req["args"].get("source_event_id")!=event_id or not DTO.whole(event_id,1):

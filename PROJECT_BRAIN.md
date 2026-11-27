@@ -590,3 +590,6 @@ Active production fixture submits conversation and combined narration with a rep
 
 ## v0.0.27 checkpoint 3b.3c.2 — geography and discovery regression (partial)
 Active fixture covers reported village identity, unknown coordinates, route and relationship endpoints, custom definition @0 resolution, durable request/source and no auto-pickup, two transport calls. Negative forged authorization cases remain outstanding. Native/mock/live execution not run. No publication.
+
+## v0.0.27 checkpoint 3b.3c.2b — deterministic discovery binding
+Shared controller reconstruction used by policy and execution/recovery. Definition references resolve through recorded exact committed requests, not definition_refs. Actor generation key bound to request ID. Legacy pending discoveries without receipt provenance fail closed. Native and negative regression execution outstanding; no release.
