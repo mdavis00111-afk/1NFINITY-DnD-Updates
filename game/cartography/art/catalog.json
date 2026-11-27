@@ -4382,6 +4382,1206 @@
         "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
         "method": "Original quill-like line illustration; ink hatch, irregular silhouettes, independent arrangement variations."
       }
+    },
+    {
+      "id": "adventure.cave.v1",
+      "category": "adventure",
+      "kind": "cave",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.cave.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.cave.v2",
+      "category": "adventure",
+      "kind": "cave",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.cave.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.cavern.v1",
+      "category": "adventure",
+      "kind": "cavern",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.cavern.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.cavern.v2",
+      "category": "adventure",
+      "kind": "cavern",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.cavern.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.mine.v1",
+      "category": "adventure",
+      "kind": "mine",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.mine.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.mine.v2",
+      "category": "adventure",
+      "kind": "mine",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.mine.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.crypt.v1",
+      "category": "adventure",
+      "kind": "crypt",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.crypt.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.crypt.v2",
+      "category": "adventure",
+      "kind": "crypt",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.crypt.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.tomb.v1",
+      "category": "adventure",
+      "kind": "tomb",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.tomb.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.tomb.v2",
+      "category": "adventure",
+      "kind": "tomb",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.tomb.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.graveyard.v1",
+      "category": "adventure",
+      "kind": "graveyard",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.graveyard.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.graveyard.v2",
+      "category": "adventure",
+      "kind": "graveyard",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.graveyard.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.ruins.v1",
+      "category": "adventure",
+      "kind": "ruins",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.ruins.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.ruins.v2",
+      "category": "adventure",
+      "kind": "ruins",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.ruins.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.ancient_ruins.v1",
+      "category": "adventure",
+      "kind": "ancient_ruins",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.ancient_ruins.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.ancient_ruins.v2",
+      "category": "adventure",
+      "kind": "ancient_ruins",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.ancient_ruins.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.abandoned_village.v1",
+      "category": "adventure",
+      "kind": "abandoned_village",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.abandoned_village.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.abandoned_village.v2",
+      "category": "adventure",
+      "kind": "abandoned_village",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.abandoned_village.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.ruined_castle.v1",
+      "category": "adventure",
+      "kind": "ruined_castle",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.ruined_castle.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.ruined_castle.v2",
+      "category": "adventure",
+      "kind": "ruined_castle",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.ruined_castle.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.dungeon.v1",
+      "category": "adventure",
+      "kind": "dungeon",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.dungeon.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.dungeon.v2",
+      "category": "adventure",
+      "kind": "dungeon",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.dungeon.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.standing_stones.v1",
+      "category": "adventure",
+      "kind": "standing_stones",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.standing_stones.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.standing_stones.v2",
+      "category": "adventure",
+      "kind": "standing_stones",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.standing_stones.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.stone_circle.v1",
+      "category": "adventure",
+      "kind": "stone_circle",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.stone_circle.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.stone_circle.v2",
+      "category": "adventure",
+      "kind": "stone_circle",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.stone_circle.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.magical_portal.v1",
+      "category": "adventure",
+      "kind": "magical_portal",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.magical_portal.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.magical_portal.v2",
+      "category": "adventure",
+      "kind": "magical_portal",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.magical_portal.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.camp.v1",
+      "category": "adventure",
+      "kind": "camp",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.camp.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.camp.v2",
+      "category": "adventure",
+      "kind": "camp",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.camp.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.bandit_camp.v1",
+      "category": "adventure",
+      "kind": "bandit_camp",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.bandit_camp.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.bandit_camp.v2",
+      "category": "adventure",
+      "kind": "bandit_camp",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.bandit_camp.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.military_camp.v1",
+      "category": "adventure",
+      "kind": "military_camp",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.military_camp.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.military_camp.v2",
+      "category": "adventure",
+      "kind": "military_camp",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.military_camp.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.adventurer_camp.v1",
+      "category": "adventure",
+      "kind": "adventurer_camp",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.adventurer_camp.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.adventurer_camp.v2",
+      "category": "adventure",
+      "kind": "adventurer_camp",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.adventurer_camp.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.monster_lair.v1",
+      "category": "adventure",
+      "kind": "monster_lair",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.monster_lair.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.monster_lair.v2",
+      "category": "adventure",
+      "kind": "monster_lair",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.monster_lair.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.battlefield.v1",
+      "category": "adventure",
+      "kind": "battlefield",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.battlefield.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.battlefield.v2",
+      "category": "adventure",
+      "kind": "battlefield",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.battlefield.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.ancient_monument.v1",
+      "category": "adventure",
+      "kind": "ancient_monument",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.ancient_monument.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.ancient_monument.v2",
+      "category": "adventure",
+      "kind": "ancient_monument",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.ancient_monument.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.well.v1",
+      "category": "adventure",
+      "kind": "well",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.well.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.well.v2",
+      "category": "adventure",
+      "kind": "well",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.well.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.hidden_entrance.v1",
+      "category": "adventure",
+      "kind": "hidden_entrance",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.hidden_entrance.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.hidden_entrance.v2",
+      "category": "adventure",
+      "kind": "hidden_entrance",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.hidden_entrance.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.point_of_interest.v1",
+      "category": "adventure",
+      "kind": "point_of_interest",
+      "variant": "v1",
+      "path": "res://cartography/art/adventure.point_of_interest.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
+    },
+    {
+      "id": "adventure.point_of_interest.v2",
+      "category": "adventure",
+      "kind": "point_of_interest",
+      "variant": "v2",
+      "path": "res://cartography/art/adventure.point_of_interest.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.85
+      ],
+      "scale": {
+        "recommended_px": 72,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
+      }
     }
   ]
 }
