@@ -637,3 +637,6 @@ Strengthened bounded memory to exact controlled-actor linked narration/standalon
 
 ### v0.0.27 — completed-move boundary correction
 Narration context now excludes the current standalone mechanical request until its narration is durably linked, so an in-progress action cannot displace one of the last ten completed moves. Cache identity includes that exclusion. No mutation or extra provider request. Native validation pending.
+
+### v0.0.27 — integrated native QA infrastructure
+Added isolated Linux and Windows GitHub Actions jobs for the existing pinned-byte/native runner. Exact official 4.7.2 archive SHA256 verified before extraction, read-only repository permission, no live provider, no production saves or publication. CI execution/permission and results remain unverified until actual logs exist. Windows remains the production bridge acceptance platform.
