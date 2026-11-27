@@ -228,3 +228,18 @@ static func receipt_valid(receipt: Variant, current: Dictionary, cat) -> bool:
 		var actor_check = travel_actor(current["actor"],current.get("inventory",[]),cat)
 		return actor_check.get("ok",false) and segment["from_id"]==current["location_id"] and segment["to_id"]==result["destination_id"] and segment["route_id"]==result["route_id"] and seconds!=null and segment["elapsed_seconds"]==seconds and time["seconds"]==seconds and result["passive_perception"]==actor_check["passive_perception"]-(5 if result["pace"]=="fast" else 0) and valid_refs(receipt["rule_refs"],refs_for(kind),cat)
 	return false
+
+static func summary(receipt: Dictionary) -> String:
+	var action = receipt["results"][0]
+	match action["kind"]:
+		"ability_check","saving_throw":
+			if action["outcome"]=="automatic_failure":
+				return "Automatic failure: "+action["ability"].to_upper()+" save (condition)."
+			var roll = receipt["rolls"][0]
+			return action["kind"].replace("_"," ").capitalize()+": "+str(roll["values"])+"; selected "+str(roll["selected"])+"; modifier "+("%+d" % int(roll["modifier"]))+"; total "+str(roll["total"])+" vs DC "+str(roll["target"])+" — "+roll["result"]+"."
+		"move","travel":
+			var segment = receipt["effects"][0]["segments"][0]
+			return "Travel completed: "+str(segment["distance_miles"])+" miles at "+action["pace"]+" pace in "+str(segment["elapsed_seconds"])+" seconds."
+		"wait":
+			return "Waited "+str(receipt["effects"].back()["seconds"])+" seconds."
+	return "Observation completed; no mechanical change."

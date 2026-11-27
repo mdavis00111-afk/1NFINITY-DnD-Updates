@@ -4,6 +4,8 @@ const SQL = preload("res://systems/sqlite.gd")
 const BASE = preload("res://campaigns/campaign_store.gd")
 const DTO = preload("res://world/world_dto.gd")
 const MIGRATION = preload("res://world/world_migration.gd")
+const RAW = preload("res://turns/raw_mechanics.gd")
+const CAT = preload("res://rules/catalog.gd")
 
 func failure(message: String) -> Dictionary:
 	return {"ok":false,"error":message}
@@ -21,12 +23,13 @@ func snapshot(id: String) -> Dictionary:
 		SQL.stmt("SELECT value FROM meta WHERE key='world_schema'"),
 		SQL.stmt("SELECT campaign_id,revision,turn_number,pending_turn_id,elapsed_seconds FROM world_state"),
 		SQL.stmt("SELECT id,location_id,payload,master_character_id FROM actors WHERE id=? AND kind='player'",[record["actor_id"]]),
+		SQL.stmt("SELECT item_id,quantity,payload FROM inventory WHERE actor_id=? ORDER BY item_id",[record["actor_id"]]),
 		SQL.stmt("COMMIT")
 	],true)
 	if not result.get("ok",false):
 		return failure("World state unavailable. Run migration first.")
 	var sets: Array = result["results"]
-	if sets.size()!=6 or sets[1].size()!=1 or sets[1][0]["value"]!=raw or sets[2].size()!=1 or sets[2][0]["value"]!=MIGRATION.VERSION or sets[3].size()!=1 or sets[4].size()!=1:
+	if sets.size()!=7 or sets[1].size()!=1 or sets[1][0]["value"]!=raw or sets[2].size()!=1 or sets[2][0]["value"]!=MIGRATION.VERSION or sets[3].size()!=1 or sets[4].size()!=1:
 		return failure("Campaign changed or world state incomplete.")
 	var state = sets[3][0]
 	var actor = sets[4][0]
@@ -40,7 +43,16 @@ func snapshot(id: String) -> Dictionary:
 	var payload = JSON.parse_string(actor["payload"])
 	if not payload is Dictionary or payload.get("id")!=actor["id"] or payload.get("master_character_id")!=actor["master_character_id"] or payload.get("location_id")!=actor["location_id"]:
 		return failure("Campaign actor payload identity invalid.")
-	return {"ok":true,"campaign_id":id,"actor_id":actor["id"],"location_id":actor["location_id"],"revision":revision,"turn":turn,"pending_turn_id":state["pending_turn_id"],"elapsed_seconds":elapsed,"metadata":raw,"actor_payload":actor["payload"],"campaign":record,"actor":payload}
+	var inventory: Array = []
+	for row in sets[5]:
+		var quantity = DTO.sql_int(row["quantity"])
+		var item = JSON.parse_string(row["payload"])
+		if quantity==null or quantity<1 or not item is Dictionary or not DTO.bounded_text(row["item_id"],100):
+			return failure("Invalid normalized inventory row.")
+		item["item_id"]=row["item_id"]
+		item["quantity"]=quantity
+		inventory.append(item)
+	return {"ok":true,"campaign_id":id,"actor_id":actor["id"],"location_id":actor["location_id"],"revision":revision,"turn":turn,"pending_turn_id":state["pending_turn_id"],"elapsed_seconds":elapsed,"metadata":raw,"actor_payload":actor["payload"],"campaign":record,"actor":payload,"inventory":inventory,"inventory_rows":sets[5]}
 
 # Read before rolling/retrying. A committed logical ID is never rolled again.
 func receipt_by_id(id: String, turn_id: String) -> Dictionary:
@@ -67,16 +79,72 @@ func receipt_by_id(id: String, turn_id: String) -> Dictionary:
 # Guard inserts NULL on mismatch, violating meta.value NOT NULL. The entire
 # transaction rolls back, including receipts, movement, metadata and events.
 func guard(token: Dictionary) -> Dictionary:
-	return SQL.stmt("INSERT INTO meta(key,value) VALUES('turn_write_guard',(SELECT m.value FROM meta m JOIN world_state s ON s.campaign_id=? JOIN actors a ON a.id=? WHERE m.key='campaign' AND m.value=? AND s.revision=? AND s.turn_number=? AND s.pending_turn_id IS ? AND a.kind='player' AND a.location_id=? AND a.payload=?))",[token["campaign_id"],token["actor_id"],token["metadata"],token["revision"],token["turn"],token["pending_turn_id"],token["location_id"],token["actor_payload"]])
+	return SQL.stmt("INSERT INTO meta(key,value) VALUES('turn_write_guard',(SELECT m.value FROM meta m JOIN world_state s ON s.campaign_id=? JOIN actors a ON a.id=? WHERE m.key='campaign' AND m.value=? AND s.revision=? AND s.turn_number=? AND s.pending_turn_id IS ? AND s.elapsed_seconds IS ? AND a.kind='player' AND a.location_id=? AND a.payload=?))",[token["campaign_id"],token["actor_id"],token["metadata"],token["revision"],token["turn"],token["pending_turn_id"],token["elapsed_seconds"],token["location_id"],token["actor_payload"]])
 
 func matching_token(a: Dictionary,b: Dictionary) -> bool:
-	for key in ["campaign_id","actor_id","metadata","actor_payload","revision","turn","pending_turn_id","location_id","elapsed_seconds"]:
+	for key in ["campaign_id","actor_id","metadata","actor_payload","revision","turn","pending_turn_id","location_id","elapsed_seconds","inventory_rows"]:
 		if not a.has(key) or a[key]!=b.get(key):
 			return false
 	return true
 
-# Only an engine-validated receipt enters this API. B1 rejects unsupported effects.
-# No generic patch or caller-supplied SQL. The deterministic resolver is B2.
+# Read known canonical route and previous walking time; never infer distance
+# from coordinates. Geometry is copied only after actual traversal resolves.
+func route_context(id: String, token: Dictionary, route_id: String, destination: String) -> Dictionary:
+	if not DTO.id_valid(id) or id!=token.get("campaign_id") or not DTO.id_valid(route_id) or not DTO.id_valid(destination) or destination==token.get("location_id"):
+		return failure("Invalid route intent.")
+	var result = SQL.run(BASE.new().path_for(id),[
+		SQL.stmt("BEGIN"),
+		SQL.stmt("SELECT campaign_id,revision,turn_number FROM world_state"),
+		SQL.stmt("SELECT r.id,r.from_id,r.to_id,r.kind,r.precision,r.distance_miles,d.status AS route_status,fa.precision AS from_precision,fb.precision AS to_precision,a.x AS from_x,a.y AS from_y,b.x AS to_x,b.y AS to_y FROM world_routes r JOIN world_discovery d ON d.route_id=r.id JOIN world_discovery da ON da.location_id=r.from_id JOIN world_discovery db ON db.location_id=r.to_id JOIN world_places fa ON fa.location_id=r.from_id JOIN world_places fb ON fb.location_id=r.to_id JOIN locations a ON a.id=r.from_id JOIN locations b ON b.id=r.to_id WHERE r.id=? AND ((r.from_id=? AND r.to_id=?) OR (r.to_id=? AND r.from_id=?)) AND d.visibility='player' AND d.status<>'unknown' AND da.visibility='player' AND da.status<>'unknown' AND db.visibility='player' AND db.status<>'unknown'",[route_id,token["location_id"],destination,token["location_id"],destination]),
+		SQL.stmt("SELECT seq,x,y FROM route_points WHERE route_id=? ORDER BY seq",[route_id]),
+		SQL.stmt("SELECT COALESCE(sum(elapsed_seconds),0) AS walked,count(*)-count(elapsed_seconds) AS unknown_time,COALESCE(sum(CASE WHEN route_id=? THEN 1 ELSE 0 END),0) AS prior_traversals FROM movement_history WHERE actor_id=?",[route_id,token["actor_id"]]),
+		SQL.stmt("COMMIT")
+	],true)
+	if not result.get("ok",false):
+		return failure("Route context unavailable.")
+	var sets: Array = result["results"]
+	if sets.size()!=6 or sets[1].size()!=1 or sets[2].size()!=1 or sets[4].size()!=1 or sets[1][0]["campaign_id"]!=id or DTO.sql_int(sets[1][0]["revision"])!=token["revision"] or DTO.sql_int(sets[1][0]["turn_number"])!=token["turn"]:
+		return failure("Route is unknown, hidden, not connected, or stale.")
+	var row = sets[2][0]
+	var distance = DTO.sql_number(row["distance_miles"])
+	var walked = DTO.sql_int(sets[4][0]["walked"])
+	var traversals = DTO.sql_int(sets[4][0]["prior_traversals"])
+	if not row["kind"] in ["road","track","path","trail"] or distance==null or distance<=0 or walked==null or traversals==null or DTO.sql_int(sets[4][0]["unknown_time"])!=0:
+		return failure("Route distance, terrain type or walking history requires adjudication.")
+	var points: Array = []
+	for i in range(sets[3].size()):
+		var point = sets[3][i]
+		var x = DTO.sql_number(point["x"])
+		var y = DTO.sql_number(point["y"])
+		if DTO.sql_int(point["seq"])!=i or x==null or y==null:
+			return failure("Route geometry invalid.")
+		points.append({"x":x,"y":y})
+	if not DTO.points_valid(points,row["precision"]):
+		return failure("Route geometry lacks accepted precision.")
+	if not points.is_empty():
+		if not DTO.known_position(row["from_precision"]) or not DTO.known_position(row["to_precision"]) or points.front()!= {"x":DTO.sql_number(row["from_x"]),"y":DTO.sql_number(row["from_y"])} or points.back()!= {"x":DTO.sql_number(row["to_x"]),"y":DTO.sql_number(row["to_y"])}:
+			return failure("Route geometry does not match its endpoints.")
+	if row["from_id"]!=token["location_id"]:
+		points.reverse()
+	return {"ok":true,"row":row,"point_rows":sets[3],"distance":distance,"walked":walked,"prior_traversals":traversals,"points":points}
+
+func inventory_guards(token: Dictionary) -> Array:
+	var commands: Array = [SQL.stmt("INSERT INTO meta(key,value) VALUES('turn_inventory_guard',(SELECT 'ok' WHERE (SELECT count(*) FROM inventory WHERE actor_id=?)=CAST(? AS INTEGER)))",[token["actor_id"],token["inventory_rows"].size()]),SQL.stmt("DELETE FROM meta WHERE key='turn_inventory_guard'")]
+	for row in token["inventory_rows"]:
+		commands.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('turn_inventory_guard',(SELECT 'ok' FROM inventory WHERE actor_id=? AND item_id=? AND quantity=CAST(? AS INTEGER) AND typeof(quantity)='integer' AND payload=?))",[token["actor_id"],row["item_id"],row["quantity"],row["payload"]]))
+		commands.append(SQL.stmt("DELETE FROM meta WHERE key='turn_inventory_guard'"))
+	return commands
+
+func route_guards(token: Dictionary, route: Dictionary) -> Array:
+	var row = route["row"]
+	var commands: Array = [SQL.stmt("INSERT INTO meta(key,value) VALUES('turn_route_guard',(SELECT 'ok' FROM world_routes r JOIN world_discovery d ON d.route_id=r.id JOIN world_discovery a ON a.location_id=r.from_id JOIN world_discovery b ON b.location_id=r.to_id WHERE r.id=? AND r.from_id=? AND r.to_id=? AND r.kind=? AND r.precision=? AND r.distance_miles=CAST(? AS REAL) AND d.visibility='player' AND d.status=? AND a.visibility='player' AND a.status<>'unknown' AND b.visibility='player' AND b.status<>'unknown' AND (SELECT count(*) FROM route_points WHERE route_id=r.id)=CAST(? AS INTEGER) AND (SELECT COALESCE(sum(elapsed_seconds),0) FROM movement_history WHERE actor_id=?)=CAST(? AS INTEGER) AND NOT EXISTS(SELECT 1 FROM movement_history WHERE actor_id=? AND elapsed_seconds IS NULL)))",[row["id"],row["from_id"],row["to_id"],row["kind"],row["precision"],row["distance_miles"],row["route_status"],route["point_rows"].size(),token["actor_id"],route["walked"],token["actor_id"]]),SQL.stmt("DELETE FROM meta WHERE key='turn_route_guard'")]
+	for point in route["point_rows"]:
+		commands.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('turn_route_guard',(SELECT 'ok' FROM route_points WHERE route_id=? AND seq=CAST(? AS INTEGER) AND x=CAST(? AS REAL) AND y=CAST(? AS REAL)))",[row["id"],point["seq"],point["x"],point["y"]]))
+		commands.append(SQL.stmt("DELETE FROM meta WHERE key='turn_route_guard'"))
+	return commands
+
+# Engine-only API; strict registered RAW unions, exact state and SQL guards.
+# No generic patch or caller-supplied SQL.
 func commit_receipt(id: String, token: Dictionary, receipt: Dictionary) -> Dictionary:
 	if not DTO.receipt_valid(receipt) or receipt["campaign_id"]!=id:
 		return failure("Invalid receipt envelope or unsupported effect.")
@@ -92,17 +160,31 @@ func commit_receipt(id: String, token: Dictionary, receipt: Dictionary) -> Dicti
 		return failure("Stale turn snapshot.")
 	if current["pending_turn_id"]!=null or receipt["actor_id"]!=current["actor_id"] or receipt["prior_revision"]!=current["revision"] or receipt["resulting_turn"]!=current["turn"]+1:
 		return failure("Pending narration or turn identity mismatch.")
+	var cat = CAT.new()
+	if not RAW.receipt_valid(receipt,current,cat):
+		return failure("Unregistered or inconsistent mechanical receipt.")
 	var commands: Array = [guard(current)]
+	commands.append_array(inventory_guards(current))
+	var action = receipt["results"][0]
+	if action["kind"] in ["move","travel"]:
+		var route = route_context(id,current,action["route_id"],action["destination_id"])
+		if not route.get("ok",false):
+			return route
+		var segment = receipt["effects"][0]["segments"][0]
+		if segment["distance_miles"]!=route["distance"] or segment["precision"]!=route["row"]["precision"] or segment["points"]!=route["points"] or route["walked"]+int(segment["elapsed_seconds"])>RAW.MAX_WALK_SECONDS or (action["fast_travel"] and route["prior_traversals"]==0):
+			return failure("Route, walking allowance or fast-travel eligibility changed.")
+		commands.append_array(route_guards(current,route))
 	var turn_id = str(receipt["turn_id"])
 	var turn = int(receipt["resulting_turn"])
 	var actor_id = str(current["actor_id"])
 	var record: Dictionary = current["campaign"].duplicate(true)
 	var actor: Dictionary = current["actor"].duplicate(true)
 	var location_id = str(current["location_id"])
-	var elapsed = current["elapsed_seconds"]
-	commands.append(SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(?,?,'mechanical_receipt',?)",[turn,"Unspecified",JSON.stringify({"turn_id":turn_id,"text":"Mechanical receipt committed. Narration pending."})]))
+	var elapsed = RAW.time_after(receipt["effects"].back(),current)
+	var game_time = "Unspecified" if elapsed==null else "Elapsed "+str(elapsed)+" seconds (tracked epoch)"
+	commands.append(SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(?,?,'mechanical_receipt',?)",[turn,game_time,JSON.stringify({"turn_id":turn_id,"text":RAW.summary(receipt)})]))
 	commands.append(SQL.stmt("INSERT INTO turn_receipts(turn_id,actor_id,prior_revision,next_revision,turn_number,event_id,payload) VALUES(?,?,?,?,?,last_insert_rowid(),?)",[turn_id,actor_id,int(receipt["prior_revision"]),int(receipt["next_revision"]),turn,JSON.stringify(receipt)]))
-	if not receipt["effects"].is_empty():
+	if receipt["effects"].size()==2:
 		var effect = receipt["effects"][0]
 		for i in range(effect["segments"].size()):
 			var segment = effect["segments"][i]
@@ -125,13 +207,6 @@ func commit_receipt(id: String, token: Dictionary, receipt: Dictionary) -> Dicti
 			# Actual arrival is evidence of visit. Preserve surveyed and first discovery.
 			commands.append(SQL.stmt("UPDATE world_discovery SET status=CASE WHEN status='surveyed' THEN status ELSE 'visited' END,visibility='player',first_event_id=COALESCE(first_event_id,(SELECT event_id FROM turn_receipts WHERE turn_id=?)),last_visit_event_id=(SELECT event_id FROM turn_receipts WHERE turn_id=?) WHERE location_id=?",[turn_id,turn_id,location_id]))
 			commands.append(SQL.stmt("INSERT INTO world_discovery(id,location_id,status,visibility,first_event_id,last_visit_event_id) SELECT ?,?,'visited','player',event_id,event_id FROM turn_receipts WHERE turn_id=? AND NOT EXISTS(SELECT 1 FROM world_discovery WHERE location_id=?)",[Crypto.new().generate_random_bytes(16).hex_encode(),location_id,turn_id,location_id]))
-			if elapsed!=null:
-				if segment["elapsed_seconds"]==null:
-					elapsed=null
-				else:
-					elapsed+=int(segment["elapsed_seconds"])
-					if not DTO.whole(elapsed):
-						return failure("Elapsed time outside supported range.")
 		actor["location_id"]=location_id
 		record["location_id"]=location_id
 		commands.append(SQL.stmt("UPDATE actors SET location_id=?,payload=? WHERE id=?",[location_id,JSON.stringify(actor),actor_id]))
