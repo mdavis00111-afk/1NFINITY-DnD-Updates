@@ -5,6 +5,8 @@ const PLAYER = preload("res://players/character_store.gd")
 const STARTS = preload("res://campaigns/campaign_starts.gd")
 const MATURITY = preload("res://campaigns/maturity_profiles.gd")
 const OPENING = preload("res://campaigns/opening_scene.gd")
+const DISPLAY = preload("res://gameplay/display_values.gd")
+const CATALOG = preload("res://rules/catalog.gd")
 const ROOT = "user://campaigns/v1"
 const SCHEMA = "1"
 var last_error = ""
@@ -258,20 +260,26 @@ func gameplay_view(id: String) -> Dictionary:
 	if not valid_id(actor_id):
 		last_error = "Invalid campaign player identifier."
 		return {}
+	var expected_metadata = loaded_metadata
 	var result = SQL.run(path_for(id),[
+		SQL.stmt("BEGIN"),
+		SQL.stmt("SELECT value FROM meta WHERE key='campaign'"),
 		SQL.stmt("SELECT payload,location_id FROM actors WHERE id=? AND kind='player'",[actor_id]),
 		SQL.stmt("SELECT item_id,quantity,payload FROM inventory WHERE actor_id=? ORDER BY item_id",[actor_id]),
 		SQL.stmt("SELECT id,turn,kind,payload FROM events WHERE kind IN ('campaign_created','narration') ORDER BY id"),
 		SQL.stmt("SELECT id,name,kind,x,y,payload FROM locations ORDER BY name COLLATE NOCASE,id"),
-		SQL.stmt("SELECT id,status,payload FROM quests ORDER BY id")
+		SQL.stmt("SELECT id,status,payload FROM quests ORDER BY id"),
+		SQL.stmt("COMMIT")
 	],true)
 	if not result.get("ok",false):
 		last_error = result_error(result,"Cannot read campaign workspace.")
 		return {}
 	var sets: Array = result.get("results",[])
-	if sets.size()!=5 or sets[0].size()!=1:
-		last_error = "Campaign player data unavailable."
+	if sets.size()!=8 or sets[1].size()!=1 or str(sets[1][0]["value"])!=expected_metadata or sets[2].size()!=1:
+		last_error = "Campaign changed or player data unavailable. Reopen and retry."
 		return {}
+	# One read-only transaction on the bridge connection.
+	sets = sets.slice(2,7)
 	var actor = JSON.parse_string(str(sets[0][0]["payload"]))
 	if not actor is Dictionary or actor.get("id")!=actor_id:
 		last_error = "Invalid campaign player payload."
@@ -285,7 +293,7 @@ func gameplay_view(id: String) -> Dictionary:
 		payload["item_id"] = str(row["item_id"])
 		payload["quantity"] = int(row["quantity"])
 		items.append(payload)
-	actor["inventory"] = items
+	DISPLAY.project_inventory(CATALOG.new(),actor,items)
 	var events: Array = []
 	for row in sets[2]:
 		var payload = JSON.parse_string(str(row["payload"]))

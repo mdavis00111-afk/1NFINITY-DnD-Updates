@@ -1,6 +1,7 @@
 extends VBoxContainer
 ## Full saved-character sheet; presentation only. No mechanical values are overwritten.
 const CAT = preload("res://rules/catalog.gd")
+const DISPLAY = preload("res://gameplay/display_values.gd")
 const FRAME = preload("res://themes/parts/panel_gold.png")
 const ACTIVE = preload("res://themes/parts/panel_active.png")
 const PORTRAIT = preload("res://themes/parts/portrait_empty.png")
@@ -26,10 +27,12 @@ var cat = CAT.new()
 var data: Dictionary = {}
 var icon_rects: Dictionary = {}
 var reference_requested: Callable
+var campaign_view = false
 
-func configure(record: Dictionary, on_reference: Callable) -> void:
+func configure(record: Dictionary, on_reference: Callable, is_campaign: bool = false) -> void:
 	data = record
 	reference_requested = on_reference
+	campaign_view = is_campaign
 
 func _ready() -> void:
 	var parsed = JSON.parse_string(FileAccess.get_file_as_string("res://themes/parts/icons.json"))
@@ -161,7 +164,7 @@ func text_ref(parent: Container, title_text: String, detail: String) -> Button:
 	return b
 
 func field(key: String, default_value: Variant = "") -> Variant:
-	return data.get(key,data.get("draft",{}).get(key,default_value))
+	return data.get(key,default_value) if campaign_view else data.get(key,data.get("draft",{}).get(key,default_value))
 
 func portrait(parent: Container) -> void:
 	var v = VBoxContainer.new()
@@ -254,7 +257,8 @@ func identity() -> void:
 	var level = clampi(int(data.get("level",1)),1,20)
 	var xp_row = row(main)
 	var next_xp = XP_THRESHOLDS[level] if level < 20 else XP_THRESHOLDS[19]
-	xp_row.add_child(label_text("Experience   "+str(xp)+(" / "+str(next_xp) if level<20 else "")+" XP",19,GOLD))
+	var xp_known = not campaign_view or (DISPLAY.nonnegative_integer(data.get("xp")) and DISPLAY.nonnegative_integer(data.get("level")) and int(data["level"])>=1 and int(data["level"])<=20)
+	xp_row.add_child(label_text("Experience   "+(str(xp)+(" / "+str(next_xp) if level<20 else "")+" XP" if xp_known else "—"),19,GOLD))
 	var bar = ProgressBar.new()
 	bar.min_value = XP_THRESHOLDS[level-1]
 	bar.max_value = next_xp if level<20 else XP_THRESHOLDS[19]+1
@@ -271,6 +275,7 @@ func identity() -> void:
 	bar.add_theme_stylebox_override("background",bg)
 	bar.add_theme_stylebox_override("fill",fill)
 	xp_row.add_child(bar)
+	bar.visible = xp_known
 	var c = data.get("combat",{})
 	var stats = row(right)
 	stat(stats,"Armor Class",number(c.get("armor_class")),"armor")
@@ -352,7 +357,10 @@ func attack_section(parent: Container) -> void:
 		var m = int(a.get("damage_modifier",0))
 		var dice = str(a.get("damage_dice",""))
 		var damage = str(a.get("damage_type","")).capitalize()
-		grid.add_child(centered("—" if dice.is_empty() else dice+(" "+number(m,true) if m!=0 else ""),18))
+		var damage_text = "—" if dice.is_empty() else dice+(" "+number(m,true) if m!=0 else "")
+		if campaign_view and not dice.is_empty() and not DISPLAY.numeric(a.get("damage_modifier")):
+			damage_text = dice+" + —"
+		grid.add_child(centered(damage_text,18))
 		grid.add_child(centered("—" if damage.is_empty() else damage,17))
 	if data.get("attacks",[]).is_empty():
 		p.add_child(label_text("No recorded weapon attacks.",17))
@@ -381,7 +389,7 @@ func features_section(parent: Container) -> void:
 		text_ref(p,str(bg.get("name","Background feature")),cat.human(bg.get("desc",[])))
 	for id in data.get("resources",{}):
 		var res = data["resources"][id]
-		p.add_child(label_text(str(id).replace("_"," ").capitalize()+"   "+str(int(res.get("max",0))-int(res.get("spent",0)))+" / "+number(res.get("max")),17,GOLD))
+		p.add_child(label_text(str(id).replace("_"," ").capitalize()+"   "+(DISPLAY.remaining_text(res.get("max"),res.get("spent")) if campaign_view else str(int(res.get("max",0))-int(res.get("spent",0)))+" / "+number(res.get("max"))),17,GOLD))
 
 func item_sections(parent: Container) -> void:
 	var gear = panel(parent,"Equipment",0.75,"shield")
@@ -399,16 +407,28 @@ func item_sections(parent: Container) -> void:
 	var coins = data.get("coins",{})
 	var values: PackedStringArray = []
 	for unit in ["cp","sp","ep","gp","pp"]:
-		values.append(number(coins.get(unit,0))+" "+unit.to_upper())
+		values.append(number(coins.get(unit) if campaign_view else coins.get(unit,0))+" "+unit.to_upper())
 	inventory.add_child(label_text("  ·  ".join(values),17,GOLD,true))
-	if data.has("carried_weight_lb"):
+	if campaign_view:
+		var load_label = label_text("Load: "+DISPLAY.load_text(data),17,IVORY,true)
+		var missing = data.get("weight_projection",{}).get("missing",[])
+		if not missing.is_empty():
+			load_label.tooltip_text = "Unknown weight/amount: "+", ".join(missing)
+		inventory.add_child(load_label)
+		for warning in data.get("display_warnings",[]):
+			gear.add_child(label_text(str(warning),15,GOLD,true))
+	elif data.has("carried_weight_lb"):
 		inventory.add_child(label_text("Load: "+str(data["carried_weight_lb"])+" / "+number(data.get("carrying_capacity_lb"))+" lb.",17,IVORY,true))
 
 func spell_section(parent: Container) -> void:
 	var p = panel(parent,"Spells",1.5,"wand")
 	var sp = data.get("spellcasting",{})
-	if sp.get("save_dc") != null:
-		p.add_child(label_text("Spell Save DC "+number(sp.get("save_dc"))+"   |   Spell Attack "+number(sp.get("attack_bonus"),true),18,GOLD,true))
+	if sp.get("save_dc") != null or (campaign_view and sp.get("attack_bonus")!=null):
+		p.add_child(label_text(("Class Save DC " if campaign_view else "Spell Save DC ")+number(sp.get("save_dc"))+"   |   Spell Attack "+number(sp.get("attack_bonus"),true),18,GOLD,true))
+	if campaign_view:
+		var racial = DISPLAY.racial_spell_text(data)
+		if not racial.is_empty():
+			p.add_child(label_text(racial,17,GOLD,true))
 	var any_spell = false
 	for key in ["cantrip_ids","racial_cantrip_ids","known_ids","prepared_ids","always_prepared_ids"]:
 		var ids = sp.get(key,[])
@@ -427,9 +447,11 @@ func spell_section(parent: Container) -> void:
 		rule(p)
 	for level in sp.get("slots",{}):
 		var slot = sp["slots"][level]
-		if int(slot.get("maximum",0)) > 0:
+		if (campaign_view and (slot.get("maximum")!=0 or slot.get("spent")!=0)) or (not campaign_view and int(slot.get("maximum",0))>0):
 			any_spell = true
-			p.add_child(label_text("Level "+str(level)+" Slots   "+str(int(slot["maximum"])-int(slot.get("spent",0)))+" / "+number(slot["maximum"]),18))
+			var remaining = DISPLAY.remaining_text(slot.get("maximum"),slot.get("spent")) if campaign_view else str(int(slot["maximum"])-int(slot.get("spent",0)))+" / "+number(slot["maximum"])
+			var kind = " Pact Slots   " if campaign_view and sp.get("pact_magic",false) else " Slots   "
+			p.add_child(label_text("Level "+str(level)+kind+remaining,18))
 	if not any_spell:
 		p.add_child(label_text("No spells recorded.",17))
 
@@ -445,7 +467,7 @@ func extra_section() -> void:
 			b.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	var survival = panel(h,"Adventuring",0.85,"health")
 	var c = data.get("combat",{})
-	for entry in [["Proficiency",number(data.get("proficiency_bonus"),true)],["Passive Perception",number(c.get("passive_perception"))],["Hit Dice",str(int(c.get("hit_dice_total",0))-int(c.get("hit_dice_spent",0)))+" / "+number(c.get("hit_dice_total"))+"  d"+number(c.get("hit_die"))],["Temporary HP",number(c.get("hp_temp"))],["Inspiration","Yes" if c.get("inspiration",false) else "No"],["Death Saves",number(c.get("death_save_successes"))+" successes · "+number(c.get("death_save_failures"))+" failures"],["Exhaustion",number(c.get("exhaustion"))]]:
+	for entry in [["Proficiency",number(data.get("proficiency_bonus"),true)],["Passive Perception",number(c.get("passive_perception"))],["Hit Dice",(DISPLAY.remaining_text(c.get("hit_dice_total"),c.get("hit_dice_spent")) if campaign_view else str(int(c.get("hit_dice_total",0))-int(c.get("hit_dice_spent",0)))+" / "+number(c.get("hit_dice_total")))+"  d"+number(c.get("hit_die"))],["Temporary HP",number(c.get("hp_temp"))],["Inspiration",("—" if campaign_view and not c.has("inspiration") else ("Yes" if c.get("inspiration",false) else "No"))],["Death Saves",number(c.get("death_save_successes"))+" successes · "+number(c.get("death_save_failures"))+" failures"],["Exhaustion",number(c.get("exhaustion"))]]:
 		var r = row(survival)
 		r.add_child(label_text(entry[0],17,GOLD,true))
 		r.add_child(label_text(entry[1],17))

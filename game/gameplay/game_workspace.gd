@@ -8,6 +8,7 @@ const STARTS = preload("res://campaigns/campaign_starts.gd")
 const PORTRAIT = preload("res://players/portrait_art.gd")
 const SHEET = preload("res://players/full_character_sheet.gd")
 const DICE = preload("res://gameplay/manual_dice.gd")
+const DISPLAY = preload("res://gameplay/display_values.gd")
 const FRAME = preload("res://themes/parts/panel_gold.png")
 const ACTIVE = preload("res://themes/parts/panel_active.png")
 const CORNER = preload("res://themes/parts/corner.png")
@@ -229,7 +230,7 @@ func title_for(table: String, id: Variant) -> String:
 	return "—" if key.is_empty() else cat.title(table,key)
 
 func actor_portrait() -> Texture2D:
-	return PORTRAIT.texture_for(str(actor.get("portrait",actor.get("draft",{}).get("portrait",""))))
+	return PORTRAIT.texture_for(str(actor.get("portrait","")))
 
 func build_header() -> void:
 	var header = frame(self,1.0,false,false,5)
@@ -313,7 +314,8 @@ func build_left(parent: VBoxContainer) -> void:
 	var info = vbox(top,2)
 	info.size_flags_stretch_ratio = 1.7
 	one_line(info,str(actor.get("name","Character unavailable")),24,GOLD,true)
-	label(info,"Level "+number(actor.get("level"))+"  "+title_for("classes",actor.get("class_id"))+" ("+title_for("races",actor.get("race_id"))+")",14,GOLD,true)
+	var race_name = title_for("subraces",actor.get("subrace_id")) if not str(actor.get("subrace_id","")).is_empty() else title_for("races",actor.get("race_id"))
+	label(info,"Level "+number(actor.get("level"))+"  "+title_for("classes",actor.get("class_id"))+" ("+race_name+")",14,GOLD,true)
 	var combat = actor.get("combat",{})
 	stat(info,"HP",number(combat.get("hp_current"))+" / "+number(combat.get("hp_max")),"health",true)
 	stat(info,"AC",number(combat.get("armor_class")),"shield")
@@ -362,7 +364,14 @@ func build_left(parent: VBoxContainer) -> void:
 		if actor.get("coins",{}).has(denomination):
 			coins.append(number(actor["coins"][denomination])+" "+denomination)
 	one_line(money,"Coins: "+("  ·  ".join(coins) if not coins.is_empty() else "Not recorded"),15,GOLD)
-	one_line(money,"Weight: "+number(actor.get("carried_weight_lb"))+" / "+number(actor.get("carrying_capacity_lb"))+" lb",16)
+	var weight_label = one_line(money,"Weight: "+DISPLAY.load_text(actor),16)
+	var missing = actor.get("weight_projection",{}).get("missing",[])
+	if not missing.is_empty():
+		weight_label.tooltip_text += "\nUnknown weight/amount: "+", ".join(missing)
+	var warnings = actor.get("display_warnings",[])
+	if not warnings.is_empty():
+		equipment.tooltip_text = "Stored equipment inconsistencies; statistics not recalculated.\n"+"\n".join(warnings)
+		weapon.tooltip_text += "\n"+"\n".join(warnings)
 
 func slot_card(parent: Node, slot: String, id: String) -> void:
 	var caption = title_for("equipment",id) if not id.is_empty() else "Empty"
@@ -566,8 +575,10 @@ func show_tab(tab: String) -> void:
 		"Notes": build_notes()
 
 func equipped(id: String) -> bool:
-	var gear = actor.get("equipment",{})
-	return id==str(gear.get("armor_id","")) or id==str(gear.get("shield_id","")) or id in gear.get("weapon_ids",[])
+	for item in items:
+		if str(item.get("item_id",""))==id:
+			return item.get("equipped")==true
+	return false
 
 func item_icon(id: String) -> String:
 	if id=="shortsword": return "shortsword"
@@ -577,7 +588,7 @@ func item_icon(id: String) -> String:
 		return "shield"
 	if rec.has("armor_category"):
 		return "armor"
-	if id in ["backpack","explorers-pack","priests-pack","scholars-pack","dungeoneers-pack","burglar-pack","entertainers-pack","diplomats-pack"]:
+	if id in ["backpack","explorers-pack","priests-pack","scholars-pack","dungeoneers-pack","burglars-pack","entertainers-pack","diplomats-pack"]:
 		return "pack"
 	if id in ["robes","clothes-common","clothes-fine","clothes-travelers"]:
 		return "robe"
@@ -650,9 +661,19 @@ func select_item(id: String) -> void:
 	if rec.is_empty():
 		text.append("Catalogue details unavailable.")
 	else:
-		for key in ["equipment_category","weapon_category","armor_category","damage","properties","weight","cost"]:
+		for key in ["equipment_category","weapon_category","armor_category","armor_class","damage","properties","range"]:
 			if rec.has(key):
 				text.append(str(key).replace("_"," ").capitalize()+": "+readable(rec[key]))
+		var unit = DISPLAY.unit_weight(cat,id)
+		text.append("Unit weight: "+DISPLAY.weight_number(unit)+" lb" if unit!=null else "Unit weight: not recorded")
+		if unit!=null:
+			for item in items:
+				if item.get("item_id")==id:
+					text.append("Stack weight: "+DISPLAY.weight_number(float(unit)*int(item["quantity"]))+" lb")
+					break
+		if rec.has("cost") and rec["cost"]!=null:
+			var lot = int(DISPLAY.AMMO_LOTS.get(id,1))
+			text.append("Catalogue cost: "+readable(rec["cost"])+(" per "+str(lot) if lot>1 else ""))
 	inventory_detail.text = "\n".join(text)
 
 func readable(value: Variant) -> String:
@@ -679,14 +700,18 @@ func reference_row(parent: Node, table: String, id: String, caption: String = ""
 func build_spells() -> void:
 	var list = list_for_tab("Spellcasting")
 	var sp = actor.get("spellcasting",{})
-	if sp.get("save_dc")!=null:
-		label(list,"Save DC "+number(sp.get("save_dc"))+"  ·  Attack "+number(sp.get("attack_bonus"),true),16,GOLD)
+	if sp.get("save_dc")!=null or sp.get("attack_bonus")!=null:
+		label(list,"Class Save DC "+number(sp.get("save_dc"))+"  ·  Attack "+number(sp.get("attack_bonus"),true),16,GOLD)
+	var racial = DISPLAY.racial_spell_text(actor)
+	if not racial.is_empty():
+		label(list,racial,15,GOLD)
 	var has_spells = false
 	for level in sp.get("slots",{}):
 		var slot = sp["slots"][level]
-		if int(slot.get("maximum",0))>0:
+		if slot.get("maximum")!=0 or slot.get("spent")!=0:
 			has_spells = true
-			label(list,"Level "+str(level)+" slots: "+number(int(slot["maximum"])-int(slot.get("spent",0)))+" / "+number(slot["maximum"]),16)
+			var slot_kind = " pact slots: " if sp.get("pact_magic",false) else " slots: "
+			label(list,"Level "+str(level)+slot_kind+DISPLAY.remaining_text(slot.get("maximum"),slot.get("spent")),16)
 	for group in [["cantrip_ids","Cantrips"],["racial_cantrip_ids","Racial cantrips"],["known_ids","Spellbook" if actor.get("class_id")=="wizard" else "Known spells"],["prepared_ids","Prepared spells"],["always_prepared_ids","Always prepared"]]:
 		var ids = sp.get(group[0],[])
 		if not ids.is_empty():
@@ -706,10 +731,12 @@ func build_skills() -> void:
 		var skill = actor.get("skills",{}).get(id,{})
 		if skill.is_empty():
 			continue
-		var marker = "◆ " if skill.get("expertise",false) else ("◇ " if skill.get("proficient",false) else "   ")
+		var marker = "✦ " if skill.get("expertise",false) else ("◆ " if skill.get("proficient",false) else "◇ ")
 		reference_row(list,"skills",id,marker+title_for("skills",id)+"   "+number(skill.get("modifier"),true))
 	for key in ABILITIES:
-		label(list,key.to_upper()+" Save  "+number(actor.get("saving_throws",{}).get(key),true),16)
+		var marker = "◆ " if "saving-throw-"+key in actor.get("proficiency_ids",[]) else "◇ "
+		label(list,marker+key.to_upper()+" Save  "+number(actor.get("saving_throws",{}).get(key),true),16)
+	label(list,"✦ Expertise · ◆ Proficient · ◇ Not proficient",13,GOLD)
 
 func build_features() -> void:
 	var list = list_for_tab("Features & Resources")
@@ -721,7 +748,7 @@ func build_features() -> void:
 		label(list,cat.human(bg),16)
 	for key in actor.get("resources",{}):
 		var resource = actor["resources"][key]
-		label(list,str(key).replace("_"," ").capitalize()+": "+number(int(resource.get("max",0))-int(resource.get("spent",0)))+" / "+number(resource.get("max")),16,GOLD)
+		label(list,str(key).replace("_"," ").capitalize()+": "+DISPLAY.remaining_text(resource.get("max"),resource.get("spent")),16,GOLD)
 	for id in actor.get("combat",{}).get("conditions",[]):
 		reference_row(list,"conditions",str(id))
 
@@ -811,7 +838,7 @@ func show_character() -> void:
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	popup.add_child(sc)
 	var sheet = SHEET.new()
-	sheet.configure(actor,func(caption: String,detail: String): popup_text(caption,detail))
+	sheet.configure(actor,func(caption: String,detail: String): popup_text(caption,detail),true)
 	sheet.custom_minimum_size.x = 960
 	sc.add_child(sheet)
 	popup.popup_centered(Vector2i(1040,610))

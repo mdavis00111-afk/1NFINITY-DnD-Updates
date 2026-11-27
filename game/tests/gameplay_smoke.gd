@@ -5,6 +5,8 @@ const PLAYER = preload("res://players/character_store.gd")
 const SQL = preload("res://systems/sqlite.gd")
 const UI = preload("res://gameplay/game_workspace.gd")
 const DICE = preload("res://gameplay/manual_dice.gd")
+const DISPLAY = preload("res://gameplay/display_values.gd")
+const CATALOG = preload("res://rules/catalog.gd")
 var failures: Array[String] = []
 
 func _initialize() -> void:
@@ -28,7 +30,7 @@ func run() -> void:
 		return
 	var players = PLAYER.new()
 	var master_id = players.make_id()
-	var fixture = {"id":master_id,"name":"A Very Long Test Character Name of the Northern Lands","status":"ready","ruleset":"5e-2014-2018","race_id":"human","class_id":"wizard","level":1,"combat":{"hp_current":4,"hp_max":7,"armor_class":11,"speed_feet":30,"initiative":1,"passive_perception":12},"ability_scores":{"str":10,"dex":12,"con":12,"int":16,"wis":14,"cha":8},"ability_modifiers":{"str":0,"dex":1,"con":1,"int":3,"wis":2,"cha":-1},"proficiency_bonus":2,"coins":{"gp":17,"sp":2},"carried_weight_lb":6,"carrying_capacity_lb":150,"inventory":[{"item_id":"shortsword","quantity":1,"equipped":true},{"item_id":"backpack","quantity":1,"equipped":false}],"equipment":{"armor_id":"","shield_id":"","weapon_ids":["shortsword"]},"spellcasting":{"cantrip_ids":["fire-bolt"],"known_ids":["sleep"],"prepared_ids":["sleep"],"slots":{"1":{"maximum":2,"spent":1}},"save_dc":13,"attack_bonus":5},"skills":{"arcana":{"modifier":5,"proficient":true}}}
+	var fixture = {"id":master_id,"name":"A Very Long Test Character Name of the Northern Lands","status":"ready","ruleset":"5e-2014-2018","race_id":"human","class_id":"wizard","level":1,"combat":{"hp_current":4,"hp_max":7,"armor_class":11,"speed_feet":30,"initiative":1,"passive_perception":12},"ability_scores":{"str":10,"dex":12,"con":12,"int":16,"wis":14,"cha":8},"ability_modifiers":{"str":0,"dex":1,"con":1,"int":3,"wis":2,"cha":-1},"proficiency_bonus":2,"coins":{"pp":0,"gp":17,"ep":0,"sp":2,"cp":0},"carried_weight_lb":6,"carrying_capacity_lb":150,"inventory":[{"item_id":"shortsword","quantity":1,"equipped":true},{"item_id":"backpack","quantity":1,"equipped":false},{"item_id":"arrow","quantity":20,"equipped":false}],"equipment":{"armor_id":"","shield_id":"shield","weapon_ids":["shortsword","backpack"]},"spellcasting":{"cantrip_ids":["fire-bolt"],"known_ids":["sleep"],"prepared_ids":["sleep"],"slots":{"1":{"maximum":2,"spent":1}},"save_dc":13,"attack_bonus":5},"skills":{"arcana":{"modifier":5,"proficient":true}}}
 	var error = players.save_record(fixture)
 	expect(error.is_empty(),"Master fixture save failed: "+error)
 	var master = players.load_record(master_id)
@@ -47,6 +49,20 @@ func run() -> void:
 	for item in snapshot.get("inventory",[]):
 		if item["item_id"]=="backpack": canonical = item["quantity"]==3
 	expect(canonical,"Inventory read used stale actor payload")
+	var projected = snapshot.get("actor",{})
+	var load = projected.get("carried_weight_lb")
+	expect(load!=null and is_equal_approx(float(load),18.38),"Current load must include three backpacks, shortsword, 20 arrows and 19 coins")
+	expect(projected.get("equipment",{}).get("weapon_ids")==["shortsword"] and projected.get("equipment",{}).get("shield_id")=="","Stale or unequipped slot item displayed")
+	expect(projected.get("combat")==master.get("combat") and projected.get("skills")==master.get("skills") and projected.get("spellcasting")==master.get("spellcasting") and projected.get("coins")==master.get("coins"),"Projection altered committed actor statistics")
+	var catalogue = CATALOG.new()
+	for pair in [["arrow",0.05],["crossbow-bolt",0.075],["blowgun-needle",0.02],["sling-bullet",0.075]]:
+		var unit = DISPLAY.unit_weight(catalogue,pair[0])
+		expect(unit!=null and is_equal_approx(float(unit),pair[1]),"Incorrect per-projectile weight: "+pair[0])
+	var incomplete = DISPLAY.weight_summary(catalogue,[{"item_id":"missing-test-item","quantity":1}],{})
+	expect(not incomplete["complete"] and incomplete["missing"].has("missing-test-item"),"Unknown weight silently treated as complete")
+	expect(DISPLAY.remaining_text(2,1)=="1 / 2" and DISPLAY.remaining_text(2,2)=="0 / 2" and DISPLAY.remaining_text(2,3)=="— / 2" and DISPLAY.remaining_text(2,null)=="— / 2","Invalid slot/resource display")
+	var racial_fixture = {"spellcasting":{"racial_cantrip_ids":["fire-bolt"],"racial_casting_ability":"int","save_dc":12},"ability_modifiers":{"int":3},"proficiency_bonus":2}
+	expect(DISPLAY.racial_spell_text(racial_fixture).contains("Save DC 13") and DISPLAY.racial_spell_text(racial_fixture).contains("Attack +5"),"Racial spell ability incorrectly shares class DC")
 	var original = snapshot.duplicate(true)
 	for sides in DICE.SIDES:
 		for count in [1,20]:
@@ -76,7 +92,10 @@ func run() -> void:
 		expect(columns_width>0 and absf(ui.left_panel.size.x/columns_width-27.0/99.0)<0.05 and absf(ui.center_panel.size.x/columns_width-43.0/99.0)<0.05 and absf(ui.right_panel.size.x/columns_width-29.0/99.0)<0.05,"Column proportions differ from reference")
 		expect(ui.inventory_cells.has("backpack") and ui.inventory_cells.has("shortsword"),"Normalized inventory cells missing")
 		ui.select_item("backpack")
-		expect(ui.inventory_detail.text.contains("Quantity: 3"),"Selected quantity not normalized")
+		expect(ui.inventory_detail.text.contains("Quantity: 3") and ui.inventory_detail.text.contains("Stack weight: 15 lb"),"Selected quantity or stack weight not normalized")
+		expect(ui.equipped("shortsword") and not ui.equipped("backpack"),"Equipment filter not based on normalized inventory")
+		ui.select_item("arrow")
+		expect(ui.inventory_detail.text.contains("Unit weight: 0.05 lb") and ui.inventory_detail.text.contains("Stack weight: 1 lb") and ui.inventory_detail.text.contains("per 20"),"Ammunition display uses lot as individual")
 		ui.roll_dice()
 		expect(not ui.last_roll.is_empty(),"Manual UI roll failed")
 		ui.dice_tool("Clear")
