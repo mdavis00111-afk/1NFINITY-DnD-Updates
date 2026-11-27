@@ -27,6 +27,8 @@ var view: Dictionary={}
 var status=""
 var running=false
 var closed=false
+var inflight: Dictionary={}
+var notifying=false
 
 func failure(message: String) -> Dictionary:
 	return {"ok":false,"error":message}
@@ -102,10 +104,11 @@ func refresh() -> void:
 	var job=active()
 	var work=data["work"]
 	var busy=not job.is_empty()
+	var queue_wait=not busy and not work["queued"].is_empty()
 	var phase="idle" if not busy and ext.get("phase")=="idle" else "busy"
 	if busy and job.get("stage") in ["retry","clarification","critical_blocked"]:
 		phase="retryable" if job["stage"]=="retry" else "awaiting_decision"
-	elif not busy and ext.get("phase")!="idle":
+	elif not busy and (ext.get("phase")!="idle" or queue_wait):
 		phase="blocked"
 	var caps: Array=[]
 	if phase=="idle":
@@ -134,10 +137,15 @@ func refresh() -> void:
 	ext["reviewed_preview"]=job.get("candidate",{}).get("text","") if job.get("critical_verified",false) else ""
 	ext["work_stage"]=job.get("stage","")
 	ext["last_terminal"]=last
+	ext["queue_wait"]=queue_wait
+	ext["draft"]=work["draft"]
+	ext["local_binding"]=true
+	ext["choice_tools"]=DIRECT+CHOICES if phase=="idle" else []
 	var packet=fresh.get("interaction")
 	if packet is Dictionary:
 		for key in ["phase","supported_intents","settled_request_id","settled_status","status_text","active_turn_id"]:
 			packet[key]=ext[key]
+		packet["can_queue"]=ext["can_queue"]
 		# Physical options are offers for local review, not legal effects.
 		for item in packet["inventory_instances"]:
 			for opt in item["equip_options"]:
@@ -152,13 +160,15 @@ func refresh() -> void:
 			opt["warning"]="Verified rest and complete prepared list required."
 	fresh["interaction_extension"]=ext
 	view=fresh
+	notifying=true
 	view_changed.emit(fresh.duplicate(true))
+	notifying=false
 
 func acknowledge(intent: Dictionary,ok: bool,message: String) -> Dictionary:
 	return {"ok":ok,"request_id":intent.get("request_id",""),"message":message}
 
 func submit(intent: Dictionary) -> Dictionary:
-	if closed or running or not reload():
+	if closed or running or notifying or not reload():
 		return acknowledge(intent,false,"Controller busy or unavailable.")
 	var state=data["state"]
 	if not (registry.session.request_valid(intent,"1") or registry.session.request_valid(intent,"2")) or intent["campaign_id"]!=campaign_id or intent["actor_id"]!=actor_id or intent["expected_revision"]!=state["revision"]:
@@ -176,17 +186,22 @@ func submit(intent: Dictionary) -> Dictionary:
 	elif not kind in DIRECT+CHOICES or not REG.TOOLS.has(kind) or not registry.arguments_valid(intent["args"],REG.TOOLS[kind][0]):
 		return acknowledge(intent,false,"Explicit registered choice required.")
 	var work=data["work"].duplicate(true)
-	if intent["request_id"] in [work["active"].get("intent",{}).get("request_id"),work["queued"].get("intent",{}).get("request_id"),work["last"].get("request_id")]:
+	if intent["request_id"] in [work["active"].get("intent",{}).get("request_id"),work["queued"].get("intent",{}).get("request_id"),work["last"].get("request_id")] or work["history"].any(func(row): return row.get("request_id")==intent["request_id"]):
 		return acknowledge(intent,false,"Request already recorded; recover original request.")
+	var prior=registry.session.settlement(campaign_id,intent["request_id"])
+	if not prior.get("ok",false) or prior.get("found",false):
+		return acknowledge(intent,false,"Request identity unavailable or already settled.")
 	var job={"intent":intent.duplicate(true),"stage":"new","tool":{},"attempt":{}}
 	if not work["active"].is_empty():
 		if kind!="chat" or intent["schema_version"]!="1" or not work["queued"].is_empty():
 			return acknowledge(intent,false,"Only one next natural-language action may be queued.")
 		work["queued"]=job
 	else:
-		if state["pending_turn_id"]!=null or view.get("interaction_extension",{}).get("phase")!="idle":
+		if state["pending_turn_id"]!=null or not work["queued"].is_empty() or view.get("interaction_extension",{}).get("phase")!="idle" or view.get("interaction_extension",{}).get("revision")!=state["revision"]:
 			return acknowledge(intent,false,"Previous turn must be recovered.")
 		work["active"]=job
+	if kind=="chat":
+		work["draft"]=""
 	if not persist(work):
 		# Unknown acknowledgement deliberately does not match C1 success/reject shape.
 		return {}
@@ -199,7 +214,10 @@ func finish(status_code: String,message: String) -> void:
 	var work=data["work"].duplicate(true)
 	var job=work["active"]
 	work["last"]={"request_id":job["intent"]["request_id"],"status":status_code,"text":job["intent"]["args"].get("text",""),"message":message}
+	work["history"].append(work["last"].duplicate(true))
+	work["history"]=work["history"].slice(maxi(0,work["history"].size()-64))
 	work["active"]={}
+	inflight={}
 	if persist(work):
 		status=message
 	refresh()
@@ -209,6 +227,7 @@ func stop(stage: String,message: String) -> void:
 	var job=active().duplicate(true)
 	job["stage"]=stage
 	job["message"]=message
+	inflight={}
 	if update_active(job):
 		status=message
 	refresh()
@@ -225,6 +244,7 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	job["attempt"]=identity
 	if not update_active(job):
 		return
+	inflight=identity.duplicate(true)
 	status="Processing "+stage.replace("_"," ")+"…"
 	refresh()
 	semantic_requested.emit(stage,{"identity":identity.duplicate(true),"data":payload.duplicate(true)})
@@ -240,7 +260,9 @@ func scene_context(state: Dictionary) -> Dictionary:
 	return PACK.public_world(state,dm,world.public_context(campaign_id,ids))
 
 func advance() -> void:
-	if closed or running or not reload():
+	if closed or running or notifying or not reload():
+		return
+	if not inflight.is_empty() and inflight==active().get("attempt"):
 		return
 	var work=data["work"]
 	if work["active"].is_empty():
@@ -258,6 +280,9 @@ func advance() -> void:
 	match job["stage"]:
 		"new","interpret":
 			if job["intent"]["schema_version"]=="2" or job["intent"]["kind"] in DIRECT:
+				if job["intent"]["expected_revision"]!=state["revision"]:
+					stop("clarification","Selection changed; cancel and choose again.")
+					return
 				job["tool"]=tool_for(job["intent"],state,job["intent"]["kind"],job["intent"]["args"])
 				job["stage"]="execute"
 				if update_active(job):
@@ -267,11 +292,17 @@ func advance() -> void:
 				if not context.get("ok",false):
 					stop("retry","Relevant context unavailable.")
 					return
-				ask("interpret",job,{"intent":job["intent"],"catalogue":registry.catalogue(),"scene":context["scene"],"actor":PACK.actor_projection(state)})
+				var public_view=BASE.new().gameplay_view(campaign_id).get("interaction_extension",{})
+				if public_view.get("revision")!=state["revision"]:
+					stop("retry","Public action context changed.")
+					return
+				ask("interpret",job,{"intent":job["intent"],"catalogue":registry.catalogue(),"scene":context["scene"],"actor":PACK.actor_projection(state),"public_actors":public_view.get("public_actors",[]),"public_quests":public_view.get("public_quests",[]),"story":public_view.get("story_records",[]),"inventory":public_view.get("inventory_instances",[]),"loot":public_view.get("loot_containers",[])})
 		"execute":
 			execute_active()
 		"narrate","critical","background","reconcile":
 			recover_active()
+		"post_story":
+			process_story()
 		"retry","clarification","critical_blocked":
 			status=str(job.get("message","Awaiting recovery or clarification."))
 			refresh()
@@ -293,7 +324,10 @@ func execute_active() -> void:
 			stop("retry","Stored request differs; local review required.")
 			return
 		if prior["status"]=="committed":
-			finish("committed","Committed tool result restored.")
+			if prior.get("logical_turn_id")!=null:
+				after_narration(job,prior)
+			else:
+				finish("committed","Committed tool result restored.")
 			return
 		if prior["status"]=="accepted_pending":
 			var recovered=registry.recover(campaign_id,req["request_id"])
@@ -310,7 +344,7 @@ func execute_active() -> void:
 		stop("retry","Tool request is stale; no automatic rebase.")
 		return
 	running=true
-	var result=registry.execute(campaign_id,req,local_review)
+	var result=registry.execute(campaign_id,req,review_tool)
 	running=false
 	if not reload():
 		return
@@ -335,7 +369,7 @@ func recover_active() -> void:
 		return
 	var result=registry.recover(campaign_id,req["request_id"])
 	if result.get("status")=="committed":
-		finish("committed","Narrated turn settled.")
+		after_narration(job,result)
 		return
 	if not result.get("ok",false) or result.get("status")!="pending_narration":
 		stop("retry","Receipt recovery required.")
@@ -366,12 +400,13 @@ func recover_active() -> void:
 # AI boolean, authorizes critical prose. All claims requiring new mechanics
 # are deferred; C2 busy guard remains intact.
 func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
-	if closed or running or not reload():
+	if closed or running or notifying or not reload():
 		return failure("Controller unavailable.")
 	var job=active().duplicate(true)
-	if job.is_empty() or identity!=job.get("attempt") or identity.get("revision")!=data["state"]["revision"] or identity.get("stage")!=job["stage"] or JSON.stringify(result).length()>65536:
+	if job.is_empty() or identity!=inflight or identity!=job.get("attempt") or identity.get("revision")!=data["state"]["revision"] or identity.get("stage")!=job["stage"] or JSON.stringify(result).length()>65536:
 		return failure("Stale or invalid semantic reply.")
 	var stage=job["stage"]
+	inflight={}
 	match stage:
 		"interpret":
 			if DTO.exact_keys(result,["status","message"]) and result["status"] in ["clarification","unsupported"] and DTO.bounded_text(result["message"],1000):
@@ -380,7 +415,10 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 			if not DTO.exact_keys(result,["kind","args"]) or not REG.TOOLS.has(result["kind"]) or not registry.arguments_valid(result["args"],REG.TOOLS[result["kind"]][0]):
 				stop("retry","Interpretation did not identify a supported typed action.")
 				return failure(status)
-			job["tool"]=tool_for(job["intent"],data["state"],result["kind"],result["args"])
+			var args=result["args"].duplicate(true)
+			if args.has("text") and job["intent"]["kind"]=="chat":
+				args["text"]=job["intent"]["args"]["text"]
+			job["tool"]=tool_for(job["intent"],data["state"],result["kind"],args)
 			job["stage"]="execute"
 		"narrate":
 			if not DTO.exact_keys(result,["text"]) or not DTO.bounded_text(result["text"],12000):
@@ -390,7 +428,7 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 			job["candidate"]["text"]=result["text"]
 			job["stage"]="critical"
 		"critical":
-			if not DTO.exact_keys(result,["claims"]) or not result["claims"] is Array or result["claims"].size()>32:
+			if not DTO.exact_keys(result,["claims"]) or not valid_claims(result["claims"],job["candidate"]["text"]):
 				stop("critical_blocked","Invalid output interpretation.")
 				return failure(status)
 			var prior=registry.recover(campaign_id,job["tool"]["request_id"])
@@ -399,7 +437,11 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 				return failure(status)
 			# Independent trusted code reviews exact candidate AND interpreted
 			# claims against receipt/canon; never use provider approval flags.
-			var verdict=critical_review.call(job["candidate"].duplicate(true),result["claims"].duplicate(true),prior["receipt"].duplicate(true))
+			var context=scene_context(data["state"])
+			if not context.get("ok",false):
+				stop("retry","Critical review context unavailable.")
+				return failure(status)
+			var verdict=critical_review.call(job["candidate"].duplicate(true),result["claims"].duplicate(true),prior["receipt"].duplicate(true),context["scene"].duplicate(true))
 			if not verdict is bool or not verdict:
 				stop("critical_blocked","Critical claims need correction; no confirmed prose displayed.")
 				return failure(status)
@@ -407,7 +449,7 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 			job["critical_claims"]=result["claims"].duplicate(true)
 			job["stage"]="background"
 		"background":
-			if not DTO.exact_keys(result,["geography"]) or not result["geography"] is Dictionary:
+			if not DTO.exact_keys(result,["geography","story"]) or not result["geography"] is Dictionary or not valid_story(result["story"],job["candidate"]["text"]):
 				stop("retry","Invalid deferred geography reply.")
 				return failure(status)
 			var context=scene_context(data["state"])
@@ -415,6 +457,8 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 				stop("retry","Deferred geography failed validation.")
 				return failure(status)
 			job["geography"]=result["geography"].duplicate(true)
+			job["story"]=result["story"].duplicate(true)
+			job["story_index"]=0
 			job["stage"]="reconcile"
 		_:
 			return failure("No semantic reply expected.")
@@ -434,27 +478,28 @@ func reconcile(job: Dictionary,receipt: Dictionary,known: Array) -> void:
 	if reload():
 		var settled=registry.recover(campaign_id,job["tool"]["request_id"])
 		if settled.get("status")=="committed":
-			finish("committed","Narrative reconciliation completed; see committed log.")
+			after_narration(job,settled)
 		else:
 			stop("retry","Narration committed; settlement recovery required.")
 
 func retry() -> Dictionary:
-	if running or not reload() or active().is_empty():
+	if running or notifying or not reload() or active().is_empty():
 		return failure("No recoverable request.")
+	inflight={}
 	var job=active().duplicate(true)
 	job["attempt"]={}
 	if job.get("stage")=="critical_blocked":
 		job.erase("candidate")
 		job.erase("critical_verified")
 		job.erase("critical_claims")
-	job["stage"]="execute" if not job.get("tool",{}).is_empty() else "new"
+	job["stage"]="post_story" if job.get("narration_event_id")!=null else ("execute" if not job.get("tool",{}).is_empty() else "new")
 	if not update_active(job):
 		return failure("Retry unconfirmed.")
 	advance.call_deferred()
 	return {"ok":true}
 
 func cancel() -> Dictionary:
-	if running or not reload() or active().is_empty():
+	if running or notifying or not reload() or active().is_empty():
 		return failure("No cancellable request.")
 	var job=active()
 	var req=job.get("tool",{})
@@ -463,7 +508,10 @@ func cancel() -> Dictionary:
 		if not prior.get("ok",false):
 			return prior
 		if prior.get("found",false) and prior["status"]=="committed":
-			finish("committed","Already committed.")
+			if prior.get("logical_turn_id")!=null:
+				after_narration(job,prior)
+			else:
+				finish("committed","Already committed.")
 			return {"ok":true}
 		if prior.get("found",false) or registry.noncombat.prepared.has(campaign_id) or registry.resolver.unresolved.has(campaign_id):
 			var canceled=registry.cancel_uncommitted(campaign_id,req["request_id"])
@@ -477,3 +525,142 @@ func cancel() -> Dictionary:
 func close_session() -> void:
 	closed=true
 	# All accepted work is already durable. Provider callbacks are ignored.
+
+# Trusted local adapter receives original intention independently of tool args.
+func review_tool(req: Dictionary,scope: Dictionary) -> Dictionary:
+	var job=active()
+	if job.is_empty() or not local_review.is_valid():
+		return {}
+	return local_review.call(req.duplicate(true),scope.duplicate(true),job["intent"].duplicate(true))
+
+# Untrusted bidirectional output DTO. A new effect may not be committed
+# inside adopted narration: C5 must request a supported continuation or
+# correction. Offers/descriptions do not themselves transfer anything.
+func valid_claims(claims: Variant,text: String) -> bool:
+	if not claims is Array or claims.size()>32:
+		return false
+	for claim in claims:
+		if not DTO.exact_keys(claim,["kind","evidence","proposal"]) or not claim["kind"] in ["description","receipt_claim","offer","agency","disclosure","contradiction","required_effect"] or not DTO.bounded_text(claim["evidence"],1000) or not text.contains(claim["evidence"]):
+			return false
+		if claim["kind"]=="required_effect" or claim["proposal"]!=null:
+			return false # No post-receipt mechanical continuation in C4.
+	return true
+
+func valid_story(stories: Variant,text: String) -> bool:
+	if not stories is Array or stories.size()>8:
+		return false
+	var keys=REG.TOOLS["story_update"][0].keys()
+	keys.erase("source_event_id")
+	for story in stories:
+		if not DTO.exact_keys(story,["evidence","args"]) or not DTO.bounded_text(story["evidence"],1000) or not text.contains(story["evidence"]) or not DTO.exact_keys(story["args"],keys):
+			return false
+		var args=story["args"].duplicate(true)
+		args["source_event_id"]=1 # Shape placeholder only; real source assigned after commit.
+		if args["visibility"]!="player" or not registry.arguments_valid(args,REG.TOOLS["story_update"][0]):
+			return false
+	return true
+
+func after_narration(job: Dictionary,settled: Dictionary) -> void:
+	var event_id=settled.get("event_id",settled.get("result",{}).get("narration_event_id"))
+	if not DTO.whole(event_id,1):
+		stop("retry","Narration settlement source event unavailable.")
+		return
+	job["narration_event_id"]=event_id
+	job["stage"]="post_story"
+	if update_active(job):
+		refresh()
+		advance.call_deferred()
+
+# C3 story writes are standalone post-settlement operations, not part of the
+# B2 receipt. Each receives a persisted local request ID and current revision.
+# Only evidence present in the ACTUAL committed narration may be used.
+func process_story() -> void:
+	if not reload():
+		return
+	var job=active().duplicate(true)
+	var stories=job.get("story",[])
+	var index=int(job.get("story_index",0))
+	if index>=stories.size():
+		finish("committed","Turn and deferred processing complete.")
+		return
+	var source=registry.session.source(data["state"],job["narration_event_id"])
+	var event_text=source.get("data",{}).get("text","")
+	var item=stories[index]
+	if source.get("kind")!="narration" or not event_text is String or not event_text.contains(item["evidence"]):
+		stop("retry","Deferred evidence not present in committed narrative; review or skip.")
+		return
+	var req=job.get("story_request",{})
+	if req.is_empty():
+		var args=item["args"].duplicate(true)
+		args["source_event_id"]=job["narration_event_id"]
+		req={"schema_version":"2","campaign_id":campaign_id,"actor_id":actor_id,"expected_revision":data["state"]["revision"],"request_id":registry.session.make_id(),"kind":"story_update","args":args}
+		job["story_request"]=req
+		if not update_active(job):
+			return
+	var prior=registry.session.settlement(campaign_id,req["request_id"])
+	if not prior.get("ok",false):
+		stop("retry","Deferred story settlement unavailable.")
+		return
+	if not prior.get("found",false):
+		running=true
+		registry.execute(campaign_id,req,review_tool)
+		running=false
+		prior=registry.session.settlement(campaign_id,req["request_id"])
+	if not prior.get("found",false) or prior["request"]!=req or prior["status"]!="committed" or not reload():
+		stop("retry","Deferred story proposal not committed; retry or explicitly skip.")
+		return
+	job["story_index"]=index+1
+	job.erase("story_request")
+	if update_active(job):
+		refresh()
+		advance.call_deferred()
+
+func skip_deferred() -> Dictionary:
+	if running or notifying or not reload() or active().get("narration_event_id")==null:
+		return failure("No settled narrative with deferred work.")
+	var req=active().get("story_request",{})
+	if not req.is_empty():
+		var prior=registry.session.settlement(campaign_id,req["request_id"])
+		if not prior.get("ok",false) or registry.noncombat.prepared.has(campaign_id):
+			return failure("Deferred settlement must be recovered first.")
+	finish("committed","Optional deferred proposals explicitly skipped; committed narrative retained.")
+	return {"ok":true}
+
+func resume_queue() -> Dictionary:
+	if not reload() or not active().is_empty() or data["work"]["queued"].is_empty() or data["state"]["pending_turn_id"]!=null:
+		return failure("No available queued action.")
+	var work=data["work"].duplicate(true)
+	work["active"]=work["queued"]
+	work["queued"]={}
+	if not persist(work):
+		return failure("Queue recovery unconfirmed.")
+	refresh()
+	advance.call_deferred()
+	return {"ok":true}
+
+func discard_queue() -> Dictionary:
+	if not reload() or data["work"]["queued"].is_empty():
+		return failure("No queued action.")
+	var work=data["work"].duplicate(true)
+	work["draft"]=work["queued"]["intent"]["args"]["text"]
+	work["queued"]={}
+	if not persist(work):
+		return failure("Queue change unconfirmed.")
+	refresh()
+	return {"ok":true}
+
+func save_draft(text: String) -> Dictionary:
+	if text.length()>2000 or not reload():
+		return failure("Draft unavailable.")
+	var work=data["work"].duplicate(true)
+	work["draft"]=text
+	return {"ok":true} if persist(work) else failure("Draft not confirmed.")
+
+# Explicit development harness only. Existing campaign manager never calls it.
+func mount_workspace(workspace: Node,leave: Callable,settings: Callable) -> Dictionary:
+	if campaign_id.is_empty() or view.is_empty() or workspace.is_inside_tree() or not workspace.has_method("bind_development_controller"):
+		return failure("Development workspace binding unavailable.")
+	workspace.configure(view,view["campaign"],leave,settings,Callable(),false,"",submit)
+	workspace.bind_development_controller(self)
+	view_changed.connect(workspace.apply_authoritative_view)
+	return {"ok":true}

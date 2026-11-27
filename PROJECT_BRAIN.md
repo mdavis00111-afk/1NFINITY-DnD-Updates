@@ -447,3 +447,6 @@ Starting 4daaba990ba4b4653a63136eafaa655143e8982e; staged commits 6cf0b826, 5b4f
 
 ## C4 stage 1 — durable controller and semantic boundary (unpublished)
 Base 6f90143e6fbc5f3abef75595be25ab7ee02b9c0c; added work_journal.gd and complete_controller.gd. Uses existing C2 meta with exact-byte CAS/turn guard; no schema or canon revision for orchestration. Explicit binding, one registry per campaign, C3 execution and settlement recovery, B4 adoption reconciliation, separate semantic input/narration/critical/background requests, trusted critical review, durable candidate and one queued text. No live manager or Gemini changes. GUI linkage and regression next; native execution unavailable. No publication.
+
+## C4 stage 2 — recovery, deferred work and development workspace boundary
+Base 28c3f6908b2e4fd85e7e9106dde09390bc1d356a; refined durable queue/in-flight request identity, explicit local review original intention, output claim shape/evidence, post-narration C3 story operations with durable per-step ID and committed source, explicit optional skip and queue recovery; no post-receipt mechanics bypass. Mount boundary explicit, GUI implementation next. No runtime acceptance or publication.
