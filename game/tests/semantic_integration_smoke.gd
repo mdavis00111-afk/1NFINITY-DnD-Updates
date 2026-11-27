@@ -225,6 +225,7 @@ func run() -> void:
 		return
 	await interrupted_consumption(id)
 	await duplicate_response_cases(id,b["id"])
+	await legacy_recovery_cases(id)
 	await request_count_cases(id,shield)
 	expect(players.load_record(master)==original and base.gameplay_view(b["id"])==sibling,"Master and sibling isolation")
 	ctrl.close_session()
@@ -238,6 +239,54 @@ func wait_frames() -> void:
 
 func combined(text: String) -> Dictionary:
 	return {"text":text,"geography":geography(),"story":[],"discoveries":[]}
+
+func legacy_recovery_cases(id: String) -> void:
+	for stage in ["critical","background","adjudicate"]:
+		var text="I ask Mara about the old bridge."
+		workspace.composer.text=text
+		workspace.submit_chat()
+		if not await pump("interpret"):
+			return
+		reply({"kind":"conversation","args":{"text":text}})
+		if not await pump("narrate"):
+			return
+		var job=ctrl.active().duplicate(true)
+		var request=job["tool"].duplicate(true)
+		var rid=request["request_id"]
+		var settled=session.settlement(id,rid)
+		var before=durable_snapshot(id)
+		var calls=outbound.size()
+		job["stage"]=stage
+		job["attempt"]={}
+		job["candidate"]={}
+		job["critical_verified"]=false
+		if not expect(ctrl.update_active(job),"Persist legacy "+stage+" fixture"):
+			return
+		ctrl.close_session()
+		workspace.queue_free()
+		ctrl.queue_free()
+		await process_frame
+		if not bind(id):
+			return
+		if stage=="adjudicate":
+			await wait_frames()
+			expect(outbound.size()==calls,"Legacy adjudication never dispatches provider")
+			expect(session.settlement(id,rid)==settled,"Legacy adjudication preserves settlement")
+			expect(session.token(id)["revision"]==before["revision"],"Legacy adjudication does not replay mechanics")
+			ctrl.retry()
+		if not await pump("narrate"):
+			return
+		expect(ctrl.active()["tool"]==request,"Legacy "+stage+" exact durable request")
+		expect(session.settlement(id,rid)==settled and session.token(id)["revision"]==before["revision"],"Legacy "+stage+" no mechanical replay")
+		expect(session.token(id)["actor"]==before["actor"],"Legacy "+stage+" unchanged actor")
+		expect(outbound.size()-calls==1 and outbound.back()["stage"]=="narrate","Legacy "+stage+" Storyteller only")
+		var identity=ctrl.inflight.duplicate(true)
+		var response=combined(TALK)
+		reply(response)
+		if not await pump("idle"):
+			return
+		expect(session.settlement(id,rid)==settled,"Legacy "+stage+" original settlement intact")
+		await rejected_response(id,identity,response,false,"Legacy "+stage+" duplicate narration")
 
 func durable_snapshot(id: String) -> Dictionary:
 	var state=session.token(id)

@@ -573,3 +573,7 @@ Added active production fixture case consuming one owned daily ration, capturing
 
 ## v0.0.27 checkpoint 3b.3b.2 — duplicate and stale response regressions
 Active fixture submits incorrect request, campaign, attempt and revision identities at both stages; repeats interpretation after settlement and narration after persistence. Compares authoritative actor, owned inventory, revision and full gameplay view plus actual transport counts. Uses existing conversation fixture; explicit NPC/discovery-bearing duplicate envelope remains to be added in world regression checkpoint. Source anchors checked; native/mock execution and live Gemini unexecuted. No release.
+
+
+## v0.0.27 checkpoint 3b.3b.3 — legacy pending stage regression
+Active fixture persists critical/background/adjudicate markers on committed conversation turns, closes/rebinds, checks exact receipt/revision/actor, narration-only dispatch and duplicate response rejection. Adjudication fixture expects safe stop then explicit retry. Valid persisted candidate reconciliation and unsettled authorization fixtures remain outstanding; native execution may expose recovery defects, especially adjudication retry. Source anchors checked; native/mock and live tests unexecuted. Manifest unchanged.
