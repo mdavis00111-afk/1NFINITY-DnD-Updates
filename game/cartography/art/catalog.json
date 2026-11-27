@@ -5582,6 +5582,944 @@
         "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
         "method": "Original ink drawing: distinguishable ruin, stonework, shelter, ground and hatching forms; two composition/detail variations."
       }
+    },
+    {
+      "id": "decor.corner_top_left.harvest",
+      "category": "decor",
+      "kind": "corner_top_left",
+      "variant": "harvest",
+      "path": "res://cartography/art/decor.corner_top_left.harvest.svg",
+      "width": 120,
+      "height": 135,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 48,
+        "min_px": 20,
+        "max_px": 160
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Individual edge/corner overlay, not seamless or geographic",
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          0,
+          0,
+          40,
+          45
+        ],
+        "method": "Luminance threshold 135; component cleanup; contour approximation 0.50px; compass circular/cardinal mask; even-odd fill"
+      }
+    },
+    {
+      "id": "decor.corner_top_right.harvest",
+      "category": "decor",
+      "kind": "corner_top_right",
+      "variant": "harvest",
+      "path": "res://cartography/art/decor.corner_top_right.harvest.svg",
+      "width": 114,
+      "height": 129,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 48,
+        "min_px": 20,
+        "max_px": 160
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Individual edge/corner overlay, not seamless or geographic",
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          1498,
+          0,
+          1536,
+          43
+        ],
+        "method": "Luminance threshold 135; component cleanup; contour approximation 0.50px; compass circular/cardinal mask; even-odd fill"
+      }
+    },
+    {
+      "id": "decor.corner_bottom_left.harvest",
+      "category": "decor",
+      "kind": "corner_bottom_left",
+      "variant": "harvest",
+      "path": "res://cartography/art/decor.corner_bottom_left.harvest.svg",
+      "width": 129,
+      "height": 132,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 48,
+        "min_px": 20,
+        "max_px": 160
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Individual edge/corner overlay, not seamless or geographic",
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          0,
+          820,
+          43,
+          864
+        ],
+        "method": "Luminance threshold 135; component cleanup; contour approximation 0.50px; compass circular/cardinal mask; even-odd fill"
+      }
+    },
+    {
+      "id": "decor.corner_bottom_right.harvest",
+      "category": "decor",
+      "kind": "corner_bottom_right",
+      "variant": "harvest",
+      "path": "res://cartography/art/decor.corner_bottom_right.harvest.svg",
+      "width": 123,
+      "height": 132,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 48,
+        "min_px": 20,
+        "max_px": 160
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Individual edge/corner overlay, not seamless or geographic",
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          1495,
+          820,
+          1536,
+          864
+        ],
+        "method": "Luminance threshold 135; component cleanup; contour approximation 0.50px; compass circular/cardinal mask; even-odd fill"
+      }
+    },
+    {
+      "id": "decor.edge_top.harvest",
+      "category": "decor",
+      "kind": "edge_top",
+      "variant": "harvest",
+      "path": "res://cartography/art/decor.edge_top.harvest.svg",
+      "width": 366,
+      "height": 45,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 48,
+        "min_px": 20,
+        "max_px": 160
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Individual edge/corner overlay, not seamless or geographic",
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          683,
+          0,
+          805,
+          15
+        ],
+        "method": "Luminance threshold 135; component cleanup; contour approximation 0.50px; compass circular/cardinal mask; even-odd fill"
+      }
+    },
+    {
+      "id": "decor.edge_bottom.harvest",
+      "category": "decor",
+      "kind": "edge_bottom",
+      "variant": "harvest",
+      "path": "res://cartography/art/decor.edge_bottom.harvest.svg",
+      "width": 420,
+      "height": 51,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 48,
+        "min_px": 20,
+        "max_px": 160
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Individual edge/corner overlay, not seamless or geographic",
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          463,
+          847,
+          603,
+          864
+        ],
+        "method": "Luminance threshold 135; component cleanup; contour approximation 0.50px; compass circular/cardinal mask; even-odd fill"
+      }
+    },
+    {
+      "id": "decor.edge_left.harvest",
+      "category": "decor",
+      "kind": "edge_left",
+      "variant": "harvest",
+      "path": "res://cartography/art/decor.edge_left.harvest.svg",
+      "width": 45,
+      "height": 360,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 48,
+        "min_px": 20,
+        "max_px": 160
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Individual edge/corner overlay, not seamless or geographic",
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          0,
+          180,
+          15,
+          300
+        ],
+        "method": "Luminance threshold 135; component cleanup; contour approximation 0.50px; compass circular/cardinal mask; even-odd fill"
+      }
+    },
+    {
+      "id": "decor.edge_right.harvest",
+      "category": "decor",
+      "kind": "edge_right",
+      "variant": "harvest",
+      "path": "res://cartography/art/decor.edge_right.harvest.svg",
+      "width": 48,
+      "height": 360,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 48,
+        "min_px": 20,
+        "max_px": 160
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Individual edge/corner overlay, not seamless or geographic",
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          1520,
+          450,
+          1536,
+          570
+        ],
+        "method": "Luminance threshold 135; component cleanup; contour approximation 0.50px; compass circular/cardinal mask; even-odd fill"
+      }
+    },
+    {
+      "id": "decor.compass.harvest",
+      "category": "decor",
+      "kind": "compass",
+      "variant": "harvest",
+      "path": "res://cartography/art/decor.compass.harvest.svg",
+      "width": 477,
+      "height": 441,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 110,
+        "min_px": 20,
+        "max_px": 220
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Compass rose and cardinal lettering only",
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          27,
+          27,
+          186,
+          174
+        ],
+        "method": "Luminance threshold 135; component cleanup; contour approximation 0.50px; compass circular/cardinal mask; even-odd fill"
+      }
+    },
+    {
+      "id": "decor.fog_hatch.v1",
+      "category": "decor",
+      "kind": "fog_hatch",
+      "variant": "v1",
+      "path": "res://cartography/art/decor.fog_hatch.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 96,
+        "min_px": 12,
+        "max_px": 512
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Fog styling only; authoritative visibility mask required.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "decor.fog_cloud.v1",
+      "category": "decor",
+      "kind": "fog_cloud",
+      "variant": "v1",
+      "path": "res://cartography/art/decor.fog_cloud.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 96,
+        "min_px": 12,
+        "max_px": 512
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Decorative cloud; opaque or clipped fog mask still required.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "decor.fog_hatch.v2",
+      "category": "decor",
+      "kind": "fog_hatch",
+      "variant": "v2",
+      "path": "res://cartography/art/decor.fog_hatch.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 96,
+        "min_px": 12,
+        "max_px": 512
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Fog styling only; authoritative visibility mask required.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "decor.fog_cloud.v2",
+      "category": "decor",
+      "kind": "fog_cloud",
+      "variant": "v2",
+      "path": "res://cartography/art/decor.fog_cloud.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 96,
+        "min_px": 12,
+        "max_px": 512
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Decorative cloud; opaque or clipped fog mask still required.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "decor.title_ribbon.v1",
+      "category": "decor",
+      "kind": "title_ribbon",
+      "variant": "v1",
+      "path": "res://cartography/art/decor.title_ribbon.v1.svg",
+      "width": 512,
+      "height": 128,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 96,
+        "min_px": 12,
+        "max_px": 512
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Blank ribbon; renderer adds actual world name.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "decor.legend_frame.v1",
+      "category": "decor",
+      "kind": "legend_frame",
+      "variant": "v1",
+      "path": "res://cartography/art/decor.legend_frame.v1.svg",
+      "width": 256,
+      "height": 384,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 96,
+        "min_px": 12,
+        "max_px": 512
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Blank frame; labels and layer controls stay live.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "decor.scale_bar.v1",
+      "category": "decor",
+      "kind": "scale_bar",
+      "variant": "v1",
+      "path": "res://cartography/art/decor.scale_bar.v1.svg",
+      "width": 384,
+      "height": 48,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 96,
+        "min_px": 12,
+        "max_px": 512
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Unlabelled scale decoration; actual units computed from view scale.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "decor.parchment.v1",
+      "category": "decor",
+      "kind": "parchment",
+      "variant": "v1",
+      "path": "res://cartography/art/decor.parchment.v1.svg",
+      "width": 1024,
+      "height": 576,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 96,
+        "min_px": 12,
+        "max_px": 512
+      },
+      "lod": "decoration",
+      "transparent": false,
+      "usage": "Opaque blank substrate; no geography, fixed map or labels.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "decor.parchment.v2",
+      "category": "decor",
+      "kind": "parchment",
+      "variant": "v2",
+      "path": "res://cartography/art/decor.parchment.v2.svg",
+      "width": 1024,
+      "height": 576,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 96,
+        "min_px": 12,
+        "max_px": 512
+      },
+      "lod": "decoration",
+      "transparent": false,
+      "usage": "Opaque blank substrate; no geography, fixed map or labels.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "tools.checkbox_empty.v1",
+      "category": "tools",
+      "kind": "checkbox_empty",
+      "variant": "v1",
+      "path": "res://cartography/art/tools.checkbox_empty.v1.svg",
+      "width": 128,
+      "height": 128,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 32,
+        "min_px": 18,
+        "max_px": 72
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Map control artwork only.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "tools.checkbox_checked.v1",
+      "category": "tools",
+      "kind": "checkbox_checked",
+      "variant": "v1",
+      "path": "res://cartography/art/tools.checkbox_checked.v1.svg",
+      "width": 128,
+      "height": 128,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 32,
+        "min_px": 18,
+        "max_px": 72
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Map control artwork only.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "tools.fullscreen.v1",
+      "category": "tools",
+      "kind": "fullscreen",
+      "variant": "v1",
+      "path": "res://cartography/art/tools.fullscreen.v1.svg",
+      "width": 128,
+      "height": 128,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 32,
+        "min_px": 18,
+        "max_px": 72
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Map control artwork only.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "tools.search.v1",
+      "category": "tools",
+      "kind": "search",
+      "variant": "v1",
+      "path": "res://cartography/art/tools.search.v1.svg",
+      "width": 128,
+      "height": 128,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 32,
+        "min_px": 18,
+        "max_px": 72
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Map control artwork only.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "tools.center.v1",
+      "category": "tools",
+      "kind": "center",
+      "variant": "v1",
+      "path": "res://cartography/art/tools.center.v1.svg",
+      "width": 128,
+      "height": 128,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 32,
+        "min_px": 18,
+        "max_px": 72
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Map control artwork only.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "tools.overview.v1",
+      "category": "tools",
+      "kind": "overview",
+      "variant": "v1",
+      "path": "res://cartography/art/tools.overview.v1.svg",
+      "width": 128,
+      "height": 128,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 32,
+        "min_px": 18,
+        "max_px": 72
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Map control artwork only.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "tools.history.v1",
+      "category": "tools",
+      "kind": "history",
+      "variant": "v1",
+      "path": "res://cartography/art/tools.history.v1.svg",
+      "width": 128,
+      "height": 128,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 32,
+        "min_px": 18,
+        "max_px": 72
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Map control artwork only.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "tools.layers.v1",
+      "category": "tools",
+      "kind": "layers",
+      "variant": "v1",
+      "path": "res://cartography/art/tools.layers.v1.svg",
+      "width": 128,
+      "height": 128,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 32,
+        "min_px": 18,
+        "max_px": 72
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Map control artwork only.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "tools.info.v1",
+      "category": "tools",
+      "kind": "info",
+      "variant": "v1",
+      "path": "res://cartography/art/tools.info.v1.svg",
+      "width": 128,
+      "height": 128,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 32,
+        "min_px": 18,
+        "max_px": 72
+      },
+      "lod": "decoration",
+      "transparent": true,
+      "usage": "Map control artwork only.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "markers.visited.v1",
+      "category": "markers",
+      "kind": "visited",
+      "variant": "v1",
+      "path": "res://cartography/art/markers.visited.v1.svg",
+      "width": 96,
+      "height": 96,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 22,
+        "min_px": 12,
+        "max_px": 64
+      },
+      "lod": "marker",
+      "transparent": true,
+      "usage": "Authoritative visited sites only.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "markers.party_position.v1",
+      "category": "markers",
+      "kind": "party_position",
+      "variant": "v1",
+      "path": "res://cartography/art/markers.party_position.v1.svg",
+      "width": 96,
+      "height": 96,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 22,
+        "min_px": 12,
+        "max_px": 64
+      },
+      "lod": "marker",
+      "transparent": true,
+      "usage": "Party position only if coordinates are established.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "markers.discovery_cross.v1",
+      "category": "markers",
+      "kind": "discovery_cross",
+      "variant": "v1",
+      "path": "res://cartography/art/markers.discovery_cross.v1.svg",
+      "width": 96,
+      "height": 96,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 22,
+        "min_px": 12,
+        "max_px": 64
+      },
+      "lod": "marker",
+      "transparent": true,
+      "usage": "Known discovery or user annotation only.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "markers.unknown.v1",
+      "category": "markers",
+      "kind": "unknown",
+      "variant": "v1",
+      "path": "res://cartography/art/markers.unknown.v1.svg",
+      "width": 96,
+      "height": 96,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 22,
+        "min_px": 12,
+        "max_px": 64
+      },
+      "lod": "marker",
+      "transparent": true,
+      "usage": "Reported position only where enough evidence exists.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "markers.annotation.v1",
+      "category": "markers",
+      "kind": "annotation",
+      "variant": "v1",
+      "path": "res://cartography/art/markers.annotation.v1.svg",
+      "width": 96,
+      "height": 96,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 22,
+        "min_px": 12,
+        "max_px": 64
+      },
+      "lod": "marker",
+      "transparent": true,
+      "usage": "User annotation, separate from canon.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "water.river_crossing.v1",
+      "category": "water",
+      "kind": "river_crossing",
+      "variant": "v1",
+      "path": "res://cartography/art/water.river_crossing.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 96,
+        "min_px": 12,
+        "max_px": 512
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "Decorative ford for established crossing; route uses actual geometry.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
+    },
+    {
+      "id": "water.river_crossing.v2",
+      "category": "water",
+      "kind": "river_crossing",
+      "variant": "v2",
+      "path": "res://cartography/art/water.river_crossing.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 96,
+        "min_px": 12,
+        "max_px": 512
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "usage": "Decorative ford for established crossing; route uses actual geometry.",
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
+      }
     }
   ]
 }
