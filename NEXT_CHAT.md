@@ -12,3 +12,5 @@ Branch godot; live v0.0.26, target v0.0.27; no intermediate publication. Read PR
 3b.3c.2b source indentation follow-up committed; native compilation remains required.
 
 3b.3c.2c negative fixture committed; native execution, actor generation interruption and stronger forged SQL/unrelated source coverage outstanding. Next 3b.3c.3 structured duplicate envelope.
+
+3b.3c.3 NPC/place duplicate envelope fixture committed; discovery-bearing duplicate and 3b.3c.2c remaining actor recovery/forged SQL coverage outstanding. No release.

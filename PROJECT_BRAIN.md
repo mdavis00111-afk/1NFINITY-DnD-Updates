@@ -598,3 +598,6 @@ Shared controller reconstruction used by policy and execution/recovery. Definiti
 
 ## v0.0.27 checkpoint 3b.3c.2c — negative discovery fixture
 Added scheduling-only fixture controller pause to exercise actual persisted post-story cursor and production processing. Eight altered pending request/provenance variants and exact committed replay assert unchanged resources, revision, settlement/world rows, loot and provider counts. Actor generation interruption and stronger forged SQL settlement/unrelated valid source coverage remain outstanding. Native/mock/live execution not run. No release.
+
+## v0.0.27 checkpoint 3b.3c.3 — structured duplicate regression (partial)
+Active fixture commits NPC/place-bearing envelope and resubmits exact stale identity; asserts one of each, unchanged durable snapshot and world rows, two calls. Discovery-bearing envelope and native execution remain outstanding. No publication.

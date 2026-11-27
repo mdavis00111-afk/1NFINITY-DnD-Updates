@@ -240,6 +240,7 @@ func run() -> void:
 	await persistent_npc_location(id)
 	await geography_discovery_case(id)
 	await discovery_negative_cases(id,b["id"])
+	await duplicate_world_envelope(id)
 	expect(players.load_record(master)==original and base.gameplay_view(b["id"])==sibling,"Master and sibling isolation")
 	ctrl.close_session()
 	workspace.queue_free()
@@ -451,6 +452,37 @@ func discovery_negative_cases(id: String,sibling_id: String) -> void:
 	ctrl.pause_discovery=false
 	ctrl.step_discovery()
 	await pump("idle")
+
+func duplicate_world_envelope(id: String) -> void:
+	var input="I ask about the nearby hamlets."
+	var evidence="Mara describes Ashbrook, a village."
+	var npc="Nell, the baker, is here."
+	var calls=outbound.size()
+	workspace.composer.text=input
+	workspace.submit_chat()
+	if not await pump("interpret"):
+		return
+	reply({"kind":"conversation","args":{"text":input}})
+	if not await pump("narrate"):
+		return
+	var identity=ctrl.inflight.duplicate(true)
+	var response=combined(evidence+" "+npc)
+	response["geography"]["facts"]=[
+		{"kind":"place","subject":{"id":null,"local_key":"ashbrook"},"name":"Ashbrook","place_kind":"village","parent":null,"region":null,"position":null,"precision":"provisional","uncertainty_miles":null,"elevation_feet":null,"terrain":null,"footprint":[],"population":null,"occupancy":"unknown","asset_id":null,"description":null,"visibility":"player","evidence":evidence},
+		{"kind":"npc_description","subject":{"id":null,"local_key":"nell"},"location":{"id":session.token(id)["location_id"],"local_key":null},"name":"Nell","occupation":"baker","visibility":"player","evidence":npc}
+	]
+	reply(response)
+	if not await pump("idle"):
+		return
+	var db=discovery_db_snapshot(id)
+	var counts=SQL.run(base.path_for(id),[
+		SQL.stmt("SELECT id FROM locations WHERE name='Ashbrook'"),
+		SQL.stmt("SELECT id FROM actors WHERE kind='npc' AND json_extract(payload,'$.name')='Nell'")
+	],true)
+	expect(counts.get("ok",false) and counts["results"][0].size()==1 and counts["results"][1].size()==1,"Structured response creates one village and NPC")
+	await rejected_response(id,identity,response,false,"Duplicate structured world envelope")
+	expect(discovery_db_snapshot(id)==db,"Duplicate structured envelope preserves persisted world rows")
+	expect(outbound.size()-calls==2,"Structured duplicate no extra provider calls")
 
 func wait_frames() -> void:
 	for i in range(12):
