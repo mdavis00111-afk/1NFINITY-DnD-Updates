@@ -331,3 +331,6 @@ Added conservative trusted policy (explicit selection/no-effect path; other cont
 
 ## C5 stage 3 — explicit C5 controller binding and durable continuations
 Added semantic_controller.gd extending C4, development bind_ai only, bounded contextual packet, persistent multi-step subrequests reinterpreted at new revision, standalone narration recovery and preview, critical correction and deferred source-linked definition/actor/loot proposals with idempotent C3 settlement, no automatic pickup. C4 production entry point unchanged. Required new mechanical claims are corrected to pending/offer or explicitly blocked; no unverified post-receipt mutation. Context-dependent effects and unrestricted prose still require independent trusted adjudication; native/live provider not run.
+
+## C5 stage 4 — owner prompt-only sharing
+Added offline Narrator prompt handover dialog and versioned proposal/shared bundle with SHA-256, base revision/hash, source commit, UTC and change summary. Explicit export consent and credential-pattern checks; no Git upload, no settings file serialization. Inspect shared revision, ancestry checks and local conflict preview; preserve both variants in local archive before explicit keep-local or replace-local decision. Existing DEFAULT_PROMPT, authority and Save/Reset unchanged. Native UI test pending.

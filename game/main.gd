@@ -418,6 +418,12 @@ func prompt_screen(menu: VBoxContainer) -> void:
 			config.set_value("prompts",key,editor.text)
 			note.text = "Saved locally." if config.save(CONFIG_PATH) == OK else "Save failed."))
 	menu.add_child(reset)
+	menu.add_child(menu_button("Narrator Prompt Handover",func():
+		preload("res://campaigns/prompt_sharing_dialog.gd").open(menu,func():
+			config.load(CONFIG_PATH)
+			if role.get_item_text(role.selected)=="Narrator":
+				editor.text=NARRATOR.load_prompt())
+	))
 	menu.add_child(note)
 	menu.add_child(menu_button("Return to Settings",func(): show_screen("Settings")))
 
