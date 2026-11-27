@@ -886,11 +886,11 @@
       "byte_size": 4763
     },
     {
-      "id": "adventure.military_camp.vintage",
+      "id": "adventure.military_camp.symbol",
       "category": "adventure",
       "kind": "military_camp",
-      "variant": "vintage",
-      "path": "res://cartography/art/adventure.military_camp.vintage.svg",
+      "variant": "symbol",
+      "path": "res://cartography/art/adventure.military_camp.symbol.svg",
       "width": 212,
       "height": 204,
       "anchor": [
@@ -905,19 +905,12 @@
       "lod": "symbol",
       "transparent": true,
       "provenance": {
-        "type": "open_license_reference_crop",
-        "source_sha256": "b130371612dcac0c3c83aa8b22398605f53fe94246a8bf18098c1d93427cfc28",
-        "crop_xyxy": [
-          222,
-          57,
-          275,
-          108
-        ],
-        "method": "Grayscale threshold 105; remove tiny components; contour approximation .7px; even-odd fill",
-        "license_status": "Owner confirmed open licence; exact attribution pending release review"
+        "type": "original_vector",
+        "method": "Original C1 line drawing; military tents/palisade or two-arch masonry bridge, independent geometry; no vintage pixels or traces.",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567"
       },
-      "git_blob_sha1": "81917b84430fc7fec4aac147314c35cb163728dc",
-      "byte_size": 488
+      "git_blob_sha1": "65f78bf41e53e86527b8b020a0ccfab467df55ae",
+      "byte_size": 602
     },
     {
       "id": "adventure.mine.harvest",
@@ -2410,11 +2403,11 @@
       "byte_size": 3732
     },
     {
-      "id": "settlement.bridge.vintage",
+      "id": "settlement.bridge.symbol",
       "category": "settlements",
       "kind": "bridge",
-      "variant": "vintage",
-      "path": "res://cartography/art/settlement.bridge.vintage.svg",
+      "variant": "symbol",
+      "path": "res://cartography/art/settlement.bridge.symbol.svg",
       "width": 196,
       "height": 148,
       "anchor": [
@@ -2429,19 +2422,12 @@
       "lod": "symbol",
       "transparent": true,
       "provenance": {
-        "type": "open_license_reference_crop",
-        "source_sha256": "b130371612dcac0c3c83aa8b22398605f53fe94246a8bf18098c1d93427cfc28",
-        "crop_xyxy": [
-          29,
-          69,
-          78,
-          106
-        ],
-        "method": "Grayscale threshold 105; remove tiny components; contour approximation .7px; even-odd fill",
-        "license_status": "Owner confirmed open licence; exact attribution pending release review"
+        "type": "original_vector",
+        "method": "Original C1 line drawing; military tents/palisade or two-arch masonry bridge, independent geometry; no vintage pixels or traces.",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567"
       },
-      "git_blob_sha1": "818ba3b7f62b23ecf24f6356b3f1c16139216dae",
-      "byte_size": 460
+      "git_blob_sha1": "f2e3fccd9d3b56188ab8037e6a5a34d439288706",
+      "byte_size": 563
     },
     {
       "id": "settlement.capital.harvest",
@@ -7086,22 +7072,15 @@
       "byte_size": 2830
     }
   ],
-  "additional_sources": [
-    {
-      "filename": "A1967C02-BBDB-428F-AC72-E318F4286343.jpeg",
-      "sha256": "b130371612dcac0c3c83aa8b22398605f53fe94246a8bf18098c1d93427cfc28",
-      "dimensions": [
-        736,
-        736
-      ],
-      "license_status": "Owner confirmed open licence 2026-11-27; specific licence identifier, original author and attribution terms not yet supplied; verify before release."
-    }
-  ],
   "selection_contract": {
     "authority": "Visual selection only. MapView owns world and discovery state. Persist selected asset ID or deterministic variant keyed by stable world feature identity; no redraw RNG.",
     "lod": "Prefer symbol at small sizes where available; illustration at normal and closer zoom. Resolve unknown IDs explicitly, never invent an established kind or coordinates.",
     "anchors": "Normalized x/y within source rectangle; use anchor at world feature location, preserve aspect ratio.",
     "transparency": "248 transparent ink/decoration assets; only two blank parchment substrates are opaque.",
-    "hash": "git_blob_sha1 is Git's SHA-1 over blob header plus exact SVG bytes; byte_size is exact repository blob length."
+    "hash": "git_blob_sha1 is Git's SHA-1 over blob header plus exact SVG bytes; byte_size is exact repository blob length.",
+    "legacy_aliases": {
+      "adventure.military_camp.vintage": "adventure.military_camp.symbol",
+      "settlement.bridge.vintage": "settlement.bridge.symbol"
+    }
   }
 }

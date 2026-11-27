@@ -2,6 +2,7 @@ extends RefCounted
 ## Static art selection only. No licence-pending assets enter the renderer.
 const CATALOG = "res://cartography/art/catalog.json"
 const STYLES = "res://cartography/art/navigation_styles.json"
+const LEGACY_IDS = {"adventure.military_camp.vintage":"adventure.military_camp.symbol","settlement.bridge.vintage":"settlement.bridge.symbol"}
 var entries: Dictionary = {}
 var families: Dictionary = {}
 var styles: Dictionary = {}
@@ -38,6 +39,8 @@ static func normalize(value: Variant) -> String:
 
 func choose(category: String, kind: Variant, stable_id: String, small: bool = false, explicit: Variant = null) -> Dictionary:
 	var normalized = normalize(kind)
+	if explicit is String:
+		explicit = LEGACY_IDS.get(explicit,explicit)
 	if explicit is String and entries.has(explicit):
 		var approved = entries[explicit]
 		if approved["category"]==category and approved["kind"]==normalized:

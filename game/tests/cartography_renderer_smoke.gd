@@ -87,10 +87,10 @@ func run() -> void:
 		quit(2)
 		return
 	var art = ART.new()
-	expect(art.initialize() and art.entries.size()==248,"Art catalogue unavailable or vintage exclusions missing")
+	expect(art.initialize() and art.entries.size()==250,"Art catalogue unavailable or replacements missing")
 	expect(art.texture("settlement.bridge.vintage")==null and art.texture("adventure.military_camp.vintage")==null,"Licence-pending texture selected")
 	var chosen = art.choose("settlements","bridge","fixture",true,"settlement.bridge.vintage")
-	expect(not chosen.is_empty() and chosen["id"]!="settlement.bridge.vintage","No licensed bridge fallback")
+	expect(not chosen.is_empty() and chosen["id"]=="settlement.bridge.symbol","No licensed bridge fallback")
 	expect(art.choose("settlements","bridge","fixture",true,"settlement.bridge.vintage")==chosen,"Art selection not deterministic")
 	expect(art.for_place({"id":"fixture","kind":"unclassified"},false).is_empty(),"Unknown location fabricated artwork")
 	var players = PLAYER.new()

@@ -11,3 +11,6 @@
 Remaining review gates: full SVG decode/import and per-asset visual proof, exact licensing attribution, A2 world projection and renderer (including fog, scale, navigation and all controls), integration and Windows visual/runtime acceptance. No fixed world, no publication.
 
 Independent proof: 41 hash-verified SVG samples rasterized with CairoSVG; one fog contour corrected. Full Godot import and visual review, including architectural edge clipping, remain pending.
+
+## C1 checkpoint 1 — original art replacement
+Start 045fbb5aab95f8c2ece5b837e34d3908ea741765, sole active specialist 01 per lead assignment on feature/complete-gameplay. Replaced two vintage-derived SVG files with original independently drawn bridge and military camp symbols; removed old paths from candidate tree, kept 250 registry entries, exact new Git hashes and dimensions, updated contact sheet and art smoke expectations. Old saved asset IDs resolve only through renderer compatibility aliases, never rewrite saves. Original source reference retained; unlicensed pack no longer in registry. Native Godot unavailable (command -v godot/godot4/wine/gdparse empty; Python gdtoolkit absent). Next typed UI adapter and controls; no mechanics/schema/Gemini/release changes.

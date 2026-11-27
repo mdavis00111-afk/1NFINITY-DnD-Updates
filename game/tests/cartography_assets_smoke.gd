@@ -26,7 +26,7 @@ func run() -> void:
 		quit(1)
 		return
 	var assets: Array = catalog["assets"]
-	expect(assets.size() >= 150 and assets.size() <= 250,"Asset count outside specification")
+	expect(assets.size()==250,"Asset count outside specification")
 	var ids: Dictionary = {}
 	var paths: Dictionary = {}
 	var hashes: Dictionary = {}
@@ -38,6 +38,7 @@ func run() -> void:
 		var path = str(asset.get("path",""))
 		expect(not id.is_empty() and not ids.has(id),"Duplicate or empty ID: "+id)
 		ids[id]=true
+		expect(not id.ends_with(".vintage") and asset.get("provenance",{}).get("type")!="open_license_reference_crop","Uncleared art in registry: "+id)
 		if not path.begins_with("res://cartography/art/") or not path.ends_with(".svg") or path.contains(".."):
 			expect(false,"Unsafe asset path: "+id)
 			continue
