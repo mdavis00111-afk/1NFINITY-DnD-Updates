@@ -1,12 +1,12 @@
 {
   "channel": "godot",
-  "version": "0.0.3",
-  "source_commit": "011d51c5b0b205dad87852c3d490de7de9d4797e",
-  "notes": "Visual update test: moved the Check for Updates button above the title. No other functionality changed.",
+  "version": "0.0.4",
+  "source_commit": "f882c823fa29e83cc8503aa2d709ec45e04d70db",
+  "notes": "New shared gold text theme and separate Settings, Player Manager and Campaign Manager screens. API key and per-role prompt editing saved locally. Temporary vector backgrounds; gameplay and legacy content rules integration pending.",
   "files": [
     {
       "path": "project.godot",
-      "blob": "dde770cfb09ce87f5c0ab7eca141d618a969de5f"
+      "blob": "5b1cd6363f247b1889ed4794396a4006cd7cbb45"
     },
     {
       "path": "main.tscn",
@@ -14,11 +14,31 @@
     },
     {
       "path": "version.txt",
-      "blob": "bcab45af15a0f1b0166daf8cbf18b17cd8649277"
+      "blob": "81340c7e72d5c852585d0faea06985a720d4c2df"
     },
     {
       "path": "main.gd",
-      "blob": "067f82130aa1a82a4da994ade4bbcb0d632711e6"
+      "blob": "bf711f63a855f2e7a783ce17923f2f655c45d3fc"
+    },
+    {
+      "path": "themes/master_theme.tres",
+      "blob": "bb994eeef6f5bda2faeeb18e0076abbda2623fa0"
+    },
+    {
+      "path": "art/castle.svg",
+      "blob": "74de64525449e8f7c58fee46f6a96c799f7469a2"
+    },
+    {
+      "path": "art/arcane.svg",
+      "blob": "0ae7d418a135c4aea0eacf1e9475931cb18357bf"
+    },
+    {
+      "path": "art/forest.svg",
+      "blob": "c0f44ec3f375785af4f2e27e86f0d355849c21d5"
+    },
+    {
+      "path": "art/valley.svg",
+      "blob": "cf3481a79028208802de57859be2602b9ea8c24e"
     }
   ]
 }
