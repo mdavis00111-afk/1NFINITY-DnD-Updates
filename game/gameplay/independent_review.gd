@@ -4,7 +4,7 @@ extends RefCounted
 const DTO=preload("res://world/world_dto.gd")
 const REG=preload("res://gameplay/tool_registry.gd")
 const PACK=preload("res://turns/agent_packets.gd")
-const TRANSFERS=["item_transfer","currency_transfer"]
+const TRANSFERS=["item_transfer","currency_transfer","loot_pickup","loot_take_all"]
 const KINDS=["description","dialogue","npc_action","offer","hypothetical","receipt_claim","agency","disclosure","contradiction","required_effect"]
 const HARMFUL=["agency","disclosure","contradiction"]
 const MATERIAL=["receipt_claim","required_effect"]
@@ -33,6 +33,10 @@ func public_ids(scene: Dictionary,view: Dictionary) -> Array:
 				ids.append(row["id"])
 	for key in ["public_actors","public_quests","story_records","inventory_instances","loot_containers"]:
 		for row in view.get(key,[]):
+			if key=="loot_containers":
+				for item in row.get("items",[]):
+					if DTO.id_valid(item.get("instance_id")) and not item["instance_id"] in ids:
+						ids.append(item["instance_id"])
 			for field in ["id","actor_id","instance_id","container_id","record_id","quest_id"]:
 				if DTO.id_valid(row.get(field)) and not row[field] in ids:
 					ids.append(row[field])
@@ -74,10 +78,15 @@ func parse_report(report: Variant,text: String,original: String,outcome: Diction
 			if not DTO.exact_keys(proposal,["kind","args","consent"]) or not proposal["kind"] in TRANSFERS or not transfer_args_valid(proposal["kind"],proposal["args"]) or not evidence_valid(proposal["consent"],original):
 				return {"ok":false,"error":"New effect is unsupported or lacks original player consent."}
 			var args=proposal["args"]
-			if args["from_actor_id"]==args["to_actor_id"] or not controller.actor_id in [args["from_actor_id"],args["to_actor_id"]] or not args["from_actor_id"] in known or not args["to_actor_id"] in known:
-				return {"ok":false,"error":"Transfer parties are not established."}
-			if outcome.get("action")==proposal["kind"]:
-				return {"ok":false,"error":"Possible repeated settled transfer; describe the existing outcome instead."}
+			if proposal["kind"] in ["item_transfer","currency_transfer"]:
+				if args["from_actor_id"]==args["to_actor_id"] or not controller.actor_id in [args["from_actor_id"],args["to_actor_id"]] or not args["from_actor_id"] in known or not args["to_actor_id"] in known:
+					return {"ok":false,"error":"Transfer parties are not established."}
+				if proposal["kind"]=="item_transfer" and args.has("instance_id") and not args["instance_id"] in known:
+					return {"ok":false,"error":"Use an established public instance or the definition of the specific NPC possession."}
+			elif not args["container_id"] in known:
+				return {"ok":false,"error":"Loot continuation needs an already disclosed eligible container."}
+			if outcome.get("action") in TRANSFERS:
+				return {"ok":false,"error":"Possible repeated settled acquisition/transfer; describe the existing outcome instead."}
 		elif claim["proposal"]!=null:
 			return {"ok":false,"error":"Descriptive claim cannot carry an effect."}
 		if claim["kind"] in MATERIAL:

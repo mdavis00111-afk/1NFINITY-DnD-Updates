@@ -45,7 +45,7 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 		return
 	# Allowlist character attributes, never settings, master IDs or file paths.
 	var character=PACK.actor_projection(state)
-	for key in ["ability_modifiers","combat","equipment","resources","spellcasting","coins","carrying_capacity_lb","proficiency_ids","xp"]:
+	for key in ["ability_modifiers","combat","equipment","resources","spellcasting","coins","carrying_capacity_lb","proficiency_ids","expertise_ids","feat_ids","feature_ids","class_features","racial_traits","subclass_id","subrace_id","xp","review_required"]:
 		if state["actor"].has(key):
 			character[key]=state["actor"][key]
 	character["owned_instances"]=ext.get("inventory_instances",[]).slice(0,64)
@@ -309,6 +309,7 @@ func correction(job: Dictionary,message: String) -> Dictionary:
 	job.erase("critical_claims")
 	job.erase("first_review")
 	job.erase("second_review")
+	job.erase("verified_only")
 	job["stage"]="narrate"
 	job["attempt"]={}
 	if not update_active(job):
@@ -317,6 +318,10 @@ func correction(job: Dictionary,message: String) -> Dictionary:
 	return {"ok":true}
 
 func reconcile(job: Dictionary,receipt: Dictionary,known: Array) -> void:
+	var context=scene_context(data["state"])
+	if not context.get("ok",false) or not reviewed_candidate(job,receipt,context["scene"]):
+		stop("critical_blocked","Durable independent review no longer matches exact candidate/outcome; recover before committing narration.")
+		return
 	if standalone(job):
 		var result=RECON.new().commit_standalone(campaign_id,job["tool"],job["candidate"],job["geography"],known,job["intent"]["args"].get("text",""),job.get("critical_verified",false))
 		if not result.get("found",false):
@@ -477,6 +482,10 @@ func preview_text(job: Dictionary,state: Dictionary) -> String:
 	var text=super.preview_text(job,state)
 	if standalone(job) and job.get("critical_verified",false) and job.get("narration_event_id")==null:
 		text=str(job.get("candidate",{}).get("text",""))
+	if not text.is_empty() and not job.get("verified_only",false):
+		var hash_value=text.sha256_text()
+		if job.get("first_review",{}).get("candidate_hash")!=hash_value or job.get("second_review",{}).get("candidate_hash")!=hash_value:
+			return ""
 	if not text.is_empty():
 		var rid=job.get("intent",{}).get("request_id","")
 		if timing.has(rid) and not timing[rid].has("preview"):
@@ -527,6 +536,7 @@ func settle_verified_only() -> Dictionary:
 	job["candidate"]=candidate
 	job["geography"]=geography
 	job["critical_verified"]=true
+	job["verified_only"]=true
 	job["story"]=[]
 	job["discoveries"]=[]
 	job["story_index"]=0
@@ -711,7 +721,7 @@ func retry() -> Dictionary:
 	retire_attempt()
 	job["attempt"]={}
 	if job.get("stage")=="critical_blocked":
-		for key in ["geography","story","candidate","critical_verified","critical_claims","first_review","second_review"]:
+		for key in ["geography","story","candidate","critical_verified","critical_claims","first_review","second_review","verified_only"]:
 			job.erase(key)
 		job["correction_count"]=0
 	# Recover a durable request first, not a new interpretation. Context
@@ -730,3 +740,19 @@ func retry() -> Dictionary:
 		return failure("Retry persistence unconfirmed.")
 	advance.call_deferred()
 	return {"ok":true}
+
+func reviewed_candidate(job: Dictionary,verified: Dictionary,scene: Dictionary) -> bool:
+	if not job.get("critical_verified",false):
+		return false
+	var text=str(job.get("candidate",{}).get("text",""))
+	if not DTO.bounded_text(text,12000):
+		return false
+	if job.get("verified_only",false):
+		var expected=str(verified.get("summary","")) if standalone(job) else RECON.new().receipt_line(verified)
+		return text==expected
+	var ext=BASE.new().gameplay_view(campaign_id).get("interaction_extension",{})
+	if ext.get("revision")!=data["state"]["revision"]:
+		return false
+	var public_outcome=verified if standalone(job) else PACK.public_receipt(verified)
+	var merged=independent.reconcile(job.get("first_review",{}),job.get("second_review",{}),text,str(job["intent"]["args"].get("text","")),public_outcome,independent.public_ids(scene,ext))
+	return merged.get("ok",false) and merged.get("effects",[]).is_empty()

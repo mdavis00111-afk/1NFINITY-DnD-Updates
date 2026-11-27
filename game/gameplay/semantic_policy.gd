@@ -68,7 +68,7 @@ func validate_assessment(req: Dictionary,report: Variant,job: Dictionary,state: 
 			evidence_ids.append(entry["event_id"])
 	# Consequential context is assessed against actual public local events;
 	# a semantic inference from silence is not evidence of access/consent.
-	if kind in CHECKS+ROUTES+["rest","attune","unattune","item_transfer","currency_transfer","object_interact","party_membership","loot_discover","actor_generate","story_update","define_custom","define_official"] and evidence_ids.is_empty():
+	if kind in CHECKS+ROUTES+["rest","attune","unattune","item_transfer","currency_transfer","loot_pickup","loot_take_all","object_interact","party_membership","loot_discover","actor_generate","story_update","define_custom","define_official"] and evidence_ids.is_empty():
 		return {"ok":false,"error":"Local context evidence is required."}
 	if args.has("source_event_id") and not args["source_event_id"] in evidence_ids:
 		return {"ok":false,"error":"Proposed source does not match the contextual evidence."}
@@ -114,11 +114,11 @@ func validate_assessment(req: Dictionary,report: Variant,job: Dictionary,state: 
 			var local=controller.enquiry("actors",{"location_id":state["location_id"]},64)
 			if not local.get("ok",false) or not local["data"]["actors"].any(func(row): return row["actor_id"]==npc and row["kind"]=="npc"):
 				return {"ok":false,"error":"Transfer requires disclosed local NPC."}
-			if req==job.get("consequence_request"):
-				var pending=job.get("pending_consequence",{})
-				var consent=pending.get("proposal",{}).get("consent","")
-				if not DTO.bounded_text(consent,2000) or not original.contains(consent) or not job.get("narration_event_id") in evidence_ids or pending.get("candidate_hash")!=str(pending.get("candidate",{}).get("text","")).sha256_text():
-					return {"ok":false,"error":"Original transfer consent or committed offer source unavailable."}
+		if req==job.get("consequence_request"):
+			var pending=job.get("pending_consequence",{})
+			var consent=pending.get("proposal",{}).get("consent","")
+			if not DTO.bounded_text(consent,2000) or not original.contains(consent) or not job.get("narration_event_id") in evidence_ids or pending.get("candidate_hash")!=str(pending.get("candidate",{}).get("text","")).sha256_text():
+				return {"ok":false,"error":"Original consent or committed pending-offer source unavailable."}
 	# Every rule reference used by C3 must exist in the pinned catalogue.
 	for section in REG.TOOLS[kind][2]:
 		var rule=controller.enquiry("rule_record",{"category":"rule-sections","id":section},1)
@@ -149,7 +149,7 @@ func review(req: Dictionary,scope: Dictionary,intent: Dictionary) -> Dictionary:
 		out["reason"]=checked["error"]
 	return out
 
-# C4 compatibility callable. C5b never uses this as a provider approval;
-# its own independent review pipeline is mandatory before reconciliation.
-func review_prose(_candidate: Dictionary,_claims: Array,_outcome: Dictionary,_scene: Dictionary) -> bool:
-	return false
+# C4 compatibility callback checks the same durable independent reports.
+func review_prose(candidate: Dictionary,_claims: Array,outcome: Dictionary,scene: Dictionary) -> bool:
+	var job=controller.active()
+	return candidate==job.get("candidate") and controller.reviewed_candidate(job,outcome,scene)
