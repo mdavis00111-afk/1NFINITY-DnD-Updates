@@ -35,6 +35,15 @@ var workspace
 var failures: Array[String]=[]
 var outbound: Array=[]
 
+# Pause only scheduling, never replace production authorization or persistence.
+class FixtureController extends "res://gameplay/semantic_controller.gd":
+	var pause_discovery=false
+	func process_story() -> void:
+		if not pause_discovery:
+			super.process_story()
+	func step_discovery() -> void:
+		super.process_story()
+
 class MockTransport:
 	extends Node
 	signal completed(ok: bool,message: String)
@@ -87,7 +96,7 @@ func factory() -> Node:
 	return mock
 
 func bind(id: String) -> bool:
-	ctrl=CTRL.new()
+	ctrl=FixtureController.new()
 	root.add_child(ctrl)
 	if not expect(ctrl.bind_ai(id,Callable(),Callable(),factory).get("ok",false),"Explicit C5 binding failed"):
 		return false
@@ -230,6 +239,7 @@ func run() -> void:
 	await authority_cases(id,shield)
 	await persistent_npc_location(id)
 	await geography_discovery_case(id)
+	await discovery_negative_cases(id,b["id"])
 	expect(players.load_record(master)==original and base.gameplay_view(b["id"])==sibling,"Master and sibling isolation")
 	ctrl.close_session()
 	workspace.queue_free()
@@ -340,6 +350,107 @@ func geography_discovery_case(id: String) -> void:
 	expect(source.get("kind")=="narration" and str(source.get("data",{}).get("text","")).contains(evidence),"Discovery binds committed narrative evidence")
 	var loot=ctrl.view["interaction_extension"]["loot_containers"]
 	expect(loot.size()==1 and loot[0]["items"][0]["name"]=="Carved amber tally","Discovered item remains in local loot")
+
+func discovery_db_snapshot(id: String) -> Dictionary:
+	return SQL.run(base.path_for(id),[
+		SQL.stmt("SELECT * FROM gameplay_requests ORDER BY request_id"),
+		SQL.stmt("SELECT * FROM locations ORDER BY id"),
+		SQL.stmt("SELECT * FROM world_places ORDER BY location_id"),
+		SQL.stmt("SELECT * FROM world_routes ORDER BY id"),
+		SQL.stmt("SELECT * FROM actors ORDER BY id")
+	],true)
+
+func discovery_negative_cases(id: String,sibling_id: String) -> void:
+	var input="I look at the shelf."
+	var evidence="A discarded copper token rests on the shelf."
+	var location=session.token(id)["location_id"]
+	var definition={"name":"Shelf copper token","category":"gear","description":"A copper token.","unit_weight_lb":0.1,"cost_cp":1,"properties":[],"charges_max":null,"attunement_required":false}
+	var start=outbound.size()
+	workspace.composer.text=input
+	workspace.submit_chat()
+	if not await pump("interpret"):
+		return
+	reply({"kind":"conversation","args":{"text":input}})
+	if not await pump("narrate"):
+		return
+	ctrl.pause_discovery=true
+	var response=combined(evidence)
+	response["discoveries"]=[
+		{"kind":"define_custom","evidence":evidence,"args":{"definition":definition,"official_equivalent_id":null}},
+		{"kind":"loot_discover","evidence":evidence,"args":{"location_id":location,"name":"Shelf discovery","items":[{"definition_id":"@0","quantity":1,"charges":null,"condition":"intact","attunement":"not_required"}],"coins":money(0)}}
+	]
+	reply(response)
+	await wait_frames()
+	if not expect(ctrl.active().get("stage")=="post_story","Pause at committed narration"):
+		return
+	ctrl.step_discovery()
+	await wait_frames()
+	var original=ctrl.active().duplicate(true)
+	if not expect(original.get("discovery_index")==1 and original.get("discovery_receipts",{}).has("0"),"First definition committed with provenance"):
+		return
+	var state=session.token(id)
+	var rid=session.make_id()
+	var args=ctrl.discovery_arguments(original,state,1,rid)
+	if not expect(not args.is_empty(),"Legitimate transformed arguments reconstruct"):
+		return
+	var request=ctrl.tool_for(original["intent"],state,"loot_discover",args)
+	request["request_id"]=rid
+	original["story_request"]=request
+	for label in ["forged provenance","item identifier","quantity","currency","location","source","cross campaign","legacy provenance"]:
+		var job=original.duplicate(true)
+		var req=job["story_request"]
+		match label:
+			"forged provenance":
+				job["discovery_receipts"]["0"]["request_id"]=session.make_id()
+			"item identifier":
+				req["args"]["items"][0]["definition_id"]="dagger"
+			"quantity":
+				req["args"]["items"][0]["quantity"]=2
+			"currency":
+				req["args"]["coins"]["gp"]=10
+			"location":
+				req["args"]["location_id"]=session.make_id()
+			"source":
+				req["args"]["source_event_id"]=0
+			"cross campaign":
+				job["discovery_receipts"]["0"]["campaign_id"]=sibling_id
+			"legacy provenance":
+				job.erase("discovery_receipts")
+		if not expect(ctrl.update_active(job),label+" persist disposable pending fixture"):
+			return
+		var before=durable_snapshot(id)
+		var db=discovery_db_snapshot(id)
+		var calls=outbound.size()
+		expect(not ctrl.discovery_request_valid(req,job,session.token(id)),label+" shared validator rejects")
+		ctrl.step_discovery()
+		await wait_frames()
+		var after=durable_snapshot(id)
+		expect(after["actor"]==before["actor"] and after["owned"]==before["owned"] and after["revision"]==before["revision"],label+" resources and revision unchanged")
+		expect(discovery_db_snapshot(id)==db,label+" no new settlement or world row")
+		expect(after["view"].get("interaction_extension",{}).get("loot_containers")==before["view"].get("interaction_extension",{}).get("loot_containers"),label+" loot unchanged")
+		expect(ctrl.active().get("discovery_index")==1 and ctrl.active().get("stage")=="retry",label+" cursor retained")
+		expect(outbound.size()==calls,label+" no provider request")
+	if not expect(ctrl.update_active(original),"Restore exact legitimate pending discovery"):
+		return
+	ctrl.step_discovery()
+	await wait_frames()
+	if not expect(ctrl.active().get("discovery_index")==2,"Legitimate discovery advances once"):
+		return
+	var settled=ctrl.active().duplicate(true)
+	var before=durable_snapshot(id)
+	var db=discovery_db_snapshot(id)
+	# Replaying the exact already committed request must reconcile without a write.
+	if not expect(ctrl.update_active(original),"Replay exact committed discovery"):
+		return
+	ctrl.step_discovery()
+	await wait_frames()
+	expect(ctrl.active().get("discovery_index")==2,"Duplicate reconciles exact cursor")
+	expect(discovery_db_snapshot(id)==db and session.token(id)["revision"]==before["revision"],"Duplicate creates no settlement or world record")
+	expect(REG.new().noncombat.read_owned(session.token(id),ctrl.actor_id)==before["owned"],"Duplicate grants no resources")
+	expect(outbound.size()-start==2,"All discovery processing uses original two calls")
+	ctrl.pause_discovery=false
+	ctrl.step_discovery()
+	await pump("idle")
 
 func wait_frames() -> void:
 	for i in range(12):

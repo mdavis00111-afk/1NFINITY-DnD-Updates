@@ -10,3 +10,5 @@ Branch godot; live v0.0.26, target v0.0.27; no intermediate publication. Read PR
 3b.3c.2b production binding correction committed. Next 3b.3c.2c negative regressions, including recovered actor generation and forged receipt provenance; native validation outstanding. No release.
 
 3b.3c.2b source indentation follow-up committed; native compilation remains required.
+
+3b.3c.2c negative fixture committed; native execution, actor generation interruption and stronger forged SQL/unrelated source coverage outstanding. Next 3b.3c.3 structured duplicate envelope.

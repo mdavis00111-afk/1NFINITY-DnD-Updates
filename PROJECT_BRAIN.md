@@ -595,3 +595,6 @@ Active fixture covers reported village identity, unknown coordinates, route and 
 Shared controller reconstruction used by policy and execution/recovery. Definition references resolve through recorded exact committed requests, not definition_refs. Actor generation key bound to request ID. Legacy pending discoveries without receipt provenance fail closed. Native and negative regression execution outstanding; no release.
 
 3b.3c.2b follow-up: corrected reconstruction helper indentation and dictionary failure returns after source readback. Runtime still unexecuted.
+
+## v0.0.27 checkpoint 3b.3c.2c — negative discovery fixture
+Added scheduling-only fixture controller pause to exercise actual persisted post-story cursor and production processing. Eight altered pending request/provenance variants and exact committed replay assert unchanged resources, revision, settlement/world rows, loot and provider counts. Actor generation interruption and stronger forged SQL settlement/unrelated valid source coverage remain outstanding. Native/mock/live execution not run. No release.
