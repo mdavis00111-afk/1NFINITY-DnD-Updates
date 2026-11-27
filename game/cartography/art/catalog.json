@@ -752,6 +752,1556 @@
         ],
         "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
       }
+    },
+    {
+      "id": "settlement.house.v1",
+      "category": "settlements",
+      "kind": "house",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.house.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.house.v2",
+      "category": "settlements",
+      "kind": "house",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.house.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.cottage.v1",
+      "category": "settlements",
+      "kind": "cottage",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.cottage.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.cottage.v2",
+      "category": "settlements",
+      "kind": "cottage",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.cottage.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.hamlet.v1",
+      "category": "settlements",
+      "kind": "hamlet",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.hamlet.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.hamlet.v2",
+      "category": "settlements",
+      "kind": "hamlet",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.hamlet.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.village.v1",
+      "category": "settlements",
+      "kind": "village",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.village.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.village.v2",
+      "category": "settlements",
+      "kind": "village",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.village.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.town.v1",
+      "category": "settlements",
+      "kind": "town",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.town.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.town.v2",
+      "category": "settlements",
+      "kind": "town",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.town.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.walled_town.v1",
+      "category": "settlements",
+      "kind": "walled_town",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.walled_town.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 96,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.walled_town.v2",
+      "category": "settlements",
+      "kind": "walled_town",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.walled_town.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 96,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.city.v1",
+      "category": "settlements",
+      "kind": "city",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.city.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 96,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.city.v2",
+      "category": "settlements",
+      "kind": "city",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.city.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 96,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.capital.v1",
+      "category": "settlements",
+      "kind": "capital",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.capital.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 96,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.capital.v2",
+      "category": "settlements",
+      "kind": "capital",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.capital.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 96,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.port.v1",
+      "category": "settlements",
+      "kind": "port",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.port.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.port.v2",
+      "category": "settlements",
+      "kind": "port",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.port.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.harbour.v1",
+      "category": "settlements",
+      "kind": "harbour",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.harbour.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.harbour.v2",
+      "category": "settlements",
+      "kind": "harbour",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.harbour.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.castle.v1",
+      "category": "settlements",
+      "kind": "castle",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.castle.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 96,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.castle.v2",
+      "category": "settlements",
+      "kind": "castle",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.castle.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 96,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.keep.v1",
+      "category": "settlements",
+      "kind": "keep",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.keep.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.keep.v2",
+      "category": "settlements",
+      "kind": "keep",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.keep.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.fortress.v1",
+      "category": "settlements",
+      "kind": "fortress",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.fortress.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 96,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.fortress.v2",
+      "category": "settlements",
+      "kind": "fortress",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.fortress.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 96,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.watchtower.v1",
+      "category": "settlements",
+      "kind": "watchtower",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.watchtower.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.watchtower.v2",
+      "category": "settlements",
+      "kind": "watchtower",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.watchtower.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.guard_post.v1",
+      "category": "settlements",
+      "kind": "guard_post",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.guard_post.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.guard_post.v2",
+      "category": "settlements",
+      "kind": "guard_post",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.guard_post.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.inn.v1",
+      "category": "settlements",
+      "kind": "inn",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.inn.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.inn.v2",
+      "category": "settlements",
+      "kind": "inn",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.inn.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.tavern.v1",
+      "category": "settlements",
+      "kind": "tavern",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.tavern.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.tavern.v2",
+      "category": "settlements",
+      "kind": "tavern",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.tavern.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.church.v1",
+      "category": "settlements",
+      "kind": "church",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.church.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.church.v2",
+      "category": "settlements",
+      "kind": "church",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.church.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.cathedral.v1",
+      "category": "settlements",
+      "kind": "cathedral",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.cathedral.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.cathedral.v2",
+      "category": "settlements",
+      "kind": "cathedral",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.cathedral.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.temple.v1",
+      "category": "settlements",
+      "kind": "temple",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.temple.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.temple.v2",
+      "category": "settlements",
+      "kind": "temple",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.temple.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.shrine.v1",
+      "category": "settlements",
+      "kind": "shrine",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.shrine.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.shrine.v2",
+      "category": "settlements",
+      "kind": "shrine",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.shrine.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.monastery.v1",
+      "category": "settlements",
+      "kind": "monastery",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.monastery.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.monastery.v2",
+      "category": "settlements",
+      "kind": "monastery",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.monastery.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.windmill.v1",
+      "category": "settlements",
+      "kind": "windmill",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.windmill.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.windmill.v2",
+      "category": "settlements",
+      "kind": "windmill",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.windmill.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.watermill.v1",
+      "category": "settlements",
+      "kind": "watermill",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.watermill.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.watermill.v2",
+      "category": "settlements",
+      "kind": "watermill",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.watermill.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.farm.v1",
+      "category": "settlements",
+      "kind": "farm",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.farm.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.farm.v2",
+      "category": "settlements",
+      "kind": "farm",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.farm.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.fields.v1",
+      "category": "settlements",
+      "kind": "fields",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.fields.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.fields.v2",
+      "category": "settlements",
+      "kind": "fields",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.fields.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.blacksmith.v1",
+      "category": "settlements",
+      "kind": "blacksmith",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.blacksmith.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.blacksmith.v2",
+      "category": "settlements",
+      "kind": "blacksmith",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.blacksmith.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.trading_post.v1",
+      "category": "settlements",
+      "kind": "trading_post",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.trading_post.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.trading_post.v2",
+      "category": "settlements",
+      "kind": "trading_post",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.trading_post.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.bridge.v1",
+      "category": "settlements",
+      "kind": "bridge",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.bridge.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.bridge.v2",
+      "category": "settlements",
+      "kind": "bridge",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.bridge.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.dock.v1",
+      "category": "settlements",
+      "kind": "dock",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.dock.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.dock.v2",
+      "category": "settlements",
+      "kind": "dock",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.dock.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.lighthouse.v1",
+      "category": "settlements",
+      "kind": "lighthouse",
+      "variant": "v1",
+      "path": "res://cartography/art/settlement.lighthouse.v1.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
+    },
+    {
+      "id": "settlement.lighthouse.v2",
+      "category": "settlements",
+      "kind": "lighthouse",
+      "variant": "v2",
+      "path": "res://cartography/art/settlement.lighthouse.v2.svg",
+      "width": 256,
+      "height": 192,
+      "anchor": [
+        0.5,
+        0.86
+      ],
+      "scale": {
+        "recommended_px": 64,
+        "min_px": 24,
+        "max_px": 160
+      },
+      "lod": "illustration",
+      "transparent": true,
+      "provenance": {
+        "type": "original_vector",
+        "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "method": "Original architectural ink line drawing with perspective planes, engraved hatching, silhouette and composition variation; no external pack pixels."
+      }
     }
   ]
 }
