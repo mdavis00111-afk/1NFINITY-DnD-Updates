@@ -1,6 +1,6 @@
 # A1 — Cartography art library
 
-250 registered standalone SVG assets; 993451 source bytes (excluding registry and styles). {"settlements":70,"adventure":54,"terrain":53,"decor":21,"tools":17,"water":30,"markers":5}. Provenance breakdown {"original_vector":215,"reference_vector_crop":33,"open_license_reference_crop":2}. 13 separate geometry stroke recipes, not counted as illustrations. All named geographic categories from WORLD_CARTOGRAPHY_SPEC.md covered; no missing named category. No actual geography encoded.
+250 registered standalone SVG assets; 993954 source bytes (excluding registry and styles). {"settlements":70,"adventure":54,"terrain":53,"decor":21,"tools":17,"water":30,"markers":5}. Provenance breakdown {"original_vector":217,"reference_vector_crop":33}. 13 separate geometry stroke recipes, not counted as illustrations. All named geographic categories from WORLD_CARTOGRAPHY_SPEC.md covered; no missing named category. No actual geography encoded.
 
 - `game/cartography/art/catalog.json` is stable ID registry with source provenance, dimensions, normalized anchor, display scale/LOD, exact byte size and Git blob SHA-1. Two blank parchment textures are intentionally opaque; other art intended transparent. Art is not a visibility mask or authoritative location.
 - `navigation_styles.json` is purely visual; A2 renders authoritative committed route/water/region geometry and only actual movement in red. Never assign coordinates from a stamp. Keep secret locations excluded from renderer inputs.
@@ -11,3 +11,5 @@
 Remaining review gates: full SVG decode/import and per-asset visual proof, exact licensing attribution, A2 world projection and renderer (including fog, scale, navigation and all controls), integration and Windows visual/runtime acceptance. No fixed world, no publication.
 
 Independent proof: 41 hash-verified SVG samples rasterized with CairoSVG; one fog contour corrected. Full Godot import and visual review, including architectural edge clipping, remain pending.
+
+Foundation release candidate: the two earlier vintage assets were removed from the current game tree and replaced with original low-LOD bridge and military camp symbols. Prior vintage provenance is historical only; no vintage source remains in the distributable inventory. Existing legacy explicit asset IDs fall back by kind. Native import and visual acceptance remain pending.
