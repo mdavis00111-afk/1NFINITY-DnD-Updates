@@ -176,6 +176,42 @@ func run() -> void:
 	view=base.gameplay_view(id)
 	extension=view.get("interaction_extension",{})
 	expect(view["actor"]["coins"]==money(7) and extension.get("loot_containers",[]).is_empty(),"Currency/closed loot view incorrect")
+	# The two pieces of the same discovered stack have identical provenance.
+	# They can be consolidated, not silently merged with the original master stack.
+	if collected.get("ok",false) and collected.get("result",{}).get("items",[]).size()==1:
+		var piece_id = collected["result"]["items"][0]["instance_id"]
+		var merge = request(id,"stack_merge",{"source_instance_id":piece_id,"destination_instance_id":dagger_instance})
+		var incompatible = request(id,"stack_merge",{"source_instance_id":piece_id,"destination_instance_id":original_instance})
+		var before_merge = base.gameplay_view(id)
+		var before_revision = session.token(id)["revision"]
+		expect(not loot.merge_stacks(id,merge,{}).get("ok",false),"Unreviewed consolidation accepted")
+		expect(not loot.merge_stacks(id,incompatible,clearance(incompatible,"stack_merge")).get("ok",false),"Distinct legacy/discovery provenance merged")
+		var stale_merge = merge.duplicate(true)
+		stale_merge["expected_revision"]=before_revision-1
+		expect(not loot.merge_stacks(id,stale_merge,clearance(stale_merge,"stack_merge")).get("ok",false),"Stale consolidation accepted")
+		expect(not loot.merge_stacks(b["id"],merge,clearance(merge,"stack_merge")).get("ok",false),"Cross-campaign consolidation accepted")
+		expect(SQL.run(base.path_for(id),[SQL.stmt("CREATE TRIGGER c2_fixture_merge_reject BEFORE INSERT ON item_transfers BEGIN SELECT RAISE(ABORT,'fixture merge'); END")]).get("ok",false),"Merge rollback fixture unavailable")
+		expect(not loot.merge_stacks(id,merge,clearance(merge,"stack_merge")).get("ok",false),"Injected consolidation failure accepted")
+		expect(session.token(id)["revision"]==before_revision and not session.settlement(id,merge["request_id"]).get("found",false) and base.gameplay_view(id)==before_merge,"Failed consolidation partially persisted")
+		expect(SQL.run(base.path_for(id),[SQL.stmt("DROP TRIGGER c2_fixture_merge_reject")]).get("ok",false),"Merge rollback fixture cleanup failed")
+		var merged = loot.merge_stacks(id,merge,clearance(merge,"stack_merge"))
+		expect(merged.get("ok",false) and merged.get("result",{}).get("quantity")==3 and merged.get("result",{}).get("destination_instance_id")==dagger_instance,"Consolidation did not preserve surviving instance")
+		if merged.get("ok",false):
+			var merged_view = BASE.new().gameplay_view(id)
+			var merged_items = merged_view.get("interaction_extension",{}).get("inventory_instances",[])
+			var retained = false
+			var retired = true
+			for item in merged_items:
+				if item["instance_id"]==dagger_instance and item["quantity"]==3:
+					retained=true
+				if item["instance_id"]==piece_id:
+					retired=false
+			expect(retained and retired and merged_view.get("inventory")==before_merge["inventory"] and merged_view.get("actor")==before_merge["actor"] and merged_view["interaction_extension"]["revision"]==before_revision+1,"Consolidated view lost quantity, identity or changed actor")
+			var history = SQL.run(base.path_for(id),[SQL.stmt("SELECT source_instance_id,destination_instance_id,quantity FROM item_transfers WHERE request_id=?",[merge["request_id"]])],true)
+			expect(history.get("ok",false) and history["results"][0].size()==1 and history["results"][0][0]["source_instance_id"]==piece_id and history["results"][0][0]["destination_instance_id"]==dagger_instance and int(history["results"][0][0]["quantity"])==1,"Merge lineage not recorded")
+			expect(loot.merge_stacks(id,merge,clearance(merge,"stack_merge")).get("replayed",false) and base.gameplay_view(id)==merged_view,"Consolidation replay changed state")
+			view=merged_view
+			extension=view.get("interaction_extension",{})
 	var new_take = request(id,"loot_take_all",{"container_id":container_id,"source_event_id":opening_event})
 	expect(not loot.pickup(id,new_take,clearance(new_take,"loot_transfer")).get("ok",false),"Closed loot collected twice")
 	var custom_instance = ""

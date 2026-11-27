@@ -465,6 +465,82 @@ func drop(id: String,request: Dictionary,clearance: Dictionary) -> Dictionary:
 	commands.append(SQL.stmt("UPDATE actors SET payload=? WHERE id=?",[JSON.stringify(actor),state["actor_id"]]))
 	return _commit(ctx,commands,{"container_id":container_id,"instance_id":destination,"quantity":amount},"Selected possession dropped.")
 
+# Administrative consolidation only. Local trusted caller, NOT a registered
+# gameplay/provider tool. Never merge dissimilar provenance or active gear.
+# The surviving identity is explicit; the retired identity remains in history.
+func merge_stacks(id: String,request: Dictionary,clearance: Dictionary) -> Dictionary:
+	var ctx = begin(id,request,"stack_merge",["source_instance_id","destination_instance_id"])
+	if not ctx.get("ok",false) or ctx.get("replayed",false):
+		return ctx
+	if not local_clearance(request,clearance,"stack_merge"):
+		return fail("Trusted local stack consolidation review required.")
+	var state: Dictionary = ctx["state"]
+	var args: Dictionary = request["args"]
+	var source_id = args["source_instance_id"]
+	var destination_id = args["destination_instance_id"]
+	if not DTO.id_valid(source_id) or not DTO.id_valid(destination_id) or source_id==destination_id:
+		return fail("Select two distinct owned stacks.")
+	var aid = state["actor_id"]
+	var data = read(state,[
+		SQL.stmt("SELECT i.*,d.origin,d.catalog_category FROM item_instances i JOIN item_definitions d ON d.id=i.definition_id WHERE i.actor_id=? AND i.id IN (?,?) ORDER BY i.id",[aid,source_id,destination_id]),
+		SQL.stmt("SELECT instance_id FROM equipment_assignments WHERE instance_id IN (?,?) UNION ALL SELECT instance_id FROM equipment_review WHERE instance_id IN (?,?)",[source_id,destination_id,source_id,destination_id]),
+		SQL.stmt("SELECT definition_id,sum(quantity) AS quantity FROM item_instances WHERE actor_id=? GROUP BY definition_id",[aid])
+	])
+	if not data.get("ok",false):
+		return data
+	var sets: Array = data["sets"]
+	if sets[0].size()!=2 or not sets[1].is_empty():
+		return fail("Both stacks must be owned, unequipped and free of legacy equipment claims.")
+	var by_id: Dictionary = {}
+	for row in sets[0]:
+		by_id[row["id"]]=row
+	var src: Dictionary = by_id[source_id]
+	var dst: Dictionary = by_id[destination_id]
+	# Only standard official equipment with the same exact stored provenance,
+	# condition, definition and uncharged/non-attuned state. Distinct custom,
+	# magic, unknown or individually significant objects remain separate.
+	for row in [src,dst]:
+		if row["origin"]!="official" or row["catalog_category"]!="equipment" or row["charges"]!=null or not row["attunement"] in ["unknown","not_required"]:
+			return fail("Stack properties require individual identity preservation.")
+	for key in ["definition_id","condition","attunement","provenance","source_event_id"]:
+		if src[key]!=dst[key]:
+			return fail("Stack properties or provenance differ.")
+	var src_qty = DTO.sql_int(src["quantity"])
+	var dst_qty = DTO.sql_int(dst["quantity"])
+	if not DTO.whole(src_qty,1) or not DTO.whole(dst_qty,1) or not DTO.whole(int(src_qty)+int(dst_qty),1):
+		return fail("Invalid or excessive consolidated quantity.")
+	var combined = int(src_qty)+int(dst_qty)
+	# The existing normalized inventory and actor payload are compatibility
+	# mirrors; total ownership is unchanged and no mirror is rewritten.
+	var totals: Dictionary = {}
+	for row in sets[2]:
+		var amount = DTO.sql_int(row["quantity"])
+		if not DTO.whole(amount,1):
+			return fail("Invalid aggregate ownership.")
+		totals[row["definition_id"]]=amount
+	if totals.size()!=state["inventory"].size():
+		return fail("Inventory ownership mirror disagrees.")
+	for row in state["inventory"]:
+		if totals.get(row["item_id"])!=row["quantity"]:
+			return fail("Inventory ownership mirror disagrees.")
+	var commands: Array = []
+	# Recheck the exact rows and aggregate under the same guarded write lock,
+	# including fields that could make an otherwise compatible stack distinct.
+	for row in [src,dst]:
+		commands.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('c2_merge_guard',(SELECT 'ok' FROM item_instances i JOIN item_definitions d ON d.id=i.definition_id WHERE i.id=? AND i.actor_id=? AND i.container_id IS NULL AND i.definition_id=? AND i.quantity=CAST(? AS INTEGER) AND i.charges IS NULL AND i.condition=? AND i.attunement=? AND i.provenance=? AND i.source_event_id IS ? AND d.origin='official' AND d.catalog_category='equipment' AND NOT EXISTS(SELECT 1 FROM equipment_assignments WHERE instance_id=i.id) AND NOT EXISTS(SELECT 1 FROM equipment_review WHERE instance_id=i.id)))",[row["id"],aid,row["definition_id"],DTO.sql_int(row["quantity"]),row["condition"],row["attunement"],row["provenance"],row["source_event_id"]]))
+		commands.append(SQL.stmt("DELETE FROM meta WHERE key='c2_merge_guard'"))
+	commands.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('c2_merge_guard',(SELECT 'ok' WHERE (SELECT sum(quantity) FROM item_instances WHERE actor_id=? AND definition_id=?)=CAST(? AS INTEGER)))",[aid,src["definition_id"],totals[src["definition_id"]]]))
+	commands.append(SQL.stmt("DELETE FROM meta WHERE key='c2_merge_guard'"))
+	# The historical transfer stores both identities without foreign keys to
+	# current instances, so the retired source remains auditable.
+	commands.append(SQL.stmt("DELETE FROM item_instances WHERE id=? AND actor_id=?",[source_id,aid]))
+	commands.append(SQL.stmt("UPDATE item_instances SET quantity=CAST(? AS INTEGER) WHERE id=? AND actor_id=?",[combined,destination_id,aid]))
+	var rid = request["request_id"]
+	commands.append(SQL.stmt("INSERT INTO item_transfers(id,request_id,source_instance_id,destination_instance_id,definition_id,quantity,destination_actor_id,source_event_id) VALUES(?,?,?,?,?,?,?,"+EVENT+")",[make_id(),rid,source_id,destination_id,src["definition_id"],src_qty,aid,rid]))
+	action_seconds=0
+	return _commit(ctx,commands,{"source_instance_id":source_id,"destination_instance_id":destination_id,"definition_id":src["definition_id"],"merged_quantity":src_qty,"quantity":combined},"Compatible owned stacks consolidated.")
+
+
 # Display-only owned weapon profiles, never attack resolution.
 func refresh_owned_profiles(actor: Dictionary) -> void:
 	if not actor.has("master_character_id") or not actor.get("attacks") is Array:
