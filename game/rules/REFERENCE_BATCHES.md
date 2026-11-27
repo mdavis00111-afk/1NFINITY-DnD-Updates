@@ -1,0 +1,3 @@
+# Incremental reference batches
+
+Existing core catalogue: 1,968 entries. Batch 001: 18 NPCs and 8 monsters, core numerical facts only, extracted from the supplied 2014-edition references. Source page numbers are PDF page numbers. No commercial book text or art is included. The batch is automatically imported into a separate user SQLite cache, preserving the existing core database and saves. Actions, traits and spellcasting of these creatures are not yet implemented. Add future batch files to PACKS in batch_catalog.gd; use stable IDs and avoid duplicates. Windows runtime verification is pending.

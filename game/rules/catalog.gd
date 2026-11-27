@@ -1,6 +1,7 @@
 extends RefCounted
 ## Immutable, local, edition-specific reference catalogue. IDs are stable across screens.
 const SQL = preload("res://systems/sqlite.gd")
+const BATCH = preload("res://rules/batch_catalog.gd")
 const ROOT = "res://data/rules.db"
 const RULESET = "5e-2014-2018"
 const REVISION = "srd51-2018-r2"
@@ -39,6 +40,17 @@ func initialize() -> bool:
 			return false
 		cache[t].append(record)
 		indexes[t][str(row["id"])] = record
+	var batches = BATCH.new()
+	var extra = batches.rows()
+	if not batches.last_error.is_empty():
+		push_warning("Reference batches: "+batches.last_error)
+	for row in extra:
+		var category = str(row["category"])
+		var id = str(row["id"])
+		var record = JSON.parse_string(str(row["payload"]))
+		if cache.has(category) and record is Dictionary and not indexes[category].has(id):
+			cache[category].append(record)
+			indexes[category][id] = record
 	# Personal-use book text is separate from the distributable rules database.
 	var private_path = OS.get_executable_path().get_base_dir().path_join("reference/private_rules.db")
 	if FileAccess.file_exists(private_path):
@@ -47,8 +59,15 @@ func initialize() -> bool:
 			for row in local["results"][0]:
 				var record = JSON.parse_string(str(row["payload"]))
 				if record is Dictionary:
-					cache["monsters"].append(record)
-					indexes["monsters"][str(row["id"])] = record
+					var id = str(row["id"])
+					if indexes["monsters"].has(id):
+						for i in range(cache["monsters"].size()):
+							if str(cache["monsters"][i].get("index","")) == id:
+								cache["monsters"][i] = record
+								break
+					else:
+						cache["monsters"].append(record)
+					indexes["monsters"][id] = record
 	loaded = not cache["classes"].is_empty()
 	return loaded
 

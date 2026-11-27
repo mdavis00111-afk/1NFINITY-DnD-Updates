@@ -12,6 +12,12 @@ func _initialize() -> void:
 		push_error("Catalogue counts or spell lookup failed.")
 		quit(1)
 		return
+	var bandit = cat.get_record("monsters","bandit")
+	var wolf = cat.get_record("monsters","wolf")
+	if bandit.is_empty() or wolf.is_empty() or cat.rows("monsters").size() < 26:
+		push_error("Creature batch import or lookup failed.")
+		quit(1)
+		return
 	var path = "user://sqlite-smoke-"+Crypto.new().generate_random_bytes(8).hex_encode()+".db"
 	var result = SQL.run(path,[SQL.stmt("CREATE TABLE test(id TEXT PRIMARY KEY,value TEXT)"),SQL.stmt("INSERT INTO test VALUES(?,?)",["id","O'Brien — café"]),SQL.stmt("SELECT value FROM test WHERE id=?",["id"])])
 	var ok = result.get("ok",false)
