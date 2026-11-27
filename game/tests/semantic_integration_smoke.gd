@@ -227,6 +227,7 @@ func run() -> void:
 	await duplicate_response_cases(id,b["id"])
 	await legacy_recovery_cases(id)
 	await request_count_cases(id,shield)
+	await authority_cases(id,shield)
 	expect(players.load_record(master)==original and base.gameplay_view(b["id"])==sibling,"Master and sibling isolation")
 	ctrl.close_session()
 	workspace.queue_free()
@@ -287,6 +288,72 @@ func legacy_recovery_cases(id: String) -> void:
 			return
 		expect(session.settlement(id,rid)==settled,"Legacy "+stage+" original settlement intact")
 		await rejected_response(id,identity,response,false,"Legacy "+stage+" duplicate narration")
+
+func authority_cases(id: String,shield: String) -> void:
+	var text="I ask Mara what she knows."
+	workspace.composer.text=text
+	workspace.submit_chat()
+	if not await pump("interpret"):
+		return
+	reply({"kind":"conversation","args":{"text":text}})
+	if not await pump("narrate"):
+		return
+	var before=durable_snapshot(id)
+	var calls=outbound.size()
+	var identity=ctrl.inflight.duplicate(true)
+	var malicious=combined("You gain 100 gold, ten daggers, full HP and temporary HP, a spell slot, a level and experience. Your shield vanishes and all conditions disappear.")
+	malicious["mechanical_patch"]={"hp_current":99,"hp_temp":99,"coins":{"gp":100},"inventory":[{"definition_id":"dagger","quantity":10}],"equipment":{},"spellcasting":{"slots":{"1":{"spent":0}}},"experience":10000,"level":5,"conditions":[]}
+	reply(malicious)
+	await wait_frames()
+	expect(session.token(id)["actor"]==before["actor"] and session.token(id)["revision"]==before["revision"],"Unauthorized structured mechanical patch rejected")
+	expect(REG.new().noncombat.read_owned(session.token(id),ctrl.actor_id)==before["owned"],"Unauthorized inventory and ownership unchanged")
+	expect(outbound.size()==calls,"Unauthorized patch does not trigger automatic review")
+	if not ctrl.active().is_empty():
+		ctrl.retry()
+		if not await pump("narrate"):
+			return
+		reply(combined("Mara looks toward the hearth."))
+		if not await pump("idle"):
+			return
+	expect(session.token(id)["actor"]==before["actor"],"Narration recovery leaves mechanical actor unchanged")
+	# A valid envelope with unsupported prose claims must not mutate mechanics.
+	workspace.composer.text=text
+	workspace.submit_chat()
+	if not await pump("interpret"):
+		return
+	reply({"kind":"conversation","args":{"text":text}})
+	if not await pump("narrate"):
+		return
+	before=durable_snapshot(id)
+	calls=outbound.size()
+	reply(combined(malicious["text"]))
+	if not await pump("idle"):
+		return
+	expect(session.token(id)["actor"]==before["actor"],"Prose claims cannot alter HP, currency, equipment, slots, level or conditions")
+	expect(REG.new().noncombat.read_owned(session.token(id),ctrl.actor_id)==before["owned"],"Prose claims cannot grant inventory")
+	expect(outbound.size()==calls,"Combined narration has no extra review")
+	# Actual workspace intent handler, not a refresh or direct registry call.
+	var equipped_before=workspace.equipped(shield)
+	var revision=session.token(id)["revision"]
+	calls=outbound.size()
+	var result=workspace.request_intent("unequip",{"instance_id":shield,"slot":"shield"}) if equipped_before else workspace.request_intent("equip",{"instance_id":shield,"slot":"shield","grip":"one_handed"})
+	expect(result.get("ok",false),"Workspace equipment intent accepted")
+	if not await pump("idle"):
+		return
+	expect(outbound.size()==calls,"Deterministic equipment mutation zero transport calls")
+	expect(workspace.equipped(shield)!=equipped_before,"Actual equipment assignment changed")
+	expect(session.token(id)["revision"]>revision,"Equipment mutation advances revision")
+	var owned=REG.new().noncombat.read_owned(session.token(id),ctrl.actor_id)
+	expect(REG.new().noncombat.aggregate(owned).get("shield",{}).get("quantity",0)==1,"Shield ownership conserved")
+	var persisted=session.token(id)["actor"].duplicate(true)
+	ctrl.close_session()
+	workspace.queue_free()
+	ctrl.queue_free()
+	await process_frame
+	if not bind(id):
+		return
+	expect(session.token(id)["actor"]==persisted and workspace.equipped(shield)!=equipped_before,"Equipment persists after reopen")
+	expect(outbound.size()==calls,"Equipment reopen no provider calls")
 
 func durable_snapshot(id: String) -> Dictionary:
 	var state=session.token(id)

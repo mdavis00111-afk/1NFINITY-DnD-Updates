@@ -577,3 +577,7 @@ Active fixture submits incorrect request, campaign, attempt and revision identit
 
 ## v0.0.27 checkpoint 3b.3b.3 — legacy pending stage regression
 Active fixture persists critical/background/adjudicate markers on committed conversation turns, closes/rebinds, checks exact receipt/revision/actor, narration-only dispatch and duplicate response rejection. Adjudication fixture expects safe stop then explicit retry. Valid persisted candidate reconciliation and unsettled authorization fixtures remain outstanding; native execution may expose recovery defects, especially adjudication retry. Source anchors checked; native/mock and live tests unexecuted. Manifest unchanged.
+
+
+## v0.0.27 checkpoint 3b.3b.4 — mechanical authority and GUI regression
+Active fixture tests malformed combined mechanical patch and valid envelope with unauthorized prose claims; asserts actor/inventory/revision preservation and no automatic provider review. Workspace request_intent equipment toggle asserts zero calls, changed assignment, ownership, revision and reopen persistence. Prose correctness is not established by state integrity. Release blockers: native execution of all regressions, valid persisted candidate local reconciliation, unsettled legacy authorization rejection, descriptive world persistence and exact discovery binding. No release. Handover required before 3b.3c.
