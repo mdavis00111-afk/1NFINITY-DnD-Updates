@@ -61,7 +61,7 @@ var icon_rects: Dictionary = {}
 
 func configure(snapshot: Dictionary, metadata: Dictionary, on_leave: Callable, on_settings: Callable, on_retry: Callable, is_pending: bool, error: String = "") -> void:
 	view = snapshot
-	campaign = metadata
+	campaign = view.get("campaign",metadata)
 	actor = view.get("actor",{})
 	items = view.get("inventory",[])
 	leave_action = on_leave

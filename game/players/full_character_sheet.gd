@@ -46,6 +46,8 @@ func number(value: Variant, signed: bool = false) -> String:
 	if value == null:
 		return "—"
 	if value is int or value is float:
+		if campaign_view and float(value)!=floor(float(value)):
+			return ("+" if signed and float(value)>=0 else "")+str(value)
 		return "%+d" % int(value) if signed else str(int(value))
 	return str(value)
 

@@ -11,7 +11,14 @@ static func nonnegative_integer(value: Variant) -> bool:
 	return numeric(value) and float(value)>=0 and floor(float(value))==float(value)
 
 static func weight_number(value: Variant) -> String:
-	return String.num(float(value),3) if numeric(value) else "—"
+	if not numeric(value):
+		return "—"
+	var result = String.num(float(value),3)
+	if result.contains("."):
+		while result.ends_with("0"):
+			result = result.trim_suffix("0")
+		result = result.trim_suffix(".")
+	return result
 
 static func unit_weight(cat, id: String, ancestors: Array = []) -> Variant:
 	if id.is_empty() or id in ancestors or ancestors.size()>=16:
@@ -74,7 +81,7 @@ static func racial_spell_text(actor: Dictionary) -> String:
 		return "Racial casting ability not recorded"
 	var modifier = actor.get("ability_modifiers",{}).get(ability)
 	var proficiency = actor.get("proficiency_bonus")
-	if not numeric(modifier) or not nonnegative_integer(proficiency):
+	if not numeric(modifier) or floor(float(modifier))!=float(modifier) or not nonnegative_integer(proficiency):
 		return "Racial casting ("+ability.to_upper()+") — DC/attack not recorded"
 	var attack = int(modifier)+int(proficiency)
 	return "Racial casting ("+ability.to_upper()+") · Save DC "+str(8+attack)+" · Attack "+("%+d" % attack)
@@ -119,6 +126,12 @@ static func project_inventory(cat, actor: Dictionary, items: Array) -> void:
 		if not valid_id.is_empty() and not valid_id in weapons:
 			weapons.append(valid_id)
 	gear["weapon_ids"] = weapons
+	var displayed_slots: Array = weapons.duplicate()
+	displayed_slots.append(gear["armor_id"])
+	displayed_slots.append(gear["shield_id"])
+	for item in items:
+		if item.get("equipped")==true and not str(item.get("item_id","")) in displayed_slots:
+			warnings.append("Equipped item has no supported stored slot: "+str(item["item_id"]))
 	actor["equipment"] = gear
 	actor["inventory"] = items
 	var attacks: Array = []

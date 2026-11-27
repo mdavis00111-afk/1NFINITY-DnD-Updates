@@ -21,6 +21,15 @@ func settle() -> void:
 func inside(control: Control, bounds: Rect2, context: String) -> void:
 	expect(is_instance_valid(control) and control.get_global_rect().has_area() and bounds.grow(2).encloses(control.get_global_rect()),context+" is clipped or absent")
 
+func has_text(node: Node, fragment: String) -> bool:
+	if node is Label or node is Button or node is RichTextLabel:
+		if str(node.get("text")).contains(fragment):
+			return true
+	for child in node.get_children():
+		if has_text(child,fragment):
+			return true
+	return false
+
 func run() -> void:
 	var expected = OS.get_environment("INFINITY_TEST_USER_ROOT").replace("\\","/").trim_suffix("/")
 	var actual = ProjectSettings.globalize_path("user://").replace("\\","/").trim_suffix("/")
@@ -64,6 +73,8 @@ func run() -> void:
 	var racial_fixture = {"spellcasting":{"racial_cantrip_ids":["fire-bolt"],"racial_casting_ability":"int","save_dc":12},"ability_modifiers":{"int":3},"proficiency_bonus":2}
 	expect(DISPLAY.racial_spell_text(racial_fixture).contains("Save DC 13") and DISPLAY.racial_spell_text(racial_fixture).contains("Attack +5"),"Racial spell ability incorrectly shares class DC")
 	var original = snapshot.duplicate(true)
+	var raw_actor = store.actor_record(id)
+	expect(raw_actor.get("carried_weight_lb")==6,"Read projection unexpectedly rewrote cached actor load")
 	for sides in DICE.SIDES:
 		for count in [1,20]:
 			var roll = DICE.roll(sides,count)
@@ -88,6 +99,8 @@ func run() -> void:
 		for control in [ui.nav_bar,ui.left_panel,ui.center_panel,ui.right_panel,ui.composer,ui.send_button,ui.dice_type,ui.dice_count,ui.dice_result,ui.log_scroll]:
 			inside(control,bounds,str(resolution))
 		expect(not ui.composer.editable and ui.send_button.disabled,"Future action input unexpectedly active")
+		for caption in ["4 / 7","30 ft.","Weight: 18.38 / 150 lb","17 gp","2 sp","Passive Perception","Proficiency"]:
+			expect(has_text(ui,caption),"Missing displayed campaign value: "+caption)
 		var columns_width = ui.left_panel.size.x+ui.center_panel.size.x+ui.right_panel.size.x
 		expect(columns_width>0 and absf(ui.left_panel.size.x/columns_width-27.0/99.0)<0.05 and absf(ui.center_panel.size.x/columns_width-43.0/99.0)<0.05 and absf(ui.right_panel.size.x/columns_width-29.0/99.0)<0.05,"Column proportions differ from reference")
 		expect(ui.inventory_cells.has("backpack") and ui.inventory_cells.has("shortsword"),"Normalized inventory cells missing")
@@ -104,6 +117,10 @@ func run() -> void:
 			ui.show_tab(tab)
 			await settle()
 			expect(ui.current_tab==tab and ui.right_content.get_child_count()>0,"Right panel switch failed")
+			if tab=="Spells":
+				expect(has_text(ui.right_content,"Class Save DC 13") and has_text(ui.right_content,"Attack +5") and has_text(ui.right_content,"Level 1 slots: 1 / 2"),"Spell statistics not displayed from actor")
+			elif tab=="Skills":
+				expect(has_text(ui.right_content,"◆ Arcana   +5"),"Stored skill modifier or proficiency missing")
 		ui.navigate("Settings")
 		ui.navigate("Campaign")
 		expect(called==["settings","leave"],"Navigation callbacks failed")
@@ -111,6 +128,7 @@ func run() -> void:
 		base.queue_free()
 		await settle()
 	expect(store.gameplay_view(id)==original,"Read-only workspace changed campaign state")
+	expect(store.actor_record(id)==raw_actor,"Read-only workspace changed underlying actor payload")
 	expect(players.load_record(master_id)==master,"Workspace modified master")
 	finish()
 
