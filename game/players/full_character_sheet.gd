@@ -25,7 +25,7 @@ func _ready() -> void:
 	if parsed is Dictionary:
 		icon_rects = parsed
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	add_theme_constant_override("separation",9)
+	add_theme_constant_override("separation",maxi(1,roundi(9 * 0.55)))
 	display()
 
 func number(value: Variant, signed: bool = false) -> String:
@@ -40,13 +40,13 @@ func frame_style(lit: bool = false, margin: int = 8) -> StyleBoxTexture:
 	s.texture = ACTIVE if lit else FRAME
 	for edge in [SIDE_LEFT,SIDE_RIGHT,SIDE_TOP,SIDE_BOTTOM]:
 		s.set_texture_margin(edge,22)
-		s.set_content_margin(edge,margin)
+		s.set_content_margin(edge,maxi(2,roundi(margin * 0.5)))
 	return s
 
 func label_text(t: String, px: int = 19, color: Color = IVORY, wrap: bool = false) -> Label:
 	var l = Label.new()
 	l.text = t
-	l.add_theme_font_size_override("font_size",px)
+	l.add_theme_font_size_override("font_size",maxi(11,roundi(px * 0.64)))
 	l.add_theme_color_override("font_color",color)
 	if wrap:
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -60,13 +60,13 @@ func centered(t: String, px: int = 19, color: Color = IVORY) -> Label:
 
 func row(parent: Container, gap: int = 8) -> HBoxContainer:
 	var h = HBoxContainer.new()
-	h.add_theme_constant_override("separation",gap)
+	h.add_theme_constant_override("separation",maxi(1,roundi(gap * 0.55)))
 	parent.add_child(h)
 	return h
 
 func column(parent: Container, ratio: float = 1.0) -> VBoxContainer:
 	var v = VBoxContainer.new()
-	v.add_theme_constant_override("separation",4)
+	v.add_theme_constant_override("separation",maxi(1,roundi(4 * 0.55)))
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	v.size_flags_stretch_ratio = ratio
 	parent.add_child(v)
@@ -81,14 +81,14 @@ func icon(id: String, px: int = 25) -> TextureRect:
 	t.texture = atlas
 	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	t.custom_minimum_size = Vector2(px,px)
+	t.custom_minimum_size = Vector2(maxi(10,roundi(px * 0.65)),maxi(10,roundi(px * 0.65)))
 	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return t
 
 func rule(parent: Container) -> void:
 	var line = ColorRect.new()
 	line.color = Color(0.77,0.57,0.24,0.48)
-	line.custom_minimum_size.y = 1
+	line.custom_minimum_size.y = maxi(1,roundi(1 * 0.58))
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(line)
 
@@ -97,7 +97,7 @@ func ornament(parent: Container) -> void:
 	t.texture = FLOURISH
 	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	t.custom_minimum_size.y = 8
+	t.custom_minimum_size.y = maxi(1,roundi(8 * 0.58))
 	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(t)
 
@@ -120,8 +120,8 @@ func ref_button(parent: Container, table: String, id: String, caption: String = 
 	b.text = caption if not caption.is_empty() else cat.title(table,id)
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	b.custom_minimum_size.y = 25
-	b.add_theme_font_size_override("font_size",px)
+	b.custom_minimum_size.y = maxi(1,roundi(25 * 0.58))
+	b.add_theme_font_size_override("font_size",maxi(11,roundi(px * 0.64)))
 	b.add_theme_color_override("font_color",IVORY)
 	b.add_theme_color_override("font_hover_color",GOLD)
 	b.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -138,7 +138,7 @@ func text_ref(parent: Container, title_text: String, detail: String) -> Button:
 	b.text = title_text
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	b.add_theme_font_size_override("font_size",18)
+	b.add_theme_font_size_override("font_size",maxi(11,roundi(18 * 0.64)))
 	b.add_theme_color_override("font_color",IVORY)
 	b.tooltip_text = detail
 	b.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -153,7 +153,7 @@ func field(key: String, default_value: Variant = "") -> Variant:
 
 func portrait(parent: Container) -> void:
 	var v = VBoxContainer.new()
-	v.custom_minimum_size = Vector2(166,266)
+	v.custom_minimum_size = Vector2(110,176)
 	parent.add_child(v)
 	var t = TextureRect.new()
 	t.texture = PORTRAIT
@@ -210,7 +210,7 @@ func identity() -> void:
 	align.add_child(label_text("Alignment",17,GOLD))
 	align.add_child(label_text(str(field("alignment","—")),21,IVORY,true))
 	var level_box = panel(top,"",0.25,"star",true)
-	level_box.get_parent().custom_minimum_size.x = 92
+	level_box.get_parent().custom_minimum_size.x = 60
 	level_box.add_child(centered("Level",19,GOLD))
 	level_box.add_child(centered(number(data.get("level")),40))
 	var subclass = str(field("subclass_id"))
@@ -231,7 +231,7 @@ func identity() -> void:
 	bar.max_value = next_xp if level<20 else XP_THRESHOLDS[19]+1
 	bar.value = xp if level<20 else XP_THRESHOLDS[19]+1
 	bar.show_percentage = false
-	bar.custom_minimum_size.y = 12
+	bar.custom_minimum_size.y = maxi(1,roundi(12 * 0.58))
 	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var bg = StyleBoxFlat.new()
 	bg.bg_color = Color("#08111e")
@@ -262,13 +262,13 @@ func ability_section() -> void:
 		var id = ABILITIES[i]
 		var r = row(abilities,4)
 		var b = ref_button(r,"ability-scores",id,id.to_upper()+"  "+ABILITY_NAMES[i],18)
-		b.custom_minimum_size.x = 112
+		b.custom_minimum_size.x = 78
 		var score = label_text(number(scores.get(id)),23,GOLD)
-		score.custom_minimum_size.x = 29
+		score.custom_minimum_size.x = 22
 		score.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		r.add_child(score)
 		var mod_label = label_text(number(modifiers.get(id),true),20)
-		mod_label.custom_minimum_size.x = 35
+		mod_label.custom_minimum_size.x = 25
 		mod_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		r.add_child(mod_label)
 		rule(abilities)
@@ -297,8 +297,8 @@ func attack_section(parent: Container) -> void:
 	var p = panel(parent,"Attacks",1.0,"initiative")
 	var grid = GridContainer.new()
 	grid.columns = 4
-	grid.add_theme_constant_override("h_separation",8)
-	grid.add_theme_constant_override("v_separation",4)
+	grid.add_theme_constant_override("h_separation",maxi(1,roundi(8 * 0.55)))
+	grid.add_theme_constant_override("v_separation",maxi(1,roundi(4 * 0.55)))
 	p.add_child(grid)
 	for title_text in ["Attack","To Hit","Damage","Type"]:
 		grid.add_child(label_text(title_text,16,GOLD))
@@ -372,7 +372,7 @@ func spell_section(parent: Container) -> void:
 		var caption = {"cantrip_ids":"Cantrips","racial_cantrip_ids":"Racial Cantrips","known_ids":"Spellbook" if data.get("class_id")=="wizard" else "Known Spells","prepared_ids":"Prepared Spells","always_prepared_ids":"Always Prepared"}.get(key,key)
 		p.add_child(label_text(str(caption)+"  ("+str(ids.size())+")",19,GOLD))
 		var group = HFlowContainer.new()
-		group.add_theme_constant_override("h_separation",7)
+		group.add_theme_constant_override("h_separation",maxi(1,roundi(7 * 0.55)))
 		p.add_child(group)
 		for id in ids:
 			var b = ref_button(group,"spells",str(id),"",17)

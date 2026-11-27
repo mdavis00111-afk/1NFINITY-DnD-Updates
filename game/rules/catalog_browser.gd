@@ -1,4 +1,5 @@
 extends Control
+const SQL=preload("res://systems/sqlite.gd")
 const CAT=preload("res://rules/catalog.gd")
 const ASSETS=preload("res://systems/asset_library.gd")
 const FRAME=preload("res://themes/parts/panel_gold.png")
@@ -48,7 +49,7 @@ func build_layout() -> void:
 	var top=HBoxContainer.new()
 	root.add_child(top)
 	table=OptionButton.new()
-	for id in CAT.TABLES + ["token-art","sheet-templates"]:
+	for id in CAT.TABLES + ["token-art","sheet-templates","book-pages"]:
 		table.add_item(id.replace("-"," ").capitalize())
 		table.set_item_metadata(table.item_count-1,id)
 	top.add_child(table)
@@ -88,7 +89,14 @@ func build_layout() -> void:
 	detail.add_theme_font_size_override("font_size",19)
 	right.add_child(detail)
 	table.item_selected.connect(func(_i: int): refresh())
-	search.text_changed.connect(func(_s: String): refresh())
+	search.text_changed.connect(func(_s: String):
+		if str(table.get_item_metadata(table.selected)) != "book-pages":
+			refresh())
+	search.text_submitted.connect(func(_s: String): refresh())
+	var find_button = Button.new()
+	find_button.text = "Search"
+	find_button.pressed.connect(refresh)
+	top.add_child(find_button)
 	results.item_selected.connect(select_entry)
 	var exit=Button.new()
 	exit.text="Exit"
@@ -105,6 +113,11 @@ func refresh() -> void:
 	preview.texture=null
 	open_sheet.hide()
 	selected_sheet=""
+	if id == "book-pages":
+		search.placeholder_text = "Search local books; press Enter"
+		search_books(q)
+		return
+	search.placeholder_text = "Search by name"
 	var is_asset = id in ["token-art","sheet-templates"]
 	var rows_to_show = assets.rows(id) if is_asset else cat.rows(id)
 	for rec in rows_to_show:
@@ -124,7 +137,9 @@ func select_entry(i: int) -> void:
 	selected_sheet=""
 	var category = str(table.get_item_metadata(table.selected))
 	var rec: Dictionary = filtered[i]
-	if category == "token-art":
+	if category == "book-pages":
+		detail.text = str(rec["title"])+" | PDF page "+str(int(rec["pdf_page"]))+"\n\n"+str(rec["body"])
+	elif category == "token-art":
 		preview.texture=assets.texture_for_token(rec)
 		preview.visible=preview.texture != null
 		detail.text=str(rec["name"])+"\n\n"+str(rec["category"])+" • "+str(rec["width"])+" × "+str(rec["height"])+"\n\n"+("Linked to creature: "+str(rec["creature_id"]) if rec["link_status"]=="exact-name" else "Artwork only. No matching original-edition creature reference is currently installed.")
@@ -149,3 +164,25 @@ func open_selected_sheet() -> void:
 	if not path.is_empty() and FileAccess.file_exists(path):
 		OS.shell_open(path)
 
+
+func search_books(q: String) -> void:
+	var db_path = OS.get_executable_path().get_base_dir().path_join("reference/private_rules.db")
+	if not FileAccess.file_exists(db_path):
+		detail.text = "Install the local reference database at reference/private_rules.db next to the Godot executable."
+		return
+	if q.is_empty():
+		detail.text = "Enter a word or phrase and press Enter to search the installed rulebooks."
+		return
+	var query = "SELECT d.title,p.pdf_page,p.body FROM reference_pages p JOIN reference_documents d ON p.document_id=d.id WHERE instr(lower(p.body),lower(?))>0 ORDER BY d.title,p.pdf_page LIMIT 100"
+	var response = SQL.run(db_path,[SQL.stmt(query,[q])],true)
+	if not response.get("ok",false):
+		detail.text = "Book index unavailable: "+str(response.get("error","unknown error"))
+		return
+	var sets: Array = response.get("results",[])
+	if sets.is_empty():
+		detail.text = "No results."
+		return
+	for rec in sets[0]:
+		filtered.append(rec)
+		results.add_item(str(rec["title"])+" | page "+str(int(rec["pdf_page"])))
+	detail.text = str(filtered.size())+" matching pages (maximum 100). Select a page to read it."

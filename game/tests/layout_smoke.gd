@@ -68,7 +68,7 @@ func run() -> void:
 	manager.select_record(0)
 	await settle()
 	var sheet = manager.body.get_child(1)
-	expect(sheet.size.x >= 1000,"Full sheet width collapsed")
+	expect(sheet.size.x >= 760,"Full sheet width collapsed")
 	expect(sheet.get_child_count() >= 5,"Sheet sections missing")
 	expect(sheet.number(14.0)=="14" and sheet.number(-1.0,true)=="-1" and sheet.number(1.0,true)=="+1","Integer display regression")
 	base.remove_child(manager)

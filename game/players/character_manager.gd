@@ -31,13 +31,13 @@ func style(lit: bool = false) -> StyleBoxTexture:
 	s.texture = ACTIVE if lit else FRAME
 	for edge in [SIDE_LEFT,SIDE_RIGHT,SIDE_TOP,SIDE_BOTTOM]:
 		s.set_texture_margin(edge,22)
-		s.set_content_margin(edge,10)
+		s.set_content_margin(edge,maxi(2,roundi(10 * 0.5)))
 	return s
 
 func label_text(t: String,n: int = 21) -> Label:
 	var l = Label.new()
 	l.text = t
-	l.add_theme_font_size_override("font_size",n)
+	l.add_theme_font_size_override("font_size",maxi(11,roundi(n * 0.64)))
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return l
@@ -45,8 +45,8 @@ func label_text(t: String,n: int = 21) -> Label:
 func button(parent: Container,t: String,cb: Callable) -> Button:
 	var b = Button.new()
 	b.text = t
-	b.custom_minimum_size.y = 36
-	b.add_theme_font_size_override("font_size",19)
+	b.custom_minimum_size.y = 30
+	b.add_theme_font_size_override("font_size",maxi(11,roundi(19 * 0.64)))
 	b.add_theme_stylebox_override("normal",style())
 	b.add_theme_stylebox_override("hover",style(true))
 	b.add_theme_stylebox_override("pressed",style(true))
@@ -57,6 +57,9 @@ func button(parent: Container,t: String,cb: Callable) -> Button:
 	return b
 
 func _ready() -> void:
+	var compact_theme = load("res://themes/master_theme.tres").duplicate() as Theme
+	compact_theme.default_font_size = 15
+	theme = compact_theme
 	build_layout.call_deferred()
 
 func build_layout() -> void:
@@ -64,18 +67,18 @@ func build_layout() -> void:
 	add_child(margin)
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for edge in ["left","right","top","bottom"]:
-		margin.add_theme_constant_override("margin_"+edge,18)
+		margin.add_theme_constant_override("margin_"+edge,9)
 	var root = VBoxContainer.new()
-	root.add_theme_constant_override("separation",7)
+	root.add_theme_constant_override("separation",maxi(1,roundi(7 * 0.55)))
 	margin.add_child(root)
 	var toolbar = HBoxContainer.new()
-	toolbar.add_theme_constant_override("separation",6)
+	toolbar.add_theme_constant_override("separation",maxi(1,roundi(6 * 0.55)))
 	root.add_child(toolbar)
 	list = OptionButton.new()
-	list.custom_minimum_size = Vector2(205,36)
+	list.custom_minimum_size = Vector2(205,30)
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	list.fit_to_longest_item = false
-	list.add_theme_font_size_override("font_size",20)
+	list.add_theme_font_size_override("font_size",maxi(11,roundi(20 * 0.64)))
 	list.add_theme_stylebox_override("normal",style())
 	list.add_theme_stylebox_override("hover",style(true))
 	list.item_selected.connect(select_record)
@@ -95,8 +98,9 @@ func build_layout() -> void:
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	root.add_child(scroll)
 	body = VBoxContainer.new()
-	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body.add_theme_constant_override("separation",8)
+	body.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	body.custom_minimum_size.x = 780
+	body.add_theme_constant_override("separation",maxi(1,roundi(8 * 0.55)))
 	scroll.add_child(body)
 	popup = AcceptDialog.new()
 	popup.title = "Reference"
@@ -107,7 +111,7 @@ func build_layout() -> void:
 	info.editable = false
 	info.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
 	info.custom_minimum_size = Vector2(510,340)
-	info.add_theme_font_size_override("font_size",20)
+	info.add_theme_font_size_override("font_size",maxi(11,roundi(20 * 0.64)))
 	info.add_theme_color_override("font_readonly_color",Color("#fff0cf"))
 	popup.add_child(info)
 	refresh()
@@ -156,7 +160,7 @@ func select_record(i: int) -> void:
 	logo.texture = TITLE
 	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	logo.custom_minimum_size.y = 116
+	logo.custom_minimum_size.y = maxi(1,roundi(116 * 0.58))
 	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.add_child(logo)
 	var sheet = SHEET.new()

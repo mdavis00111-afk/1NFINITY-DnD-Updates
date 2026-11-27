@@ -39,6 +39,9 @@ func configure(is_quick: bool, on_exit: Callable, on_finish: Callable, saved: Di
 	draft.merge(saved.get("draft",{}),true)
 
 func _ready() -> void:
+	var compact_theme = load("res://themes/master_theme.tres").duplicate() as Theme
+	compact_theme.default_font_size = 15
+	theme = compact_theme
 	if draft.is_empty():
 		draft = rules.fresh()
 	gemini = GEMINI.new()
@@ -51,13 +54,13 @@ func frame_style(active: bool = false, margin: int = 9) -> StyleBoxTexture:
 	s.texture = ACTIVE if active else FRAME
 	for side in [SIDE_LEFT,SIDE_RIGHT,SIDE_TOP,SIDE_BOTTOM]:
 		s.set_texture_margin(side,22)
-		s.set_content_margin(side,margin)
+		s.set_content_margin(side,maxi(2,roundi(margin * 0.5)))
 	return s
 
 func heading(value: String, size_px: int = 22, color: Color = GOLD) -> Label:
 	var l = Label.new()
 	l.text = value
-	l.add_theme_font_size_override("font_size",size_px)
+	l.add_theme_font_size_override("font_size",maxi(11,roundi(size_px * 0.64)))
 	l.add_theme_color_override("font_color",color)
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -77,7 +80,7 @@ func icon(key: String, size_px: int = 22) -> TextureRect:
 	view.texture = atlas
 	view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	view.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	view.custom_minimum_size = Vector2(size_px,size_px)
+	view.custom_minimum_size = Vector2(maxi(10,roundi(size_px * 0.65)),maxi(10,roundi(size_px * 0.65)))
 	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return view
 
@@ -86,15 +89,15 @@ func flourish(parent: Container) -> void:
 	t.texture = FLOURISH
 	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	t.custom_minimum_size.y = 10
+	t.custom_minimum_size.y = maxi(1,roundi(10 * 0.58))
 	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(t)
 
 func action(parent: Container, caption: String, callback: Callable, highlight: bool = false, font_size: int = 21) -> Button:
 	var b = Button.new()
 	b.text = caption
-	b.custom_minimum_size = Vector2(74,32)
-	b.add_theme_font_size_override("font_size",font_size)
+	b.custom_minimum_size = Vector2(54,23)
+	b.add_theme_font_size_override("font_size",maxi(11,roundi(font_size * 0.64)))
 	b.add_theme_stylebox_override("normal",frame_style(highlight,6))
 	b.add_theme_stylebox_override("hover",frame_style(true,6))
 	b.add_theme_stylebox_override("pressed",frame_style(true,6))
@@ -110,13 +113,13 @@ func action(parent: Container, caption: String, callback: Callable, highlight: b
 
 func row(parent: Container, gap: int = 6) -> HBoxContainer:
 	var h = HBoxContainer.new()
-	h.add_theme_constant_override("separation",gap)
+	h.add_theme_constant_override("separation",maxi(1,roundi(gap * 0.55)))
 	parent.add_child(h)
 	return h
 
 func column(parent: Container, gap: int = 5) -> VBoxContainer:
 	var v = VBoxContainer.new()
-	v.add_theme_constant_override("separation",gap)
+	v.add_theme_constant_override("separation",maxi(1,roundi(gap * 0.55)))
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	parent.add_child(v)
 	return v
@@ -128,7 +131,7 @@ func framed(parent: Container, caption: String = "", ratio: float = 1.0, icon_id
 	p.add_theme_stylebox_override("panel",frame_style(false,10))
 	parent.add_child(p)
 	var v = VBoxContainer.new()
-	v.add_theme_constant_override("separation",5)
+	v.add_theme_constant_override("separation",maxi(1,roundi(5 * 0.55)))
 	p.add_child(v)
 	if not caption.is_empty():
 		var h = row(v)
@@ -149,7 +152,7 @@ func render(preserve_scroll: bool = false) -> void:
 	add_child(body)
 	body.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left","right","top","bottom"]:
-		body.add_theme_constant_override("margin_"+side,16)
+		body.add_theme_constant_override("margin_"+side,8)
 	var root = column(body,6)
 	root.add_child(centered("Character Creator   ◆   "+str(step)+" / 4",38))
 	flourish(root)
@@ -166,7 +169,7 @@ func render(preserve_scroll: bool = false) -> void:
 	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	center.size_flags_stretch_ratio = 3.0
-	center.custom_minimum_size.x = 520
+	center.custom_minimum_size.x = 460
 	columns.add_child(center)
 	scroll = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -175,7 +178,7 @@ func render(preserve_scroll: bool = false) -> void:
 	center.add_child(scroll)
 	form = VBoxContainer.new()
 	form.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	form.add_theme_constant_override("separation",6)
+	form.add_theme_constant_override("separation",maxi(1,roundi(6 * 0.55)))
 	scroll.add_child(form)
 	var side = framed(columns,"Reference",1.0,"wand")
 	side.get_parent().custom_minimum_size.x = 245
@@ -185,7 +188,7 @@ func render(preserve_scroll: bool = false) -> void:
 	reference.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
 	reference.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	reference.custom_minimum_size.x = 220
-	reference.add_theme_font_size_override("font_size",20)
+	reference.add_theme_font_size_override("font_size",maxi(11,roundi(20 * 0.64)))
 	reference.add_theme_color_override("font_readonly_color",IVORY)
 	reference.add_theme_color_override("font_color",IVORY)
 	reference.add_theme_stylebox_override("normal",StyleBoxEmpty.new())
@@ -202,7 +205,7 @@ func render(preserve_scroll: bool = false) -> void:
 			3: features()
 			4: loadout()
 	note = heading("",18,IVORY)
-	note.custom_minimum_size.y = 24
+	note.custom_minimum_size.y = maxi(1,roundi(24 * 0.58))
 	root.add_child(note)
 	var nav = row(root,10)
 	nav.alignment = BoxContainer.ALIGNMENT_END
@@ -282,10 +285,10 @@ func text_field(parent: Container, key: String, placeholder: String, multi: bool
 		edit.placeholder_text = placeholder
 		edit.text = str(draft.get(key,""))
 		edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
-		edit.custom_minimum_size.y = height
+		edit.custom_minimum_size.y = maxi(1,roundi(height * 0.58))
 		edit.add_theme_stylebox_override("normal",frame_style(false,7))
 		edit.add_theme_stylebox_override("focus",frame_style(true,7))
-		edit.add_theme_font_size_override("font_size",20)
+		edit.add_theme_font_size_override("font_size",maxi(11,roundi(20 * 0.64)))
 		edit.text_changed.connect(func(): draft[key]=edit.text)
 		parent.add_child(edit)
 		return edit
@@ -293,7 +296,7 @@ func text_field(parent: Container, key: String, placeholder: String, multi: bool
 	edit.placeholder_text = placeholder
 	edit.text = str(draft.get(key,""))
 	edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	edit.custom_minimum_size.y = height
+	edit.custom_minimum_size.y = maxi(1,roundi(height * 0.58))
 	edit.add_theme_stylebox_override("normal",frame_style(false,6))
 	edit.add_theme_stylebox_override("focus",frame_style(true,6))
 	edit.text_changed.connect(func(v: String): draft[key]=v)
@@ -321,7 +324,7 @@ func choose_popup(caption: String, options: Array, callback: Callable) -> void:
 	win.add_child(m)
 	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left","right","top","bottom"]:
-		m.add_theme_constant_override("margin_"+side,10)
+		m.add_theme_constant_override("margin_"+side,5)
 	var shell = framed(m)
 	var search = LineEdit.new()
 	search.placeholder_text = "Search…"
@@ -600,7 +603,7 @@ func reference_link(parent: Container,table: String,id: String,caption: String="
 	b.text = caption if not caption.is_empty() else rules.cat.title(table,id)
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	b.add_theme_font_size_override("font_size",18)
+	b.add_theme_font_size_override("font_size",maxi(11,roundi(18 * 0.64)))
 	b.add_theme_color_override("font_color",IVORY)
 	b.tooltip_text=rules.cat.summary(table,id)
 	b.pressed.connect(func(): show_detail(rules.cat.describe(table,id)))
