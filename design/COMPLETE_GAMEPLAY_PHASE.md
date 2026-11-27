@@ -21,3 +21,6 @@ Use design/tools/run_native_qa.py at exact source SHA, byte audit, native import
 
 ## C1 handoff
 Source checkpoint complete; see design/C1_UI_CONTRACT.md and design/C1_CONTROL_CHECKLIST.md for exact interfaces, all control statuses and C2/C3 dependencies. Production composer/travel and gameplay mutations unbound; mock callbacks only in isolated regression fixtures. Two vintage files replaced and removed from candidate tree. C2 remains WAITING for lead approval; no publish.
+
+## 2026-11-28 baseline reconciliation
+This phase queue is historical; C2–C6 source was subsequently integrated into godot, v0.0.25 and v0.0.26 diagnostic alphas published by lead. Do not restart the old feature branch or use its WAITING labels as current status. Renewed C2 authorization completed scoped missing-ownership migration correction and local-only compatible stack merge on current godot (49ac4ff, 4d9b399). See current root NEXT_CHAT.md, Brain, Handoff and Testing for actual native acceptance gates and live v0.0.27 work; no intermediate publication.
