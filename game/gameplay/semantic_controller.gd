@@ -18,8 +18,8 @@ func bind_ai(id: String,context_reviewer: Callable=Callable(),prose_reviewer: Ca
 		return failure("Explicit development AI binding required.")
 	policy.controller=self
 	independent.controller=self
-	policy.contextual=context_reviewer
-	policy.prose=prose_reviewer
+	if context_reviewer.is_valid() or prose_reviewer.is_valid():
+		return failure("C5b binds its actual policy; fixture approval callbacks are not accepted.")
 	adapter=ADAPTER.new()
 	add_child(adapter)
 	if not adapter.attach(self,transport_factory):
@@ -66,6 +66,7 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	if job.has("pending_consequence") and stage=="narrate":
 		expanded["pending_for_narrator"]={"proposal":job["pending_consequence"]["proposal"],"status":"pending, not committed"}
 	if stage=="critical":
+		expanded.erase("correction") # independent review sees actual text/outcome, not prior correction rationale
 		expanded["candidate_hash"]=job["candidate"]["text"].sha256_text()
 		expanded["candidate_length"]=job["candidate"]["text"].length()
 		expanded["independent_review"]=job.has("first_review")
@@ -702,3 +703,30 @@ func advance() -> void:
 		ask("adjudicate",job,{"request":req,"original":policy.intent_text(req,job,state),"scene":context["scene"],"rules":refs,"ruling_shape":policy.rule_shape(req),"source":source,"proposed_consequence":job.get("pending_consequence",{}),"committed_narration":policy.source_text(registry.session.source(state,job.get("narration_event_id")))})
 		return
 	super.advance()
+
+func retry() -> Dictionary:
+	if closed or running or notifying or not reload() or active().is_empty():
+		return failure("No recoverable request.")
+	var job=active().duplicate(true)
+	retire_attempt()
+	job["attempt"]={}
+	if job.get("stage")=="critical_blocked":
+		for key in ["geography","story","candidate","critical_verified","critical_claims","first_review","second_review"]:
+			job.erase(key)
+		job["correction_count"]=0
+	# Recover a durable request first, not a new interpretation. Context
+	# assessment can be refreshed only before an uncommitted write.
+	if job.get("stage")=="adjudicate" or job.has("review_request"):
+		job["stage"]="adjudicate"
+	elif job.get("narration_event_id")!=null:
+		job["stage"]="post_story"
+	elif not job.get("geography",{}).is_empty() and job.get("critical_verified",false):
+		job["stage"]="reconcile"
+	elif not job.get("tool",{}).is_empty():
+		job["stage"]="execute"
+	else:
+		job["stage"]="new"
+	if not update_active(job):
+		return failure("Retry persistence unconfirmed.")
+	advance.call_deferred()
+	return {"ok":true}

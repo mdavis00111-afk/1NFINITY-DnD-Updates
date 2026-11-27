@@ -1,6 +1,6 @@
 extends SceneTree
 ## C5 actual controller, registry, SQLite and prompt workflow. Only transport
-## and explicitly scoped independent contextual/prose review are fixtures.
+## is mocked. Actual C5b semantic review/context policy runs locally.
 const BASE=preload("res://campaigns/campaign_store.gd")
 const PLAYER=preload("res://players/character_store.gd")
 const CAT=preload("res://rules/catalog.gd")
@@ -10,10 +10,18 @@ const CTRL=preload("res://gameplay/semantic_controller.gd")
 const WORKSPACE=preload("res://gameplay/game_workspace.gd")
 const PACK=preload("res://turns/agent_packets.gd")
 const RECON=preload("res://world/geography_reconciler.gd")
+const GENERATOR=preload("res://persistence/actor_generation.gd")
+const REG=preload("res://gameplay/tool_registry.gd")
 const NARRATOR=preload("res://campaigns/narrator_prompt.gd")
 const SHARE=preload("res://campaigns/prompt_sharing.gd")
-const PROSE="The shield settles against your arm. A carved amber tally lies on the counter."
-const TALK="The innkeeper mentions a bridge."
+const PROSE="The shield settles against your arm. Mara laughs. \"That suits you,\" she says, polishing a cup. An abandoned carved amber tally lies on the counter, free to take. Mara offers two gold pieces for your help."
+const TALK="Mara leans forward, her voice dropping. \"The bridge? A mason named Orrin built it.\" She stares into the hearth, as though remembering an old argument."
+const ACCEPT="I accept the two gold pieces Mara offers."
+const PROPOSED="Mara places two gold pieces into your hand."
+const PENDING="Mara holds out two gold pieces. \"For your trouble,\" she says."
+const TRANSFERRED="Mara smiles as the two gold pieces pass to you. \"A debt paid,\" she says."
+const DECLINE="I decline her offer."
+const DECLINED="Mara nods. \"Fair enough.\" She puts her purse away."
 const INPUT="I lift that shield onto my arm."
 var base=BASE.new()
 var session=SESSION.new()
@@ -67,28 +75,10 @@ func money(gp: int) -> Dictionary:
 func factory() -> Node:
 	return MockTransport.new()
 
-func contextual(req: Dictionary,_scope: Dictionary,_intent: Dictionary,state: Dictionary) -> Dictionary:
-	var accepted=false
-	if req["kind"] in ["define_custom","loot_discover"]:
-		var source=session.source(state,req["args"]["source_event_id"])
-		accepted=source.get("kind")=="narration" and source.get("data",{}).get("text")==PROSE
-		if req["kind"]=="define_custom":
-			accepted=accepted and req["args"]["definition"]["name"]=="Carved amber tally"
-		else:
-			accepted=accepted and req["args"]["location_id"]==state["location_id"] and req["args"]["items"].size()==1 and req["args"]["items"][0]["quantity"]==1
-	return {"request_id":req["request_id"],"campaign_id":req["campaign_id"],"actor_id":req["actor_id"],"expected_revision":req["expected_revision"],"accepted":accepted,"ruling":{},"reason":"Specific disposable source/effect review only."}
-
-func prose(candidate: Dictionary,claims: Array,outcome: Dictionary,_scene: Dictionary) -> bool:
-	if claims.is_empty():
-		return false
-	if candidate["text"]==PROSE:
-		return outcome.get("kind")=="standalone_settlement" and outcome.get("action")=="equip" and outcome.get("result",{}).get("armor_class")==14
-	return candidate["text"]==TALK and PACK.committed_receipt_usable(outcome) and outcome["rolls"].is_empty()
-
 func bind(id: String) -> bool:
 	ctrl=CTRL.new()
 	root.add_child(ctrl)
-	if not expect(ctrl.bind_ai(id,contextual,prose,factory).get("ok",false),"Explicit C5 binding failed"):
+	if not expect(ctrl.bind_ai(id,Callable(),Callable(),factory).get("ok",false),"Explicit C5 binding failed"):
 		return false
 	workspace=WORKSPACE.new()
 	if not expect(ctrl.mount_workspace(workspace,Callable(),Callable()).get("ok",false),"Actual workspace mount"):
@@ -107,6 +97,29 @@ func pump(stage: String,after_serial: int=-1) -> bool:
 
 func reply(value: Variant) -> void:
 	ctrl.adapter.transport.reply(value)
+
+func claim(kind: String,evidence: String,proposal: Variant=null,refs: Array=[]) -> Dictionary:
+	return {"kind":kind,"evidence":evidence,"proposal":proposal,"refs":refs}
+
+func report(text: String,claims: Array) -> Dictionary:
+	return {"candidate_hash":text.sha256_text(),"coverage":[{"start":0,"end":text.length()}],"claims":claims}
+
+func review_twice(text: String,claims: Array) -> bool:
+	if not await pump("critical"):
+		return false
+	var serial=ctrl.adapter.serial
+	reply(report(text,claims))
+	if not await pump("critical",serial):
+		return false
+	expect(ctrl.view["interaction_extension"]["reviewed_preview"].is_empty(),"First pass never confirms prose")
+	reply(report(text,claims))
+	return await pump("background")
+
+func assess(original: String,source_id: Variant=null,evidence: String="",ruling: Dictionary={}) -> void:
+	var sources: Array=[]
+	if source_id!=null:
+		sources.append({"event_id":source_id,"evidence":evidence})
+	reply({"disposition":"supported","intent_evidence":original,"context":sources,"ruling":ruling,"reason":"Fixture semantic assessment; local policy and registered tools remain authoritative."})
 
 func geography() -> Dictionary:
 	var identity=PACK.identity(session.token(ctrl.campaign_id),ctrl.active()["turn_id"],ctrl.inflight["attempt_id"])
@@ -177,6 +190,18 @@ func run() -> void:
 	if not expect(base.commit_opening(id,opening["previous"],raw).is_empty(),"Opening"):
 		finish()
 		return
+	var local=base.gameplay_view(id)["interaction_extension"]["public_actors"]
+	if not expect(local.size()==1,"Disclosed local NPC"):
+		finish()
+		return
+	var mara=local[0]["actor_id"]
+	var opening_event=int(local[0]["source_event_id"])
+	var state=session.token(id)
+	var npc_args={"generation_key":session.make_id(),"template_ids":["commoner"],"existing_actor_id":mara,"kind":"npc","name":"Mara","occupation":"Innkeeper","location_id":state["location_id"],"visibility":"player","sheet_visibility":"private","source_event_id":opening_event,"possessions":[{"definition_id":"dagger","quantity":2,"equipped_slot":null,"grip":null}],"coins":money(3),"attitude":null}
+	var npc_req={"schema_version":"2","campaign_id":id,"actor_id":state["actor_id"],"expected_revision":state["revision"],"request_id":session.make_id(),"kind":"actor_generate","args":npc_args}
+	if not expect(GENERATOR.new().generate(id,npc_req,true).get("ok",false),"Canonical disposable NPC upgrade"):
+		finish()
+		return
 	if not bind(id):
 		finish()
 		return
@@ -213,6 +238,10 @@ func run() -> void:
 		return
 	expect(ctrl.adapter.transport.prompt.contains("independent_pass"),"Second independent interpretation")
 	reply(equip)
+	if not await pump("adjudicate"):
+		finish()
+		return
+	assess(INPUT)
 	if not await pump("narrate"):
 		finish()
 		return
@@ -222,17 +251,18 @@ func run() -> void:
 	if not await pump("critical"):
 		finish()
 		return
-	reply({"claims":[{"kind":"required_effect","evidence":"You gain ten gold.","proposal":{"kind":"currency_transfer","args":{}}}]})
+	var omitted=ctrl.adapter.serial
+	reply(report("You gain ten gold.",[claim("description","You gain ten gold.")]))
+	if not await pump("critical",omitted):
+		finish()
+		return
+	reply(report("You gain ten gold.",[claim("contradiction","You gain ten gold.")]))
 	if not await pump("narrate"):
 		finish()
 		return
 	expect(workspace.actor["coins"]["gp"]==5,"Invented grant blocked before display")
 	reply(PROSE)
-	if not await pump("critical"):
-		finish()
-		return
-	reply({"claims":[{"kind":"receipt_claim","evidence":"The shield settles against your arm.","proposal":null},{"kind":"description","evidence":"A carved amber tally lies on the counter.","proposal":null}]})
-	if not await pump("background"):
+	if not await review_twice(PROSE,[claim("description","The shield settles against your arm."),claim("dialogue","That suits you",null,[mara]),claim("description","An abandoned carved amber tally lies on the counter, free to take."),claim("offer","Mara offers two gold pieces for your help.",null,[mara])]):
 		finish()
 		return
 	expect(ctrl.view["interaction_extension"]["reviewed_preview"]==PROSE,"Early standalone preview")
@@ -250,8 +280,18 @@ func run() -> void:
 		return
 	expect(not ctrl.receive(old,{}).get("ok",false),"Late prior-session output rejected")
 	var definition={"name":"Carved amber tally","category":"gear","description":"A carved amber tally.","unit_weight_lb":0.1,"cost_cp":1,"properties":[],"charges_max":null,"attunement_required":false}
-	var discovered=[{"kind":"define_custom","evidence":"A carved amber tally lies on the counter.","args":{"definition":definition,"official_equivalent_id":null}},{"kind":"loot_discover","evidence":"A carved amber tally lies on the counter.","args":{"location_id":session.token(id)["location_id"],"name":"Counter discovery","items":[{"definition_id":"@0","quantity":1,"charges":null,"condition":"intact","attunement":"not_required"}],"coins":money(0)}}]
+	var discovered=[{"kind":"define_custom","evidence":"An abandoned carved amber tally lies on the counter, free to take.","args":{"definition":definition,"official_equivalent_id":null}},{"kind":"loot_discover","evidence":"An abandoned carved amber tally lies on the counter, free to take.","args":{"location_id":session.token(id)["location_id"],"name":"Counter discovery","items":[{"definition_id":"@0","quantity":1,"charges":null,"condition":"intact","attunement":"not_required"}],"coins":money(0)}}]
 	reply({"geography":geography(),"story":[],"discoveries":discovered})
+	if not await pump("adjudicate"):
+		finish()
+		return
+	var source_id=ctrl.active()["narration_event_id"]
+	var pass_serial=ctrl.adapter.serial
+	assess("An abandoned carved amber tally lies on the counter, free to take.",source_id,"An abandoned carved amber tally lies on the counter, free to take.")
+	if not await pump("adjudicate",pass_serial):
+		finish()
+		return
+	assess("An abandoned carved amber tally lies on the counter, free to take.",source_id,"An abandoned carved amber tally lies on the counter, free to take.")
 	if not await pump("interpret"):
 		finish()
 		return
@@ -266,11 +306,7 @@ func run() -> void:
 		finish()
 		return
 	reply(TALK)
-	if not await pump("critical"):
-		finish()
-		return
-	reply({"claims":[{"kind":"description","evidence":TALK,"proposal":null}]})
-	if not await pump("background"):
+	if not await review_twice(TALK,[claim("dialogue","The bridge? A mason named Orrin built it."),claim("npc_action","She stares into the hearth, as though remembering an old argument.",null,[mara])]):
 		finish()
 		return
 	reply({"geography":geography(),"story":[],"discoveries":[]})
@@ -285,11 +321,7 @@ func run() -> void:
 	var sub_id=ctrl.active()["tool"]["request_id"]
 	expect(sub_id!=root_id,"Distinct durable subrequest")
 	reply(TALK)
-	if not await pump("critical"):
-		finish()
-		return
-	reply({"claims":[{"kind":"description","evidence":TALK,"proposal":null}]})
-	if not await pump("background"):
+	if not await review_twice(TALK,[claim("dialogue","The bridge? A mason named Orrin built it."),claim("npc_action","She stares into the hearth, as though remembering an old argument.",null,[mara])]):
 		finish()
 		return
 	reply({"geography":geography(),"story":[],"discoveries":[]})
@@ -297,6 +329,96 @@ func run() -> void:
 		finish()
 		return
 	expect(session.settlement(id,sub_id).get("status")=="committed","Dependent action committed once")
+	# Real DM-originated accepted transfer. Prior offer had no inventory effect.
+	expect(workspace.actor["coins"]["gp"]==5,"Offer/discovery never transferred currency")
+	workspace.composer.text=ACCEPT
+	workspace.submit_chat()
+	if not await pump("interpret"):
+		finish()
+		return
+	var transfer_root=ctrl.inflight["request_id"]
+	reply({"kind":"conversation","args":{"text":ACCEPT}})
+	if not await pump("narrate"):
+		finish()
+		return
+	reply(PROPOSED)
+	if not await pump("critical"):
+		finish()
+		return
+	var proposal={"kind":"currency_transfer","args":{"from_actor_id":mara,"to_actor_id":ctrl.actor_id,"coins":money(2)},"consent":ACCEPT}
+	var required=[claim("required_effect",PROPOSED,proposal,[mara,ctrl.actor_id])]
+	var first_serial=ctrl.adapter.serial
+	reply(report(PROPOSED,required))
+	if not await pump("critical",first_serial):
+		finish()
+		return
+	reply(report(PROPOSED,required))
+	if not await pump("narrate"):
+		finish()
+		return
+	expect(workspace.actor["coins"]["gp"]==5 and ctrl.view["interaction_extension"]["reviewed_preview"].is_empty(),"New completed claim hidden before settlement")
+	reply(PENDING)
+	if not await review_twice(PENDING,[claim("offer","Mara holds out two gold pieces.",null,[mara]),claim("dialogue","For your trouble",null,[mara])]):
+		finish()
+		return
+	reply({"geography":geography(),"story":[],"discoveries":[]})
+	if not await pump("adjudicate"):
+		finish()
+		return
+	var continuation_id=ctrl.active()["consequence_request"]["request_id"]
+	var pending_event=ctrl.active()["narration_event_id"]
+	var old_review=ctrl.inflight.duplicate(true)
+	expect(session.settlement(id,transfer_root).get("status")=="committed" and workspace.actor["coins"]["gp"]==5,"Original turn settled before transfer")
+	ctrl.close_session()
+	workspace.queue_free()
+	ctrl.queue_free()
+	await process_frame
+	if not bind(id) or not await pump("adjudicate"):
+		finish()
+		return
+	expect(ctrl.active()["consequence_request"]["request_id"]==continuation_id and not ctrl.receive(old_review,{}).get("ok",false),"Continuation ID and stale review on reopen")
+	assess(ACCEPT,pending_event,"Mara holds out two gold pieces.")
+	if not await pump("narrate"):
+		finish()
+		return
+	expect(workspace.actor["coins"]["gp"]==7 and session.settlement(id,continuation_id).get("status")=="committed","Actual C3 transfer settles once")
+	var npc_pack=REG.new().noncombat.read_owned(session.token(id),mara)
+	expect(npc_pack.get("ok",false) and npc_pack["actor"]["coins"]["gp"]==1,"Sender debited exact quantity")
+	ctrl.close_session()
+	workspace.queue_free()
+	ctrl.queue_free()
+	await process_frame
+	if not bind(id) or not await pump("narrate"):
+		finish()
+		return
+	expect(workspace.actor["coins"]["gp"]==7 and ctrl.active()["tool"]["request_id"]==continuation_id,"Committed transfer not replayed on reopen")
+	reply(TRANSFERRED)
+	if not await review_twice(TRANSFERRED,[claim("receipt_claim","two gold pieces",{"path":["result","coins","gp"],"value":2},[mara,ctrl.actor_id]),claim("dialogue","A debt paid",null,[mara])]):
+		finish()
+		return
+	reply({"geography":geography(),"story":[],"discoveries":[]})
+	if not await pump("idle"):
+		finish()
+		return
+	expect(RECON.new().standalone_event(id,continuation_id).get("found",false),"Verified continuation narration persisted")
+	workspace.composer.text=DECLINE
+	workspace.submit_chat()
+	if not await pump("interpret"):
+		finish()
+		return
+	reply({"kind":"conversation","args":{"text":DECLINE}})
+	if not await pump("narrate"):
+		finish()
+		return
+	reply(DECLINED)
+	if not await review_twice(DECLINED,[claim("dialogue","Fair enough",null,[mara]),claim("npc_action","She puts her purse away.",null,[mara])]):
+		finish()
+		return
+	reply({"geography":geography(),"story":[],"discoveries":[]})
+	if not await pump("idle"):
+		finish()
+		return
+	expect(workspace.actor["coins"]["gp"]==7,"Decline produces no extra transfer")
 	expect(players.load_record(master)==original and base.gameplay_view(b["id"])==sibling,"Master and sibling isolation")
 	expect(not ctrl.adapter.metrics.is_empty(),"Mock call timing instrumentation")
 	expect(not ctrl.timing_samples.is_empty(),"Controller context timing instrumentation")

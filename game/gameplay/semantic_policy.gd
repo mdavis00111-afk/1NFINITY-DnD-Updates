@@ -12,9 +12,6 @@ const ROUTINE=["conversation","observe"]
 const DIRECT_SAFE=["equip","quick_equip","swap","unequip","reconcile_legacy_slots"]
 const DESCRIPTIVE=["define_official","define_custom","actor_generate","loot_discover","story_update"]
 var controller: Node
-# Legacy arguments kept for development harness compatibility, not authority.
-var contextual: Callable
-var prose: Callable
 
 func source_text(source: Dictionary) -> String:
 	var data=source.get("data",{})
