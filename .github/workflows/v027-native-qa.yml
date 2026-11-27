@@ -53,6 +53,18 @@ jobs:
         run: |
           python design/tools/run_native_qa.py --repo . --ref $env:GITHUB_SHA --godot $env:GODOT_EXE --logs (Join-Path $env:RUNNER_TEMP 'native-qa-logs')
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Print native suite report and failure diagnostics
+        if: always()
+        shell: pwsh
+        run: |
+          $logs = Join-Path $env:RUNNER_TEMP 'native-qa-logs'
+          if (Test-Path "$logs/report.json") { Get-Content "$logs/report.json" }
+          if (Test-Path $logs) {
+            Get-ChildItem $logs -File -Filter '*.log' | ForEach-Object {
+              $errors = Select-String -Path $_.FullName -Pattern 'SCRIPT ERROR:|ERROR:|FAIL|TIMEOUT'
+              if ($errors) { Write-Output $_.Name; $errors | Select-Object -First 25 | ForEach-Object { Write-Output $_.Line } }
+            }
+          }
       - name: Preserve native evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

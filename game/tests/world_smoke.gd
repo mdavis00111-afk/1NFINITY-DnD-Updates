@@ -125,9 +125,9 @@ func run() -> void:
 	expect(RAW.roll_valid(natural_one,"ability_check","normal",6,5),"Natural 1 incorrectly forces check failure")
 	var natural_twenty = {"roll_id":players.make_id(),"kind":"saving_throw","sides":20,"mode":"normal","values":[20],"selected":20,"modifier":0,"total":20,"target":25,"result":"failure"}
 	expect(RAW.roll_valid(natural_twenty,"saving_throw","normal",0,25),"Natural 20 incorrectly forces save success")
-	var forged = natural_one.duplicate(true)
-	forged["total"]=99
-	expect(not RAW.roll_valid(forged,"ability_check","normal",6,5),"Forged dice total accepted")
+	var forged_roll = natural_one.duplicate(true)
+	forged_roll["total"]=99
+	expect(not RAW.roll_valid(forged_roll,"ability_check","normal",6,5),"Forged dice total accepted")
 	var advantage_roll = RAW.roll_receipt("ability_check","advantage",2,15)
 	expect(RAW.roll_valid(advantage_roll,"ability_check","advantage",2,15) and advantage_roll["values"].size()==2,"Advantage receipt invalid")
 	expect(RAW.time_after({"kind":"time","seconds":60,"establish_clock":false},{"elapsed_seconds":null})==null and RAW.time_after({"kind":"time","seconds":null,"establish_clock":false},{"elapsed_seconds":60})==null and not RAW.time_valid({"kind":"time","seconds":60,"establish_clock":true},{"elapsed_seconds":60}),"Unknown or established clock silently reset")

@@ -351,7 +351,7 @@ func run() -> void:
 				expect(repaired.get("ok",false) and repaired.get("migrated",false),"C2 migration could not resume after explicit fixture repair")
 				if repaired.get("ok",false):
 					var once = base.gameplay_view(missing_id)
-					var repeated = MIGRATION.new().ensure(missing_id)
-					expect(repeated.get("ok",false) and not repeated.get("migrated",true) and base.gameplay_view(missing_id)==once,"Repeat migration changed stable repaired state")
+					var repeated_migration = MIGRATION.new().ensure(missing_id)
+					expect(repeated_migration.get("ok",false) and not repeated_migration.get("migrated",true) and base.gameplay_view(missing_id)==once,"Repeat migration changed stable repaired state")
 	expect(base.gameplay_view(b["id"])==sibling and players.load_record(master_id)==original_master,"Missing ownership fixture affected sibling/master")
 	finish()

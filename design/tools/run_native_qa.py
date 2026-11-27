@@ -146,12 +146,13 @@ def isolate(project, label, env, command, logs):
     roots = re.findall(r'(?m)^QA_USER_ROOT=(.+)$', output)
     if len(roots) != 1:
         raise RuntimeError('User directory probe ambiguous')
-    root = Path(roots[0].strip()).resolve()
+    probed_root = roots[0].strip().replace('\\', '/').rstrip('/')
+    root = Path(probed_root).resolve()
     if root.name != name or (root.exists() and (not root.is_dir() or any(root.iterdir()))):
         raise RuntimeError('User directory is not a fresh isolated directory: ' + str(root))
     root.mkdir(parents=True, exist_ok=True)
     probe.unlink()
-    return original, root, {**env, 'INFINITY_TEST_USER_ROOT': root.as_posix()}
+    return original, root, {**env, 'INFINITY_TEST_USER_ROOT': probed_root}
 
 
 def run(args):
