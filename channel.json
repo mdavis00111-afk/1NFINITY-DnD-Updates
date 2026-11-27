@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.21",
-  "source_commit": "871746df1760f7b5b502688e6b327141682be1e2",
-  "notes": "Windows playtest: reconstructed four-stage character creator, searchable choices, and a zoomable portrait character sheet. Windows visual fidelity, production SQLite integration, upgrade, and rollback await playtest results.",
+  "version": "0.0.22",
+  "source_commit": "439b807088d887e06ab22da24f97f7ba16db8bab",
+  "notes": "Windows playtest: fixed 70% sheet and left portrait roster, bottom actions, lighter creator surfaces and centered fields, default portrait, pre-roll cards, compact dropdowns, six AI personal details. Godot dice unchanged. Runtime import and Windows playtest verification pending; updater safeguards retained.",
   "files": [
     {
       "path": "main.tscn",
@@ -270,19 +270,19 @@
     },
     {
       "path": "players/character_creator.gd",
-      "blob": "84302a2773f37f4b1486940a271fab9a4d945489"
+      "blob": "0cde698905c42f5a45989e505ef56932dc98076c"
     },
     {
       "path": "players/character_manager.gd",
-      "blob": "ec8422460b9397f17c37fccce12312d30e4e7bef"
+      "blob": "8a3fe026862278d55f849ca0df3155c05ed92dd6"
     },
     {
       "path": "players/full_character_sheet.gd",
-      "blob": "dae00fe8e4c12240bf6a722d3474574f21dfc2db"
+      "blob": "707e7b966c4cc48bfba231c5af56c30983917425"
     },
     {
       "path": "project.godot",
-      "blob": "da8c593e5b5bfac420b86f1c0079158d02f1857c"
+      "blob": "735d124c0d952a415043b33182ea00e718bf703f"
     },
     {
       "path": "rules/catalog.gd",
@@ -306,11 +306,11 @@
     },
     {
       "path": "tests/layout_smoke.gd",
-      "blob": "04c959fdb722ba0e2279b306c1a24a530b04264e"
+      "blob": "42ad82afd292e4ef2b8ec0a7c0d029919adcd2c3"
     },
     {
       "path": "version.txt",
-      "blob": "236c7ad084dd691086e1bdb315d136290d2a3355"
+      "blob": "818944f5b824c9d85b70605f0649e7c68485fd40"
     },
     {
       "path": "rules/PRIVATE_REFERENCE_POLICY.md",
@@ -327,6 +327,10 @@
     {
       "path": "rules/REFERENCE_BATCHES.md",
       "blob": "7179d64500a279a78d818466687958bd82be3620"
+    },
+    {
+      "path": "players/portrait_art.gd",
+      "blob": "7933cf7093e828e78de0e17c25750cf94aebda5a"
     }
   ]
 }
