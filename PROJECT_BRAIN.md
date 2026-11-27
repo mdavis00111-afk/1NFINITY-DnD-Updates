@@ -167,3 +167,6 @@ Owner provided legacy content_control.py and prompts.py. Port three audience pro
 
 ## ChatGPT-only specialist handoff
 Owner explicitly declined Codex. Sequential Project chats use design/V023_TASKS.md and shared feature branch; 00 coordinates and owner opens each specialist. 04 first, no overlapping writers. No release authorization.
+
+## V023 task 04 — Gemini audience and Narrator helpers (unpublished)
+Implemented three built-in maturity profiles and local editable guidance, retaining legacy valid records and unrelated settings. Stable canonical IDs family/standard/mature; Standard default; strict resolve for creation, safe Standard fallback for unknown narration IDs; legacy custom IDs retained but not offered for new campaigns, Standard audience floor for legacy. No provider safety override. New narrator_prompt.gd exposes editable default, seed/reset/save/load and build(maturity_id, context, response_schema); mandatory authority and audience baseline are independent of editable text. No API calls or gameplay wiring. Task 01 must wire UI and explicit adult confirmation; task 03 may use builder only with validated engine context and proposals. New isolated ai_profile_smoke.gd authored, not executed (no native Godot/Godot4/Wine in Linux container). No release/version/manifest change.
