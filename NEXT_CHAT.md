@@ -1,2 +1,2 @@
 # Next session
-Checkpoint 2 committed unpublished. Continue checkpoint 3: remove mandatory independent reviews, preserve local evidence validation and recovery. Then recap/context, performance, integration and publication. Native tests outstanding. Follow 50-message handover protocol.
+Checkpoint 3a: direct combined interpretation/narration path committed, unpublished. Finish 3b contextual fallback and legacy recovery, validate candidate/receipt hashing and deferred discovery behavior, update tests, then checkpoints 4–6. Native/provider tests outstanding. Live 0.0.26. Single developer, 50-message handover.

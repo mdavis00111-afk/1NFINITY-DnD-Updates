@@ -77,7 +77,7 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 		expanded["intent"]=job["intent"]
 		expanded["next_step_hint"]=job.get("remaining",[]).front() if not job.get("remaining",[]).is_empty() else null
 		expanded["completed_steps"]=job.get("completed_steps",[])
-		expanded["independent_pass"]=job.has("input_candidate")
+		expanded["independent_pass"]=false
 		var shapes={}
 		for kind in REG.TOOLS:
 			var args={}
@@ -129,26 +129,6 @@ func receive_interpretation(identity: Dictionary,result: Dictionary,selected: Ar
 		if step["kind"] in DISCOVERY+["story_update","party_membership","reconcile_legacy_slots"]:
 			stop("clarification","World proposal needs an established source and independent review.")
 			return failure(status)
-	var pending=job.get("input_candidate",{})
-	# A fresh, independent interpretation sees the original words and actual
-	# read-only context, not the first proposed action or an approval flag.
-	if job["intent"]["kind"]=="chat" and not steps[0]["kind"] in ["conversation","observe"]:
-		if pending.is_empty():
-			job["input_candidate"]={"steps":steps.duplicate(true),"revision":data["state"]["revision"]}
-			job["selected_context"]=selected.slice(0,8) if JSON.stringify(selected).length()<=32000 else []
-			job["attempt"]={}
-			inflight={}
-			if not update_active(job):
-				return failure("Interpretation persistence unconfirmed.")
-			advance.call_deferred()
-			return {"ok":true}
-		if pending["revision"]!=data["state"]["revision"] or steps[0]!=pending["steps"][0]:
-			stop("clarification","Independent interpretations disagree. Clarify the intended action; no effect committed.")
-			return failure(status)
-		steps=pending["steps"]
-	elif not pending.is_empty():
-		stop("clarification","Independent interpretations disagree. No effect committed.")
-		return failure(status)
 	var remaining=job.get("remaining",[])
 	if not remaining.is_empty():
 		if steps.size()!=1 or steps[0]["kind"]!=remaining[0]["kind"]:
@@ -169,7 +149,7 @@ func receive_interpretation(identity: Dictionary,result: Dictionary,selected: Ar
 				stop("clarification","Repeated dependent action requires explicit new intent.")
 				return failure(status)
 	job["remaining"]=remaining
-	if not pending.is_empty():
+	if job["intent"]["kind"]=="chat":
 		job["input_evidence"]={"request":req.duplicate(true),"original":job["intent"]["args"]["text"],"revision":data["state"]["revision"]}
 	job.erase("input_candidate")
 	job["tool"]=req
@@ -256,10 +236,29 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 		if not DTO.exact_keys(result,["text","geography","story","discoveries"]) or not DTO.bounded_text(result["text"],12000) or not context.get("ok",false) or not PACK.valid_geography(result["geography"],PACK.identity(data["state"],job["turn_id"],identity["attempt_id"]),result["text"],context["ids"]) or not valid_story(result["story"],result["text"]) or not valid_discoveries(result["discoveries"],result["text"]):
 			stop("retry","Combined narration/world proposal failed validation.")
 			return failure(status)
-		job["combined_world"]={"geography":result["geography"],"story":result["story"],"discoveries":result["discoveries"]}
+		var verified=outcome(job)
+		if verified.is_empty():
+			stop("retry","Verified outcome unavailable.")
+			return failure(status)
+		job["candidate"]=PACK.identity(data["state"],job["turn_id"],identity["attempt_id"])
+		job["candidate"]["text"]=result["text"]
+		job["geography"]=result["geography"].duplicate(true)
+		job["story"]=result["story"].duplicate(true)
+		job["discoveries"]=result["discoveries"].duplicate(true)
+		job["story_index"]=0
+		job["discovery_index"]=0
+		job["definition_refs"]={}
+		job["local_candidate_hash"]=result["text"].sha256_text()
+		job["local_outcome_hash"]=JSON.stringify(verified).sha256_text()
+		job["critical_verified"]=true
+		job["stage"]="reconcile"
+		job["attempt"]={}
+		inflight={}
 		if not update_active(job):
-			return failure("Combined world proposal persistence unconfirmed.")
-		return super.receive(identity,{"text":result["text"]})
+			return failure("Combined narration persistence unconfirmed.")
+		refresh()
+		advance.call_deferred()
+		return {"ok":true}
 	if stage=="adjudicate":
 		var review_req=job.get("review_request",{})
 		var checked=policy.validate_assessment(review_req,result,job,data["state"])
@@ -533,7 +532,7 @@ func preview_text(job: Dictionary,state: Dictionary) -> String:
 		text=str(job.get("candidate",{}).get("text",""))
 	if not text.is_empty() and not job.get("verified_only",false):
 		var hash_value=text.sha256_text()
-		if job.get("first_review",{}).get("candidate_hash")!=hash_value or job.get("second_review",{}).get("candidate_hash")!=hash_value:
+		if job.get("local_candidate_hash")!=hash_value and (job.get("first_review",{}).get("candidate_hash")!=hash_value or job.get("second_review",{}).get("candidate_hash")!=hash_value):
 			return ""
 	if not text.is_empty():
 		var rid=job.get("intent",{}).get("request_id","")
@@ -804,6 +803,8 @@ func reviewed_candidate(job: Dictionary,verified: Dictionary,scene: Dictionary) 
 	if job.get("verified_only",false):
 		var expected=str(verified.get("summary","")) if standalone(job) else RECON.new().receipt_line(verified)
 		return text==expected
+	if job.has("local_candidate_hash"):
+		return job["local_candidate_hash"]==text.sha256_text() and job.get("local_outcome_hash")==JSON.stringify(verified).sha256_text()
 	var ext=BASE.new().gameplay_view(campaign_id).get("interaction_extension",{})
 	if ext.get("revision")!=data["state"]["revision"]:
 		return false

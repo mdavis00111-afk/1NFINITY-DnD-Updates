@@ -545,3 +545,7 @@ The semantic adapter accepts an assessment alongside a typed action; the control
 
 ## v0.0.27 checkpoint 2
 Narration now requests JSON prose plus geography/story/discoveries using existing storyteller prompt and world schema. Controller validates evidence and identity before durable staging; existing review gates remain until checkpoint 3. No release. Native/provider tests not run; source anchors checked.
+
+
+## v0.0.27 checkpoint 3a — direct combined response path
+Removed independent interpretation loop for new actions. Combined narration stages validated geography/story/discoveries directly for reconciliation, binding candidate and verified outcome hashes. Legacy recovery/review paths and contextual fallback remain pending 3b. Local hashes establish identity, not semantic truth of arbitrary prose; mechanical state remains engine-owned. Source anchor checks only; native/provider tests not run. No publication.
