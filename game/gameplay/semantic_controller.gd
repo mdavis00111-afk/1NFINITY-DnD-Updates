@@ -78,6 +78,13 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 		expanded["next_step_hint"]=job.get("remaining",[]).front() if not job.get("remaining",[]).is_empty() else null
 		expanded["completed_steps"]=job.get("completed_steps",[])
 		expanded["independent_pass"]=job.has("input_candidate")
+		var shapes={}
+		for kind in REG.TOOLS:
+			var args={}
+			for key in REG.TOOLS[kind][0]:
+				args[key]=null
+			shapes[kind]=policy.rule_shape({"kind":kind,"args":args})
+		expanded["ruling_shapes"]=shapes
 	elif stage=="narrate":
 		var refs: Array=[]
 		for section in REG.TOOLS.get(job.get("tool",{}).get("kind",""),[{}, "", []])[2]:
@@ -101,7 +108,15 @@ func receive_interpretation(identity: Dictionary,result: Dictionary,selected: Ar
 	var job=active().duplicate(true)
 	if result.has("status"):
 		return super.receive(identity,result)
-	var steps=result.get("steps",[result])
+	var steps=result.get("steps",[result]).duplicate(true)
+	var assessment: Dictionary={}
+	if steps is Array and not steps.is_empty() and steps[0] is Dictionary:
+		var supplied=steps[0].get("assessment",{})
+		if supplied is Dictionary:
+			assessment=supplied.duplicate(true)
+		for step in steps:
+			if step is Dictionary:
+				step.erase("assessment")
 	if not steps is Array or steps.is_empty() or steps.size()>4:
 		stop("clarification","No supported ordered action.")
 		return failure(status)
@@ -158,6 +173,15 @@ func receive_interpretation(identity: Dictionary,result: Dictionary,selected: Ar
 		job["input_evidence"]={"request":req.duplicate(true),"original":job["intent"]["args"]["text"],"revision":data["state"]["revision"]}
 	job.erase("input_candidate")
 	job["tool"]=req
+	# Bind the combined interpretation/assessment to the exact local request.
+	# Existing independent interpretation remains until checkpoint 3.
+	if not assessment.is_empty():
+		var checked=policy.validate_assessment(req,assessment,job,data["state"])
+		if not checked.get("ok",false) and not policy.direct_safe(req,job,data["state"]):
+			stop("clarification",checked.get("error","Contextual assessment unavailable."))
+			return failure(status)
+		if checked.get("ok",false):
+			job["context_review"]={"request":req.duplicate(true),"revision":data["state"]["revision"],"attempt_id":identity["attempt_id"],"report":assessment}
 	var combined=job.get("selected_context",[])+selected
 	var distinct: Array=[]
 	for entry in combined:

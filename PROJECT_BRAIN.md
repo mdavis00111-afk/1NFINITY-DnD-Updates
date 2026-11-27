@@ -537,3 +537,7 @@ Release manifest generated from immutable source 76e869d31ce1aa2e73eded9e1999a52
 Preserve provider failure detail and stage, remove unnecessary additionalProperties schema keyword, normalize DM display blank lines. No mechanical validation removed. Native tests not executed. Missing response root cause, synchronous SQLite, full GUI redraw and original prompt parity remain unresolved; this is a diagnostic patch, not full repair.
 
 Manifest: 396 entries, five changed game files read back from immutable source 6d52ee378f5af5fd38297201ba16bae6a2957a13.
+
+
+## v0.0.27 development checkpoint 1 — combined interpretation and contextual assessment
+The semantic adapter accepts an assessment alongside a typed action; the controller validates it using the existing policy and binds it to the exact durable request/revision/attempt. Existing independent interpretation and legacy adjudication fallback remain pending checkpoint 3; ordered dependent steps still require fresh state. No release or version change. Source anchor checks only; native Godot and live provider tests not run. NEXT_CHAT.md created at root because it did not exist on godot.
