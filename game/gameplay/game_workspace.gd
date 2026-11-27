@@ -868,12 +868,8 @@ func show_quests() -> void:
 	popup_text("Quest Log","\n\n".join(lines) if not lines.is_empty() else "No committed quests yet. Quest mechanics are pending.")
 
 func show_map() -> void:
-	var lines: PackedStringArray = []
-	for location in view.get("locations",[]):
-		var text = str(location["name"])+" — "+str(location["kind"]).capitalize()
-		if location.get("x")!=null and location.get("y")!=null:
-			text += " ("+str(location["x"])+", "+str(location["y"])+")"
-		else:
-			text += " · coordinates not established"
-		lines.append(text)
-	popup_text("Known Locations","\n".join(lines) if not lines.is_empty() else "No committed locations. Map travel mechanics are pending.")
+	var popup = preload("res://cartography/map_window.gd").new()
+	popup.configure(str(campaign.get("id","")),str(campaign.get("title","Campaign")))
+	add_child(popup)
+	var extent = get_viewport().get_visible_rect().size
+	popup.popup_centered(Vector2i(maxf(800,extent.x-36),maxf(480,extent.y-36)))
