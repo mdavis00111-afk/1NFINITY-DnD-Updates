@@ -1,7 +1,12 @@
 extends Control
 const CAT=preload("res://rules/catalog.gd")
+const ASSETS=preload("res://systems/asset_library.gd")
 const FRAME=preload("res://themes/parts/panel_gold.png")
 var cat=CAT.new()
+var assets=ASSETS.new()
+var preview: TextureRect
+var open_sheet: Button
+var selected_sheet: String = ""
 var exit_action: Callable
 var table: OptionButton
 var search: LineEdit
@@ -43,7 +48,7 @@ func build_layout() -> void:
 	var top=HBoxContainer.new()
 	root.add_child(top)
 	table=OptionButton.new()
-	for id in CAT.TABLES:
+	for id in CAT.TABLES + ["token-art","sheet-templates"]:
 		table.add_item(id.replace("-"," ").capitalize())
 		table.set_item_metadata(table.item_count-1,id)
 	top.add_child(table)
@@ -59,19 +64,32 @@ func build_layout() -> void:
 	results.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 	results.size_flags_stretch_ratio=0.8
 	columns.add_child(results)
+	var right = VBoxContainer.new()
+	right.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+	right.size_flags_stretch_ratio=1.5
+	columns.add_child(right)
+	preview=TextureRect.new()
+	preview.custom_minimum_size=Vector2(150,160)
+	preview.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
+	preview.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	preview.hide()
+	right.add_child(preview)
+	open_sheet=Button.new()
+	open_sheet.text="Open original PDF"
+	open_sheet.hide()
+	open_sheet.pressed.connect(open_selected_sheet)
+	right.add_child(open_sheet)
 	detail=TextEdit.new()
 	detail.editable=false
 	detail.add_theme_color_override("font_readonly_color",Color("#fff0cf"))
 	detail.wrap_mode=TextEdit.LINE_WRAPPING_BOUNDARY
 	detail.size_flags_horizontal=Control.SIZE_EXPAND_FILL
-	detail.size_flags_stretch_ratio=1.5
+	detail.size_flags_vertical=Control.SIZE_EXPAND_FILL
 	detail.add_theme_font_size_override("font_size",19)
-	columns.add_child(detail)
+	right.add_child(detail)
 	table.item_selected.connect(func(_i: int): refresh())
 	search.text_changed.connect(func(_s: String): refresh())
-	results.item_selected.connect(func(i: int):
-		if i>=0 and i<filtered.size():
-			detail.text=cat.describe(str(table.get_item_metadata(table.selected)),str(filtered[i]["index"])))
+	results.item_selected.connect(select_entry)
 	var exit=Button.new()
 	exit.text="Exit"
 	exit.pressed.connect(func(): exit_action.call())
@@ -83,9 +101,51 @@ func refresh() -> void:
 	filtered=[]
 	var id=str(table.get_item_metadata(table.selected))
 	var q=search.text.strip_edges().to_lower()
-	for rec in cat.rows(id):
+	preview.hide()
+	preview.texture=null
+	open_sheet.hide()
+	selected_sheet=""
+	var is_asset = id in ["token-art","sheet-templates"]
+	var rows_to_show = assets.rows(id) if is_asset else cat.rows(id)
+	for rec in rows_to_show:
 		var name=str(rec.get("name",rec.get("index","")))
 		if q.is_empty() or name.to_lower().contains(q):
 			filtered.append(rec)
 			results.add_item(name)
-	detail.text=cat.last_error if not cat.last_error.is_empty() else str(filtered.size())+" entries. Select one for details."
+	var message = assets.error if is_asset else cat.last_error
+	detail.text=message if not message.is_empty() else str(filtered.size())+" entries. Select one for details."
+
+func select_entry(i: int) -> void:
+	if i<0 or i>=filtered.size():
+		return
+	preview.hide()
+	preview.texture=null
+	open_sheet.hide()
+	selected_sheet=""
+	var category = str(table.get_item_metadata(table.selected))
+	var rec: Dictionary = filtered[i]
+	if category == "token-art":
+		preview.texture=assets.texture_for_token(rec)
+		preview.visible=preview.texture != null
+		detail.text=str(rec["name"])+"\n\n"+str(rec["category"])+" • "+str(rec["width"])+" × "+str(rec["height"])+"\n\n"+("Linked to creature: "+str(rec["creature_id"]) if rec["link_status"]=="exact-name" else "Artwork only. No matching original-edition creature reference is currently installed.")
+	elif category == "sheet-templates":
+		selected_sheet=str(rec["id"])
+		open_sheet.show()
+		var fields = assets.template_fields(selected_sheet)
+		var lines: PackedStringArray = [str(rec["name"]),str(rec["pages"])+" pages • "+str(rec["widget_count"])+" form widgets",str(rec["role"]).capitalize(),""]
+		for field in fields:
+			var mapping = str(field.get("record_path","")) if field.get("record_path") != null else ""
+			lines.append("p. "+str(field["page"])+" · "+str(field["field_name"])+(" → "+mapping if not mapping.is_empty() else "")+" ["+str(field["mapping_status"])+"]")
+		detail.text="\n".join(lines)
+	else:
+		var id = str(rec["index"])
+		detail.text=cat.describe(category,id)
+		if category=="monsters":
+			preview.texture=assets.texture_for_creature(id)
+			preview.visible=preview.texture != null
+
+func open_selected_sheet() -> void:
+	var path = assets.template_path(selected_sheet)
+	if not path.is_empty() and FileAccess.file_exists(path):
+		OS.shell_open(path)
+

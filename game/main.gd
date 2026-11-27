@@ -4,7 +4,7 @@ const CHANNEL = "https://raw.githubusercontent.com/mdavis00111-afk/1NFINITY-DnD-
 const GOLD = Color("#f4ce7b")
 const MUTED = Color("#a8997e")
 const GEMINI = preload("res://systems/gemini.gd")
-const THEME = preload("res://themes/master_theme.tres")
+const THEME_PATH = "res://themes/master_theme.tres"
 const CONFIG_PATH = "user://settings.cfg"
 var version: String = ""
 var status: Label
@@ -48,7 +48,13 @@ const DETAILS = {
 }
 
 func _ready() -> void:
-	theme = THEME
+	# The project theme is loaded only at runtime, after editor asset import.
+	var imported_theme = ResourceLoader.load(THEME_PATH, "Theme") as Theme
+	if imported_theme == null or imported_theme.default_font == null:
+		push_error("Game theme or imported font unavailable. Run asset import again.")
+		get_tree().quit(1)
+		return
+	theme = imported_theme
 	version = FileAccess.get_file_as_string("res://version.txt").strip_edges()
 	config.load(CONFIG_PATH)
 	fullscreen = bool(config.get_value("display", "fullscreen", false))
@@ -113,7 +119,7 @@ func show_screen(name: String) -> void:
 	if name == "Main":
 		art = "castle"
 	elif name == "Settings" or name in NAV["Settings"]:
-		art = "arcane"
+		art = "hall" # Reuse approved artwork until dedicated Settings art is supplied.
 	elif name == "Player Manager" or name in NAV["Player Manager"] or name in ["Delete Players","Edit Character"]:
 		art = "hall"
 	elif name == "Campaign Manager" or name in NAV["Campaign Manager"]:
@@ -278,25 +284,64 @@ func api_screen(menu: VBoxContainer) -> void:
 	key.text = str(config.get_value("gemini", "api_key", ""))
 	menu.add_child(key)
 	var model = LineEdit.new()
-	model.placeholder_text = "Gemini model ID"
+	model.placeholder_text = "Model ID"
 	model.text = str(config.get_value("gemini", "model", GEMINI.DEFAULT_MODEL))
 	menu.add_child(model)
-	var note = make_label("", 19)
+	var choices = OptionButton.new()
+	choices.fit_to_longest_item = false
+	choices.add_item("Discover available models…")
+	choices.disabled = true
+	menu.add_child(choices)
+	var note = make_label("Discover models, choose one, then test and save.", 18)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var client = GEMINI.new()
 	screen.add_child(client)
+	var discover = menu_button("Discover Models", func():
+		note.text = "Retrieving available models…"
+		client.list_models(key.text))
+	menu.add_child(discover)
 	var test = menu_button("Test Connection", func():
 		if key.text.strip_edges().is_empty():
 			note.text = "Enter an API key."
 			return
-		note.text = "Connecting…"
+		note.text = "Testing " + model.text + "…"
 		client.generate("Reply with exactly: Connection OK",key.text,model.text))
 	menu.add_child(test)
+	choices.item_selected.connect(func(i: int):
+		if i >= 0:
+			model.text = str(choices.get_item_metadata(i))
+			note.text = "Test the selected model, then save it.")
+	client.models_completed.connect(func(ok: bool, models: Array, message: String):
+		if not ok:
+			note.text = message
+			return
+		choices.clear()
+		var selected = -1
+		for id in models:
+			choices.add_item(str(id))
+			choices.set_item_metadata(choices.item_count-1,str(id))
+			if str(id) == model.text.strip_edges().trim_prefix("models/"):
+				selected = choices.item_count-1
+		choices.disabled = models.is_empty()
+		if not models.is_empty():
+			if selected < 0:
+				selected = 0
+				for preferred in [GEMINI.DEFAULT_MODEL,"gemini-3.5-flash","gemini-3.6-flash"]:
+					var found = models.find(preferred)
+					if found >= 0:
+						selected = found
+						break
+			choices.select(selected)
+			model.text = str(choices.get_item_metadata(selected))
+		note.text = message)
 	client.completed.connect(func(ok: bool, message: String):
-		note.text = "Connected to Gemini." if ok else message)
+		note.text = "Connected to Gemini. Save API Settings to use this model." if ok else message)
 	menu.add_child(menu_button("Save API Settings", func():
+		if key.text.strip_edges().is_empty() or model.text.strip_edges().is_empty():
+			note.text = "Enter a key and select a model first."
+			return
 		config.set_value("gemini", "api_key", key.text.strip_edges())
-		config.set_value("gemini", "model", model.text.strip_edges() if not model.text.strip_edges().is_empty() else GEMINI.DEFAULT_MODEL)
+		config.set_value("gemini", "model", model.text.strip_edges().trim_prefix("models/"))
 		note.text = "Saved locally." if config.save(CONFIG_PATH) == OK else "Save failed."))
 	menu.add_child(note)
 	menu.add_child(menu_button("Return to Settings", func(): show_screen("Settings")))

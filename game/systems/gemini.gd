@@ -1,18 +1,53 @@
 extends Node
-## One provider; character biography generation cannot change any mechanical field.
+## The caller chooses a model; discovery never spends generation quota or changes saved settings.
 signal completed(ok: bool, message: String)
+signal models_completed(ok: bool, models: Array, message: String)
 const SETTINGS = "user://settings.cfg"
-const DEFAULT_MODEL = "gemini-2.5-flash"
+const DEFAULT_MODEL = "gemini-3.5-flash-lite"
+const BASE = "https://generativelanguage.googleapis.com/v1beta/"
 var request: HTTPRequest
 var active = false
+var mode = ""
+var discovery_key = ""
+var discovered: Array = []
+var pages = 0
+var current_key = ""
+var current_model = ""
 
 func _ready() -> void:
 	request = HTTPRequest.new()
 	request.use_threads = true
 	request.timeout = 45.0
-	request.body_size_limit = 1024 * 1024
+	request.body_size_limit = 4 * 1024 * 1024
+	request.max_redirects = 0
 	add_child(request)
 	request.request_completed.connect(received)
+
+func key_valid(key: String) -> bool:
+	return not key.is_empty() and not key.contains("\n") and not key.contains("\r")
+
+func list_models(key: String) -> void:
+	if active:
+		return
+	key = key.strip_edges()
+	if not key_valid(key):
+		models_completed.emit(false,[],"Enter a Gemini API key first.")
+		return
+	active = true
+	mode = "models"
+	discovery_key = key
+	discovered = []
+	pages = 0
+	list_page("")
+
+func list_page(token: String) -> void:
+	pages += 1
+	var url = BASE + "models?pageSize=1000"
+	if not token.is_empty():
+		url += "&pageToken=" + token.uri_encode()
+	var err = request.request(url,PackedStringArray(["x-goog-api-key: "+discovery_key]),HTTPClient.METHOD_GET)
+	if err != OK:
+		fail("Could not start model discovery.")
 
 func generate(prompt: String, key_override: String = "", model_override: String = "") -> void:
 	if active:
@@ -24,46 +59,96 @@ func generate(prompt: String, key_override: String = "", model_override: String 
 	model = model.trim_prefix("models/")
 	var valid = RegEx.new()
 	valid.compile("^[A-Za-z0-9._-]+$")
-	if key.is_empty() or key.contains("\n") or key.contains("\r"):
+	if not key_valid(key):
 		completed.emit(false,"Save a Gemini API key in Settings first.")
 		return
 	if valid.search(model) == null:
 		completed.emit(false,"Enter a valid Gemini model ID in Settings.")
 		return
-	var payload = {"contents":[{"role":"user","parts":[{"text":prompt}]}],"generationConfig":{"temperature":0.8,"maxOutputTokens":1024}}
+	var payload = {"contents":[{"role":"user","parts":[{"text":prompt}]}],"generationConfig":{"temperature":0.8,"maxOutputTokens":2048}}
 	active = true
-	var err = request.request("https://generativelanguage.googleapis.com/v1beta/models/"+model+":generateContent",PackedStringArray(["Content-Type: application/json","x-goog-api-key: "+key]),HTTPClient.METHOD_POST,JSON.stringify(payload))
+	mode = "generate"
+	current_key = key
+	current_model = model
+	var err = request.request(BASE+"models/"+model+":generateContent",PackedStringArray(["Content-Type: application/json","x-goog-api-key: "+key]),HTTPClient.METHOD_POST,JSON.stringify(payload))
 	if err != OK:
-		active = false
-		completed.emit(false,"Could not start Gemini request.")
+		fail("Could not start Gemini request.")
+
+func fail(message: String) -> void:
+	var was_discovery = mode == "models"
+	active = false
+	mode = ""
+	discovery_key = ""
+	current_key = ""
+	current_model = ""
+	if was_discovery:
+		models_completed.emit(false,[],message)
+	else:
+		completed.emit(false,message)
+
+func error_message(code: int, data: Variant) -> String:
+	var message = "Gemini HTTP "+str(code)+"."
+	match code:
+		400: message += " Check the request and model."
+		401,403: message += " Check API key and permissions."
+		404: message += " Model or endpoint unavailable. Discover models in Settings and test another."
+		429: message += " Quota or rate limit reached."
+		503: message += " Model temporarily unavailable."
+	if data is Dictionary and data.get("error") is Dictionary:
+		var detail = str(data["error"].get("message",""))
+		for secret in [discovery_key,current_key]:
+			if not secret.is_empty():
+				detail = detail.replace(secret,"[redacted]")
+		if not detail.is_empty():
+			message += "\n"+detail.left(420)
+	return message
 
 func received(result: int, code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
-	active = false
 	if result != HTTPRequest.RESULT_SUCCESS:
-		completed.emit(false,"Gemini connection failed or timed out.")
-		return
-	if code != 200:
-		var msg = "Gemini HTTP "+str(code)+"."
-		match code:
-			400: msg += " Check model and request settings."
-			401,403: msg += " Check API key and permissions."
-			404: msg += " Check the model ID."
-			429: msg += " Quota or rate limit reached."
-			503: msg += " Model temporarily unavailable."
-		completed.emit(false,msg)
+		fail("Gemini connection failed or timed out.")
 		return
 	var data = JSON.parse_string(body.get_string_from_utf8())
-	if not data is Dictionary:
-		completed.emit(false,"Gemini returned an unreadable response.")
+	if code != 200:
+		fail(error_message(code,data))
 		return
+	if not data is Dictionary:
+		fail("Gemini returned an unreadable response.")
+		return
+	if mode == "models":
+		for item in data.get("models",[]):
+			if not item is Dictionary or not "generateContent" in item.get("supportedGenerationMethods",[]):
+				continue
+			var id = str(item.get("name","")).trim_prefix("models/")
+			if id.begins_with("gemini-") and not id.is_empty() and not id in discovered:
+				# Skip explicitly non-text generation variants; actual access is confirmed by Test Connection.
+				if not ("image" in id or "audio" in id or "tts" in id or "live" in id or "robotics" in id):
+					discovered.append(id)
+		var token = str(data.get("nextPageToken",""))
+		if not token.is_empty() and pages < 20:
+			# Start the next request after HTTPRequest completes its signal.
+			list_page.call_deferred(token)
+			return
+		if not token.is_empty():
+			fail("Model discovery exceeded its page limit. Please retry.")
+			return
+		active = false
+		mode = ""
+		discovery_key = ""
+		discovered.sort()
+		models_completed.emit(true,discovered.duplicate(),"Found "+str(discovered.size())+" text-capable model candidates. Select one, test it, then save.")
+		return
+	active = false
+	mode = ""
+	current_key = ""
+	current_model = ""
 	var candidates = data.get("candidates",[])
 	var texts: PackedStringArray = []
 	if not candidates.is_empty():
 		for part in candidates[0].get("content",{}).get("parts",[]):
 			if part.has("text") and not part.get("thought",false):
 				texts.append(str(part["text"]))
-	var text = "\n".join(texts).strip_edges()
-	if text.is_empty():
-		completed.emit(false,"Gemini did not return a description.")
+	var output = "\n".join(texts).strip_edges()
+	if output.is_empty():
+		completed.emit(false,"Gemini did not return text. Try another model or adjust your request.")
 	else:
-		completed.emit(true,text.left(4000))
+		completed.emit(true,output.left(4000))

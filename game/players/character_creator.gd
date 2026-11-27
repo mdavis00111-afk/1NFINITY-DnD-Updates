@@ -209,11 +209,11 @@ func render(preserve_scroll: bool = false) -> void:
 	action(nav,"Exit",func(): exit_action.call())
 	if step > 1:
 		action(nav,"Back",func(): go_to(step-1))
-	action(nav,"Save Draft",func(): save(false))
+	action(nav,"Save Draft",func(): save(false)).custom_minimum_size.x = 124
 	if step < 4 and not (quick and step==1):
 		action(nav,"Next",advance,true)
 	elif step == 4:
-		action(nav,"Save Character",func(): save(true),true)
+		action(nav,"Save Character",func(): save(true),true).custom_minimum_size.x = 164
 	if preserve_scroll:
 		scroll.set_deferred("scroll_vertical",old_scroll)
 
@@ -322,7 +322,7 @@ func choose_popup(caption: String, options: Array, callback: Callable) -> void:
 	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left","right","top","bottom"]:
 		m.add_theme_constant_override("margin_"+side,10)
-	var shell = framed(m,caption)
+	var shell = framed(m)
 	var search = LineEdit.new()
 	search.placeholder_text = "Search…"
 	shell.add_child(search)
@@ -399,13 +399,13 @@ func simple_choice(parent: Container, caption: String, key: String, choices: Arr
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 func identity() -> void:
-	var pane = framed(form,"I. Identity",1.0,"star")
+	var pane = framed(form)
 	if quick:
 		var h = row(pane)
 		identity_choice(h,"Race","races","race_id",rules.cat.rows("races"))
 		identity_choice(h,"Class","classes","class_id",rules.cat.rows("classes"))
 		simple_choice(pane,"Sex / Gender","sex",["Female","Male","Nonbinary","Other / unspecified"])
-		action(pane,"Generate and Review",quick_generate,true)
+		action(pane,"Generate and Review",quick_generate,true).custom_minimum_size.x = 200
 		return
 	var top = row(pane)
 	text_field(top,"name","Character Name")
@@ -422,9 +422,10 @@ func identity() -> void:
 		if not subs.is_empty(): identity_choice(h,"Subrace","subraces","subrace_id",subs)
 		if int(RULES.SUBCLASS_AT.get(role,99))==1: identity_choice(h,"Subclass","subclasses","subclass_id",rules.cat.filtered("subclasses","class",role))
 	var desc = framed(form,"Description",1.0,"wand")
-	description_editor = text_field(desc,"description","Description",true,84) as TextEdit
+	description_editor = text_field(desc,"description","",true,84) as TextEdit
 	var h = row(desc)
 	ai_button = action(h,"Generate with AI",generate_description,true,19)
+	ai_button.custom_minimum_size.x = 174
 	ai_button.disabled = gemini.active
 	var personality = framed(form,"Personality & History",1.0,"focus")
 	for pair in [["personality","Personality"],["ideal","Ideal"],["bond","Bond"],["flaw","Flaw"],["backstory","Backstory"]]:
@@ -433,7 +434,7 @@ func identity() -> void:
 		title.custom_minimum_size.x = 95
 		title.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		r.add_child(title)
-		text_field(r,pair[0],pair[1],false,29)
+		text_field(r,pair[0],"",false,29)
 
 func generate_description() -> void:
 	var context: Dictionary = {}
@@ -499,7 +500,7 @@ func abilities() -> void:
 	if draft["ability_method"]=="point":
 		generation.add_child(centered(str(27-rules.points_used(draft))+" / 27 points remaining",20))
 	var result = rules.scores(draft)
-	var score_panel = framed(form,"Ability Scores",1.0,"shield")
+	var score_panel = framed(form)
 	var cards = row(score_panel,3)
 	for a in RULES.ABILITIES:
 		var score = int(result[a])
@@ -625,7 +626,7 @@ func features() -> void:
 	left.add_child(heading("Saving Throws",21))
 	for a in RULES.ABILITIES:
 		reference_link(left,"ability-scores",a,("◆ " if "saving-throw-"+a in rec["proficiency_ids"] else "◇ ")+a.to_upper()+"  %+d" % int(rec["saving_throws"][a]))
-	var right=framed(cols,"Choose Skills & Spells",1.55,"wand")
+	var right=framed(cols,"",1.55)
 	for g in rules.groups(draft,3): group_ui(right,g)
 	for id in sp["always_prepared_ids"]: reference_link(right,"spells",id,rules.cat.title("spells",id)+" • Always prepared")
 	var granted=framed(form,"Features & Traits",1.0,"star")

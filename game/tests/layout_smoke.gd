@@ -26,6 +26,7 @@ func check_creator(stage: int, creator: Control) -> void:
 func run() -> void:
 	root.size = Vector2i(1280,720)
 	var base = Control.new()
+	base.theme = load("res://themes/master_theme.tres") as Theme
 	base.size = Vector2(1280,720)
 	root.add_child(base)
 	var creator = CREATOR.new()
@@ -50,8 +51,26 @@ func run() -> void:
 	manager.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	base.add_child(manager)
 	await settle()
-	expect(manager.list.size.x >= 160 and manager.list.size.y >= 100,"Player list collapsed")
-	expect(manager.info.size.x >= 230 and manager.info.size.y >= 100,"Player reference collapsed")
+	expect(manager.list.size.x >= 160 and manager.list.size.y >= 30,"Player picker collapsed")
+	expect(manager.scroll.size.x >= 1000 and manager.scroll.size.y >= 400,"Full sheet viewport collapsed")
+	# Test the viewer without changing real player saves.
+	var record: Dictionary = {}
+	if record.is_empty():
+		var rules = preload("res://rules/character_rules.gd").new()
+		var draft = rules.fresh()
+		draft["name"] = "Layout Test"
+		draft["race_id"] = "human"
+		draft["class_id"] = "wizard"
+		draft["background_id"] = "acolyte"
+		rules.roll_scores(draft,"array")
+		record = rules.full_record(draft)
+	manager.records = [record]
+	manager.select_record(0)
+	await settle()
+	var sheet = manager.body.get_child(1)
+	expect(sheet.size.x >= 1000,"Full sheet width collapsed")
+	expect(sheet.get_child_count() >= 5,"Sheet sections missing")
+	expect(sheet.number(14.0)=="14" and sheet.number(-1.0,true)=="-1" and sheet.number(1.0,true)=="+1","Integer display regression")
 	base.remove_child(manager)
 	manager.queue_free()
 	var browser = BROWSER.new()

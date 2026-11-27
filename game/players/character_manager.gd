@@ -1,237 +1,182 @@
 extends Control
-const CAT = preload("res://rules/catalog.gd")
+## Full-width sheet viewer. Character selection and management stay in a compact toolbar.
 const STORE = preload("res://players/character_store.gd")
+const SHEET = preload("res://players/full_character_sheet.gd")
 const FRAME = preload("res://themes/parts/panel_gold.png")
-var cat = CAT.new()
+const ACTIVE = preload("res://themes/parts/panel_active.png")
+const FLOURISH = preload("res://themes/gold_flourish.svg")
+const TITLE = preload("res://art/sheet_title.png")
 var store = STORE.new()
 var on_edit: Callable
 var on_exit: Callable
 var on_browser: Callable
-var list: ItemList
+var list: OptionButton
 var body: VBoxContainer
 var info: TextEdit
 var note: Label
+var scroll: ScrollContainer
+var popup: AcceptDialog
 var records: Array = []
 var active: Dictionary = {}
+var edit_button: Button
+var archive_button: Button
 
 func configure(edit: Callable,exit: Callable,browse: Callable) -> void:
 	on_edit = edit
 	on_exit = exit
 	on_browser = browse
 
-func label_text(t: String,n: int=23) -> Label:
+func style(lit: bool = false) -> StyleBoxTexture:
+	var s = StyleBoxTexture.new()
+	s.texture = ACTIVE if lit else FRAME
+	for edge in [SIDE_LEFT,SIDE_RIGHT,SIDE_TOP,SIDE_BOTTOM]:
+		s.set_texture_margin(edge,22)
+		s.set_content_margin(edge,10)
+	return s
+
+func label_text(t: String,n: int = 21) -> Label:
 	var l = Label.new()
-	l.text=t
+	l.text = t
 	l.add_theme_font_size_override("font_size",n)
-	l.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return l
 
-func button(parent: Container,t: String,cb: Callable,tip: String="") -> Button:
-	var b=Button.new()
-	b.text=t
-	b.tooltip_text=tip
-	b.add_theme_font_size_override("font_size",20)
-	b.custom_minimum_size.y=32
-	b.alignment=HORIZONTAL_ALIGNMENT_LEFT
+func button(parent: Container,t: String,cb: Callable) -> Button:
+	var b = Button.new()
+	b.text = t
+	b.custom_minimum_size.y = 36
+	b.add_theme_font_size_override("font_size",19)
+	b.add_theme_stylebox_override("normal",style())
+	b.add_theme_stylebox_override("hover",style(true))
+	b.add_theme_stylebox_override("pressed",style(true))
+	b.add_theme_stylebox_override("focus",style(true))
+	b.add_theme_stylebox_override("disabled",style())
 	b.pressed.connect(cb)
 	parent.add_child(b)
 	return b
-
-func pane(parent: Container,ratio: float) -> VBoxContainer:
-	var p=PanelContainer.new()
-	p.size_flags_horizontal=Control.SIZE_EXPAND_FILL
-	p.size_flags_vertical=Control.SIZE_EXPAND_FILL
-	p.size_flags_stretch_ratio=ratio
-	var dark=StyleBoxFlat.new()
-	dark.bg_color=Color(0.025,0.045,0.08,0.95)
-	p.add_theme_stylebox_override("panel",dark)
-	parent.add_child(p)
-	var frame=PanelContainer.new()
-	var s=StyleBoxTexture.new()
-	s.texture=FRAME
-	for side in [SIDE_LEFT,SIDE_RIGHT,SIDE_TOP,SIDE_BOTTOM]:
-		s.set_texture_margin(side,20)
-		s.set_content_margin(side,12)
-	frame.add_theme_stylebox_override("panel",s)
-	p.add_child(frame)
-	var v=VBoxContainer.new()
-	v.add_theme_constant_override("separation",6)
-	frame.add_child(v)
-	return v
 
 func _ready() -> void:
 	build_layout.call_deferred()
 
 func build_layout() -> void:
-	var margin=MarginContainer.new()
+	var margin = MarginContainer.new()
 	add_child(margin)
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for side in ["left","right","top","bottom"]:
-		margin.add_theme_constant_override("margin_"+side,24)
-	var root=VBoxContainer.new()
+	for edge in ["left","right","top","bottom"]:
+		margin.add_theme_constant_override("margin_"+edge,18)
+	var root = VBoxContainer.new()
+	root.add_theme_constant_override("separation",7)
 	margin.add_child(root)
-	var title = label_text("Manage Players",32)
-	title.autowrap_mode = TextServer.AUTOWRAP_OFF
-	root.add_child(title)
-	var columns=HBoxContainer.new()
-	columns.size_flags_vertical=Control.SIZE_EXPAND_FILL
-	root.add_child(columns)
-	var left=pane(columns,0.7)
-	left.get_parent().get_parent().custom_minimum_size.x=215
-	left.add_child(label_text("Saved Characters"))
-	list=ItemList.new()
-	list.custom_minimum_size.x=165
-	list.size_flags_vertical=Control.SIZE_EXPAND_FILL
-	left.add_child(list)
-	list.item_selected.connect(func(i: int): select_record(i))
-	button(left,"Edit / Resume Draft",func():
+	var toolbar = HBoxContainer.new()
+	toolbar.add_theme_constant_override("separation",6)
+	root.add_child(toolbar)
+	list = OptionButton.new()
+	list.custom_minimum_size = Vector2(205,36)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.fit_to_longest_item = false
+	list.add_theme_font_size_override("font_size",20)
+	list.add_theme_stylebox_override("normal",style())
+	list.add_theme_stylebox_override("hover",style(true))
+	list.item_selected.connect(select_record)
+	toolbar.add_child(list)
+	edit_button = button(toolbar,"Edit Character",func():
 		if not active.is_empty():
 			on_edit.call(active))
-	button(left,"Delete / Archive",delete_selected)
-	button(left,"Rules Catalogue",func(): on_browser.call())
-	button(left,"Exit",func(): on_exit.call())
-	note=label_text("",17)
-	left.add_child(note)
-	var middle=pane(columns,1.65)
-	middle.get_parent().get_parent().custom_minimum_size.x=320
-	var scroll=ScrollContainer.new()
-	scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL
-	middle.add_child(scroll)
-	body=VBoxContainer.new()
-	body.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+	archive_button = button(toolbar,"Archive",delete_selected)
+	button(toolbar,"Rules Catalogue",func(): on_browser.call())
+	button(toolbar,"Exit",func(): on_exit.call())
+	note = label_text("",17)
+	note.visible = false
+	root.add_child(note)
+	scroll = ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	root.add_child(scroll)
+	body = VBoxContainer.new()
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_theme_constant_override("separation",8)
 	scroll.add_child(body)
-	var right=pane(columns,1.0)
-	right.get_parent().get_parent().custom_minimum_size.x=295
-	right.add_child(label_text("Rules & Reference"))
-	info=TextEdit.new()
-	info.editable=false
+	popup = AcceptDialog.new()
+	popup.title = "Reference"
+	popup.min_size = Vector2i(540,390)
+	add_child(popup)
+	popup.get_ok_button().text = "Close"
+	info = TextEdit.new()
+	info.editable = false
+	info.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	info.custom_minimum_size = Vector2(510,340)
+	info.add_theme_font_size_override("font_size",20)
 	info.add_theme_color_override("font_readonly_color",Color("#fff0cf"))
-	info.wrap_mode=TextEdit.LINE_WRAPPING_BOUNDARY
-	info.size_flags_vertical=Control.SIZE_EXPAND_FILL
-	info.custom_minimum_size.x=240
-	info.add_theme_font_size_override("font_size",18)
-	right.add_child(info)
+	popup.add_child(info)
 	refresh()
+
+func show_reference(title_text: String, description: String) -> void:
+	popup.title = title_text
+	info.text = description
+	popup.popup_centered(Vector2i(650,490))
+
+func set_note(value: String) -> void:
+	note.text = value
+	note.visible = not value.is_empty()
 
 func refresh() -> void:
 	list.clear()
-	records=store.list_records()
+	list.disabled = false
+	records = store.list_records()
 	if not store.last_error.is_empty():
-		note.text=store.last_error
+		set_note(store.last_error)
 	for rec in records:
-		list.add_item(str(rec.get("name","Unnamed"))+" ["+str(rec.get("status","draft"))+"]")
-	active={}
+		var suffix = " (Draft)" if rec.get("status")=="draft" else (" (Review)" if rec.get("status")=="needs_review" else "")
+		list.add_item(str(rec.get("name","Unnamed"))+suffix)
+	active = {}
+	edit_button.disabled = records.is_empty()
+	archive_button.disabled = records.is_empty()
 	if not records.is_empty():
 		list.select(0)
 		select_record(0)
 	else:
+		list.add_item("No saved characters")
+		list.disabled = true
 		clear_body()
-		body.add_child(label_text("No characters saved yet."))
-		info.text="Create a character in Player Manager."
+		body.add_child(label_text("No characters saved yet. Create one in Player Manager.",24))
 
 func clear_body() -> void:
 	for child in body.get_children():
 		body.remove_child(child)
 		child.queue_free()
 
-func link(table: String,id: String,caption: String="") -> void:
-	var t=caption if not caption.is_empty() else cat.title(table,id)
-	button(body,t,func(): info.text=cat.describe(table,id),cat.summary(table,id))
-
-func section(title: String) -> void:
-	body.add_child(HSeparator.new())
-	body.add_child(label_text(title,24))
-
 func select_record(i: int) -> void:
-	if i<0 or i>=records.size():
+	if i < 0 or i >= records.size():
 		return
-	active=records[i]
+	active = records[i]
 	clear_body()
-	var d=active.get("draft",{})
-	var row=HBoxContainer.new()
-	body.add_child(row)
-	var path=str(d.get("portrait",""))
-	if not path.is_empty():
-		var image=Image.load_from_file(path)
-		if not image.is_empty():
-			var portrait=TextureRect.new()
-			portrait.texture=ImageTexture.create_from_image(image)
-			portrait.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
-			portrait.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			portrait.custom_minimum_size=Vector2(90,120)
-			row.add_child(portrait)
-	var identity=VBoxContainer.new()
-	identity.size_flags_horizontal=Control.SIZE_EXPAND_FILL
-	row.add_child(identity)
-	identity.add_child(label_text(str(active.get("name","Unnamed")),31))
-	identity.add_child(label_text("Level "+str(active.get("level",1))+" · "+str(active.get("status","draft")),18))
-	for pair in [["races","race_id"],["subraces","subrace_id"],["classes","class_id"],["subclasses","subclass_id"],["backgrounds","background_id"]]:
-		var id=str(d.get(pair[1],""))
-		if not id.is_empty():
-			link(pair[0],id)
-	body.add_child(label_text(str(d.get("sex",""))+" · "+str(d.get("alignment","")),18))
-	for warning in active.get("review_required",[]):
-		body.add_child(label_text("Needs review: "+str(warning),17))
-	if not active.has("combat"):
-		body.add_child(label_text("Draft saved. Resume to complete creation.",20))
-		info.text="Select a reference or resume the draft."
-		return
-	var c=active["combat"]
-	section("Combat Statistics")
-	body.add_child(label_text("AC "+str(c["armor_class"])+"   HP "+str(c["hp_current"])+"/"+str(c["hp_max"])+"   Speed "+str(c["speed_feet"])+" ft.",24))
-	body.add_child(label_text("Initiative "+str(c["initiative"])+"   Passive Perception "+str(c["passive_perception"]),19))
-	section("Abilities & Saving Throws")
-	for id in active["ability_scores"]:
-		link("ability-scores",id,id.to_upper()+"    "+str(active["ability_scores"][id])+"    Mod "+str(active["ability_modifiers"][id])+"    Save "+str(active["saving_throws"][id]))
-	section("Skills")
-	for id in active["skills"]:
-		var s=active["skills"][id]
-		link("skills",id,("◆ " if s["proficient"] else "◇ ")+cat.title("skills",id)+"  "+str(s["modifier"])+("  Expertise" if s["expertise"] else ""))
-	section("Class Features & Racial Traits")
-	for id in active["class_feature_ids"]:
-		link("features",id)
-	for id in active["racial_trait_ids"]:
-		link("traits",id)
-	section("Proficiencies & Languages")
-	for id in active["proficiency_ids"]:
-		link("proficiencies",id)
-	for id in active["language_ids"]:
-		link("languages",id)
-	section("Spellcasting")
-	var sp=active["spellcasting"]
-	body.add_child(label_text("Ability "+str(sp["ability"]).to_upper()+"    Save DC "+str(sp["save_dc"])+"    Attack "+str(sp["attack_bonus"]),18))
-	for key in ["cantrip_ids","racial_cantrip_ids","known_ids","prepared_ids","always_prepared_ids"]:
-		if not sp[key].is_empty():
-			body.add_child(label_text(key.trim_suffix("_ids").replace("_"," ").capitalize(),20))
-			for id in sp[key]:
-				link("spells",id)
-	for level in sp["slots"]:
-		var slot=sp["slots"][level]
-		if int(slot["maximum"])>0:
-			body.add_child(label_text("Level "+level+": "+str(int(slot["maximum"])-int(slot["spent"]))+"/"+str(slot["maximum"])+" slots",18))
-	section("Equipment & Wealth")
-	for item in active["inventory"]:
-		var id=str(item["item_id"])
-		link("equipment",id,str(item["quantity"])+" × "+cat.title("equipment",id)+(" [Equipped]" if item["equipped"] else ""))
-	body.add_child(label_text(cat.human(active["coins"]),18))
-	section("Personality & Background")
-	for key in ["description","personality","ideal","bond","flaw","backstory"]:
-		body.add_child(label_text(key.capitalize()+": "+str(active.get(key,"")),18))
-	info.text="Select any highlighted reference. This character is stored under ID "+str(active["id"])+"."
+	var logo = TextureRect.new()
+	logo.texture = TITLE
+	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	logo.custom_minimum_size.y = 116
+	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(logo)
+	var sheet = SHEET.new()
+	sheet.configure(active,show_reference)
+	body.add_child(sheet)
+	edit_button.text = "Resume Draft" if not active.has("combat") else "Edit Character"
+	scroll.set_deferred("scroll_vertical",0)
 
 func delete_selected() -> void:
 	if active.is_empty():
 		return
-	var id=str(active["id"])
-	var dialog=ConfirmationDialog.new()
-	dialog.title="Archive character?"
-	dialog.dialog_text="Remove "+str(active.get("name","Unnamed"))+" from the player list? Its save is retained in the local archive."
+	var id = str(active["id"])
+	var dialog = ConfirmationDialog.new()
+	dialog.title = "Archive character?"
+	dialog.dialog_text = "Archive "+str(active.get("name","Unnamed"))+"? Its save will be retained."
 	add_child(dialog)
 	dialog.confirmed.connect(func():
-		var error=store.archive(id)
-		note.text="Character archived." if error.is_empty() else error
+		var error = store.archive(id)
 		dialog.queue_free()
-		refresh())
+		refresh()
+		set_note("Character archived." if error.is_empty() else error))
 	dialog.canceled.connect(dialog.queue_free)
 	dialog.popup_centered()
