@@ -298,7 +298,7 @@ func project(snapshot: Dictionary,sets: Array) -> Dictionary:
 	var shield = owned[slots["shield"]]["definition_id"] if slots["shield"]!=null else ""
 	var weapon_ids: Array = []
 	for hand in ["main_hand","off_hand"]:
-		if slots[hand]!=null and not owned[slots[hand]]["definition_id"] in weapon_ids:
+		if slots[hand]!=null and defs[slots[hand]]["attributes"].has("weapon_category") and not owned[slots[hand]]["definition_id"] in weapon_ids:
 			weapon_ids.append(owned[slots[hand]]["definition_id"])
 	var legacy_weapons: Array = gear.get("weapon_ids",[]).duplicate()
 	weapon_ids.sort()
