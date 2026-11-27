@@ -140,18 +140,21 @@ func show_screen(name: String) -> void:
 	if name in ["Create New","Generate Character","Edit Character"]:
 		var creator = CREATOR.new()
 		creator.configure(name=="Generate Character",func(): show_screen("Player Manager"),func(): show_screen("Manage Players"),editing_record if name=="Edit Character" else {})
+		creator.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		screen.add_child(creator)
 		creator.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		return
 	if name in ["Manage Players","Delete Players"]:
 		var manager = MANAGER.new()
 		manager.configure(edit_character,func(): show_screen("Player Manager"),open_catalogue_from_manager)
+		manager.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		screen.add_child(manager)
 		manager.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		return
 	if name == "Rules Catalogue":
 		var browser = BROWSER.new()
 		browser.configure(func(): show_screen(browser_return))
+		browser.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		screen.add_child(browser)
 		browser.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		return

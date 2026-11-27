@@ -32,7 +32,8 @@ func configure(is_quick: bool, on_exit: Callable, on_finish: Callable, saved: Di
 func _ready() -> void:
 	if draft.is_empty():
 		draft = rules.fresh()
-	render()
+	# Parent anchors and viewport size must settle before building nested containers.
+	render.call_deferred()
 
 func heading(value: String,size_px: int = 23) -> Label:
 	var l = Label.new()
@@ -87,9 +88,12 @@ func render(preserve_scroll: bool = false) -> void:
 	for side in ["left","right","top","bottom"]:
 		body.add_theme_constant_override("margin_"+side,24)
 	var root = VBoxContainer.new()
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_theme_constant_override("separation",9)
 	body.add_child(root)
 	var title_row = HBoxContainer.new()
+	title_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	root.add_child(title_row)
 	var corner = TextureRect.new()
 	corner.texture = CORNER
@@ -97,22 +101,29 @@ func render(preserve_scroll: bool = false) -> void:
 	corner.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	corner.custom_minimum_size = Vector2(38,38)
 	title_row.add_child(corner)
-	title_row.add_child(heading("Character Creator   •   "+str(step)+" / 4",32))
+	var page_title = heading("Character Creator   •   "+str(step)+" / 4",32)
+	page_title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	page_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_row.add_child(page_title)
 	var steps = HBoxContainer.new()
 	root.add_child(steps)
 	var names = ["Identity","Ability Scores","Skills & Spells","Loadout & Review"]
 	for i in range(4):
 		var label = heading(("◆ " if i+1==step else "◇ ")+names[i],19)
+		label.autowrap_mode = TextServer.AUTOWRAP_OFF
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		steps.add_child(label)
 	var columns = HBoxContainer.new()
+	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	columns.add_theme_constant_override("separation",14)
 	root.add_child(columns)
 	var left = framed(columns)
 	left.get_parent().get_parent().size_flags_stretch_ratio = 1.7
+	left.get_parent().get_parent().custom_minimum_size.x = 440
 	scroll = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	left.add_child(scroll)
 	form = VBoxContainer.new()
@@ -121,6 +132,7 @@ func render(preserve_scroll: bool = false) -> void:
 	scroll.add_child(form)
 	var right = framed(columns)
 	right.get_parent().get_parent().size_flags_stretch_ratio = 1.0
+	right.get_parent().get_parent().custom_minimum_size.x = 315
 	right.add_child(heading("Rules & Reference",25))
 	reference = TextEdit.new()
 	reference.editable = false
@@ -246,7 +258,9 @@ func portrait() -> void:
 	var buttons = VBoxContainer.new()
 	buttons.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(buttons)
-	buttons.add_child(heading("Portrait",23))
+	var portrait_title = heading("Portrait",23)
+	portrait_title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	buttons.add_child(portrait_title)
 	buttons.add_child(heading("Supply an image now or leave blank. Stock portraits will be added later.",17))
 	action(buttons,"Choose Image",func():
 		var picker = FileDialog.new()

@@ -13,6 +13,9 @@ func configure(on_exit: Callable) -> void:
 	exit_action=on_exit
 
 func _ready() -> void:
+	build_layout.call_deferred()
+
+func build_layout() -> void:
 	var m=MarginContainer.new()
 	add_child(m)
 	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

@@ -60,6 +60,9 @@ func pane(parent: Container,ratio: float) -> VBoxContainer:
 	return v
 
 func _ready() -> void:
+	build_layout.call_deferred()
+
+func build_layout() -> void:
 	var margin=MarginContainer.new()
 	add_child(margin)
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -67,11 +70,14 @@ func _ready() -> void:
 		margin.add_theme_constant_override("margin_"+side,24)
 	var root=VBoxContainer.new()
 	margin.add_child(root)
-	root.add_child(label_text("Manage Players",32))
+	var title = label_text("Manage Players",32)
+	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	root.add_child(title)
 	var columns=HBoxContainer.new()
 	columns.size_flags_vertical=Control.SIZE_EXPAND_FILL
 	root.add_child(columns)
 	var left=pane(columns,0.7)
+	left.get_parent().get_parent().custom_minimum_size.x=215
 	left.add_child(label_text("Saved Characters"))
 	list=ItemList.new()
 	list.custom_minimum_size.x=165
@@ -87,6 +93,7 @@ func _ready() -> void:
 	note=label_text("",17)
 	left.add_child(note)
 	var middle=pane(columns,1.65)
+	middle.get_parent().get_parent().custom_minimum_size.x=320
 	var scroll=ScrollContainer.new()
 	scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL
@@ -95,6 +102,7 @@ func _ready() -> void:
 	body.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 	scroll.add_child(body)
 	var right=pane(columns,1.0)
+	right.get_parent().get_parent().custom_minimum_size.x=295
 	right.add_child(label_text("Rules & Reference"))
 	info=TextEdit.new()
 	info.editable=false
@@ -151,6 +159,7 @@ func select_record(i: int) -> void:
 			portrait.custom_minimum_size=Vector2(90,120)
 			row.add_child(portrait)
 	var identity=VBoxContainer.new()
+	identity.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 	row.add_child(identity)
 	identity.add_child(label_text(str(active.get("name","Unnamed")),31))
 	identity.add_child(label_text("Level "+str(active.get("level",1))+" · "+str(active.get("status","draft")),18))
