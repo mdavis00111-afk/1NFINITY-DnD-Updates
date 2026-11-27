@@ -30,6 +30,8 @@ var note: Label
 var resume_button: Button
 var delete_button: Button
 var pending_campaign = ""
+var pending_metadata = ""
+var opening_button: Button
 var listing_error = ""
 var roster_buttons: Array[Button] = []
 var layout: MarginContainer
@@ -46,7 +48,7 @@ func _ready() -> void:
 	theme = local_theme
 	gemini = GEMINI.new()
 	add_child(gemini)
-	gemini.completed.connect(art_received)
+	gemini.completed.connect(opening_received)
 	render.call_deferred()
 
 func surface(opacity: float = 0.58) -> StyleBoxFlat:
@@ -180,7 +182,10 @@ func render() -> void:
 		elif players.is_empty():
 			show_note("Create and finalize a ready character first.")
 	else:
-		show_note("Opening workspace saved. Gameplay turn resolution is not implemented yet.")
+		if not active.get("opening_committed",false) and active.get("turn",0)==0:
+			opening_button = action(nav,"Generate Opening",request_opening)
+			opening_button.disabled = not pending_campaign.is_empty()
+		show_note("Generating opening… Saved campaign is safe." if pending_campaign==active.get("id") else "Opening workspace saved. Gameplay turn resolution is not implemented yet.")
 
 func show_note(value: String) -> void:
 	if is_instance_valid(note):
@@ -334,28 +339,55 @@ func create() -> void:
 		show_note(store.last_error)
 		return
 	active=record
-	pending_campaign=str(record["id"])
-	# Save first with deterministic artwork. AI may only replace the thumbnail ID.
+	open_workspace()
+	# Save first; provider failure leaves the original opening intact.
 	var config = ConfigFile.new()
 	config.load("user://settings.cfg")
 	if gemini.key_valid(str(config.get_value("gemini","api_key","")).strip_edges()):
-		show_note("Campaign saved. Selecting artwork…")
-		gemini.generate("Choose one artwork identifier from tavern, court, woods, sea, market, road. Return the identifier only, no prose. This is artwork selection, not game state. Campaign title: "+str(record["title"])+"; opening: "+str(record["start_name"]))
-		# Do not block the player on an optional artwork request.
-		open_workspace()
-	else:
-		pending_campaign=""
-		open_workspace()
+		request_opening()
 
-func art_received(ok: bool, message: String) -> void:
+func request_opening() -> void:
+	if mode!="workspace" or active.is_empty() or not pending_campaign.is_empty():
+		return
+	var id = str(active["id"])
+	var prepared = store.prepare_opening(id)
+	if prepared.is_empty():
+		show_note(store.last_error)
+		return
+	pending_campaign=id
+	pending_metadata=prepared["previous"]
+	if is_instance_valid(opening_button):
+		opening_button.disabled=true
+	show_note("Generating opening… Saved campaign is safe.")
+	gemini.generate(prepared["prompt"])
+
+func opening_received(ok: bool, message: String) -> void:
 	var id = pending_campaign
+	var previous = pending_metadata
 	pending_campaign=""
-	var chosen = message.strip_edges().to_lower()
-	if ok and not id.is_empty() and STARTS.valid_art(chosen):
-		var error = store.update_thumbnail(id,chosen)
-		if error.is_empty() and active.get("id")==id:
-			active["thumbnail_id"]=chosen
-		if mode=="library" and not active.is_empty(): render()
+	pending_metadata=""
+	if id.is_empty():
+		return
+	var error = "Opening generation unavailable. Your saved opening is unchanged."
+	if ok:
+		error = store.commit_opening(id,previous,message)
+	if mode=="workspace" and active.get("id")==id:
+		if error.is_empty():
+			var refreshed = store.load_campaign(id)
+			if not refreshed.is_empty():
+				active=refreshed
+				render()
+				show_note("Opening saved. Gameplay turn resolution is not implemented yet.")
+			else:
+				show_note("Opening saved. Reopen the campaign to reload it.")
+		else:
+			if is_instance_valid(opening_button):
+				opening_button.disabled=false
+			show_note(error)
+	elif mode=="library":
+		render()
+	elif mode=="workspace" and is_instance_valid(opening_button):
+		opening_button.disabled=false
 
 func resume() -> void:
 	if active.is_empty():
@@ -381,7 +413,7 @@ func build_workspace(parent: Container) -> void:
 	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	picture.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left.add_child(picture)
-	left.add_child(text_label(str(active.get("start_name","")),20,true))
+	left.add_child(text_label(str(active.get("location_name",active.get("start_name",""))),20,true))
 	var right = panel(parent)
 	right.add_child(text_label("Adventure Log",24,true))
 	synopsis = read_only_text(right,store.synopsis(str(active["id"])))

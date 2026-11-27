@@ -4,6 +4,7 @@ const SQL = preload("res://systems/sqlite.gd")
 const PLAYER = preload("res://players/character_store.gd")
 const STARTS = preload("res://campaigns/campaign_starts.gd")
 const MATURITY = preload("res://campaigns/maturity_profiles.gd")
+const OPENING = preload("res://campaigns/opening_scene.gd")
 const ROOT = "user://campaigns/v1"
 const SCHEMA = "1"
 var last_error = ""
@@ -149,6 +150,58 @@ func write_metadata(id: String, previous: String, record: Dictionary, deleting: 
 		return result_error(result,"Campaign metadata save failed.")
 	if int(result["results"][1][0]["updated"])!=1:
 		return "Campaign changed since it was loaded. Reopen and retry."
+	return ""
+
+# Only a pristine campaign may receive a one-time opening proposal.
+func opening_guard(record: Dictionary, previous: String) -> Dictionary:
+	var start = STARTS.find_start(str(record.get("start_id","")))
+	return SQL.stmt("SELECT value FROM meta WHERE key='campaign' AND value=? AND EXISTS(SELECT 1 FROM locations WHERE id=? AND kind=? AND parent_id IS NULL AND x IS NULL AND y IS NULL) AND (SELECT count(*) FROM locations)=1 AND EXISTS(SELECT 1 FROM actors WHERE id=? AND kind='player' AND location_id=?) AND (SELECT count(*) FROM actors)=1 AND (SELECT count(*) FROM events)=1 AND EXISTS(SELECT 1 FROM events WHERE kind='campaign_created' AND turn=0) AND NOT EXISTS(SELECT 1 FROM quests) AND NOT EXISTS(SELECT 1 FROM encounters) AND NOT EXISTS(SELECT 1 FROM relationships)",[previous,record["location_id"],start.get("kind",""),record["actor_id"],record["location_id"]])
+
+func prepare_opening(id: String) -> Dictionary:
+	var record = load_campaign(id)
+	if record.is_empty() or record.get("turn")!=0 or record.get("opening_committed",false):
+		last_error="Campaign opening is unavailable or already committed."
+		return {}
+	if not valid_id(str(record.get("actor_id",""))) or not valid_id(str(record.get("location_id",""))) or STARTS.find_start(str(record.get("start_id",""))).is_empty():
+		last_error="Invalid opening metadata."
+		return {}
+	var previous = loaded_metadata
+	var check = SQL.run(path_for(id),[opening_guard(record,previous)],true)
+	if not check.get("ok",false) or check["results"][0].is_empty():
+		last_error="Campaign is no longer in its original opening state."
+		return {}
+	return {"record":record,"previous":previous,"prompt":OPENING.prompt(record)}
+
+func commit_opening(id: String, previous: String, raw: String) -> String:
+	var prepared = prepare_opening(id)
+	if prepared.is_empty() or prepared["previous"]!=previous:
+		return "Opening changed or is no longer available. No scene saved."
+	var record: Dictionary = prepared["record"]
+	var scene = OPENING.validate(raw,str(record["start_id"]))
+	if scene.is_empty():
+		return "Opening response was invalid. No scene saved."
+	var guard = opening_guard(record,previous)
+	var location_id = str(record["location_id"])
+	var location = {"start_id":record["start_id"],"description":scene["atmosphere"],"world_facts":scene["world_facts"],"opening_generated":true}
+	var commands: Array = []
+	# Recheck under the write lock. NULL violates meta.value NOT NULL and rolls back.
+	commands.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('opening_commit_guard',("+guard["sql"]+"))",guard["params"]))
+	commands.append(SQL.stmt("UPDATE locations SET name=?,payload=? WHERE id=?",[scene["location_name"],JSON.stringify(location),location_id]))
+	var maker = PLAYER.new()
+	for npc in scene["npcs"]:
+		var npc_id = maker.make_id()
+		var payload = {"id":npc_id,"name":npc["name"],"occupation":npc["occupation"],"attitude":npc["attitude"],"location_id":location_id,"descriptive_only":true}
+		commands.append(SQL.stmt("INSERT INTO actors(id,master_character_id,kind,catalog_id,location_id,payload) VALUES(?,NULL,'npc',NULL,?,?)",[npc_id,location_id,JSON.stringify(payload)]))
+	record["opening_committed"]=true
+	record["location_name"]=scene["location_name"]
+	record["thumbnail_id"]=scene["thumbnail_id"]
+	record["updated_at"]=Time.get_datetime_string_from_system(true)
+	commands.append(SQL.stmt("UPDATE meta SET value=? WHERE key='campaign'",[JSON.stringify(record)]))
+	commands.append(SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(0,?,'narration',?)",["Unstarted",JSON.stringify({"text":OPENING.log_text(scene),"phase":"opening","location_id":location_id})]))
+	commands.append(SQL.stmt("DELETE FROM meta WHERE key='opening_commit_guard'"))
+	var result = SQL.run(path_for(id),commands)
+	if not result.get("ok",false):
+		return "Opening could not be committed. No scene saved."
 	return ""
 
 func read_log(id: String, limit: int = 40) -> Array:

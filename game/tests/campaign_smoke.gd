@@ -5,6 +5,7 @@ const SQL = preload("res://systems/sqlite.gd")
 const STORE = preload("res://campaigns/campaign_store.gd")
 const PLAYER = preload("res://players/character_store.gd")
 const MATURITY = preload("res://campaigns/maturity_profiles.gd")
+const OPENING = preload("res://campaigns/opening_scene.gd")
 const STARTS = preload("res://campaigns/campaign_starts.gd")
 var failures: Array[String] = []
 
@@ -62,6 +63,44 @@ func run() -> void:
 		expect(inventory["results"][0].size()==1 and int(inventory["results"][0][0]["quantity"])==2,"Inventory clone wrong")
 		expect(inventory["results"][1].is_empty(),"Foreign key violations")
 	expect(campaigns.synopsis(a["id"]).contains("tavern"),"Opening not reflected in log")
+	var proposal = {"start_id":"tavern","location_name":"The Copper Kettle","atmosphere":"Oak beams and lanterns.","npcs":[{"name":"Mara","occupation":"Innkeeper","attitude":0}],"world_facts":["The hearth is built of river stone."],"thumbnail_id":"tavern"}
+	var prepared = campaigns.prepare_opening(a["id"])
+	expect(not prepared.is_empty(),"Opening request not prepared")
+	if not prepared.is_empty():
+		expect(str(prepared["prompt"]).contains("Test policy for isolated settings.") and str(prepared["prompt"]).contains("MANDATORY ENGINE AUTHORITY"),"Opening prompt missing profile or authority")
+		var before = campaigns.actor_record(a["id"])
+		var invalid = proposal.duplicate(true)
+		invalid["hp"]=0
+		expect(not campaigns.commit_opening(a["id"],prepared["previous"],JSON.stringify(invalid)).is_empty(),"Extra mechanical key accepted")
+		invalid=proposal.duplicate(true)
+		invalid["npcs"]=[]
+		expect(OPENING.validate(JSON.stringify(invalid),"tavern").is_empty(),"Empty inhabited opening accepted")
+		invalid=proposal.duplicate(true)
+		invalid["npcs"][0]["attitude"]=0.5
+		expect(OPENING.validate(JSON.stringify(invalid),"tavern").is_empty(),"Fractional attitude accepted")
+		invalid=proposal.duplicate(true)
+		invalid["thumbnail_id"]="../../invalid"
+		expect(OPENING.validate(JSON.stringify(invalid),"tavern").get("thumbnail_id")=="tavern","Unsafe thumbnail did not fall back")
+		expect(OPENING.validate(JSON.stringify(proposal),"sea").is_empty(),"Wrong starting scope accepted")
+		expect(not campaigns.synopsis(a["id"]).contains("Copper Kettle"),"Invalid response leaked into log")
+		expect(campaigns.commit_opening(a["id"],prepared["previous"],JSON.stringify(proposal)).is_empty(),"Valid opening did not commit")
+		expect(not campaigns.commit_opening(a["id"],prepared["previous"],JSON.stringify(proposal)).is_empty(),"Opening replay accepted")
+		expect(campaigns.actor_record(a["id"])==before,"Opening changed player state")
+		var persisted = SQL.run(campaigns.path_for(a["id"]),[SQL.stmt("SELECT name,payload FROM locations WHERE id=?",[a["location_id"]]),SQL.stmt("SELECT id,payload FROM actors WHERE kind='npc'"),SQL.stmt("SELECT count(*) AS n FROM events WHERE kind='narration'"),SQL.stmt("PRAGMA foreign_key_check")],true)
+		expect(persisted.get("ok",false),"Opening readback failed")
+		if persisted.get("ok",false):
+			expect(not persisted["results"][0].is_empty() and persisted["results"][0][0]["name"]=="The Copper Kettle" and str(persisted["results"][0][0]["payload"]).contains("river stone"),"Location facts not persisted")
+			expect(persisted["results"][1].size()==1,"NPC not persisted exactly once")
+			expect(int(persisted["results"][2][0]["n"])==1 and persisted["results"][3].is_empty(),"Opening log or foreign keys invalid")
+		expect(campaigns.synopsis(a["id"]).contains("Copper Kettle") and not campaigns.synopsis(b["id"]).contains("Copper Kettle"),"Opening log isolation failed")
+		expect(campaigns.load_campaign(a["id"]).get("opening_committed",false),"Opening completion flag missing")
+	var stale_opening = campaigns.prepare_opening(b["id"])
+	if not stale_opening.is_empty():
+		expect(campaigns.update_thumbnail(b["id"],"road").is_empty(),"Could not change pending opening metadata")
+		var sea = proposal.duplicate(true)
+		sea["start_id"]="sea"
+		expect(not campaigns.commit_opening(b["id"],stale_opening["previous"],JSON.stringify(sea)).is_empty(),"Stale opening accepted")
+		expect(not campaigns.synopsis(b["id"]).contains("Copper Kettle"),"Stale opening wrote log")
 	var events = SQL.run(campaigns.path_for(a["id"]),[SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(1,?,'synopsis',?)",["Test",JSON.stringify({"text":"Verified summary fixture."})]),SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(2,?,'narration',?)",["Test",JSON.stringify({"text":"Later log fixture."})])])
 	expect(events.get("ok",false),"Test log insert failed")
 	expect(campaigns.synopsis(a["id"])=="Verified summary fixture.\n\nLater log fixture.","Synopsis did not prefer latest log summary")
