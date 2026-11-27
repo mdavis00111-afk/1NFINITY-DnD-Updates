@@ -7,6 +7,7 @@ const UI = preload("res://gameplay/game_workspace.gd")
 const DICE = preload("res://gameplay/manual_dice.gd")
 const DISPLAY = preload("res://gameplay/display_values.gd")
 const CATALOG = preload("res://rules/catalog.gd")
+const STARTS = preload("res://campaigns/campaign_starts.gd")
 var failures: Array[String] = []
 
 func _initialize() -> void:
@@ -73,6 +74,10 @@ func run() -> void:
 	var racial_fixture = {"spellcasting":{"racial_cantrip_ids":["fire-bolt"],"racial_casting_ability":"int","save_dc":12},"ability_modifiers":{"int":3},"proficiency_bonus":2}
 	expect(DISPLAY.racial_spell_text(racial_fixture).contains("Save DC 13") and DISPLAY.racial_spell_text(racial_fixture).contains("Attack +5"),"Racial spell ability incorrectly shares class DC")
 	var original = snapshot.duplicate(true)
+	var market = STARTS.texture_for("market")
+	expect(market!=null and STARTS.texture_for("missing-art-id")!=null,"Scene artwork fallback missing")
+	if market is AtlasTexture:
+		expect(market.atlas!=null and Rect2(Vector2.ZERO,market.atlas.get_size()).encloses(market.region),"Market artwork crop outside texture")
 	var raw_actor = store.actor_record(id)
 	expect(raw_actor.get("carried_weight_lb")==6,"Read projection unexpectedly rewrote cached actor load")
 	for sides in DICE.SIDES:
@@ -98,6 +103,10 @@ func run() -> void:
 		var bounds = base.get_global_rect()
 		for control in [ui.nav_bar,ui.left_panel,ui.center_panel,ui.right_panel,ui.composer,ui.send_button,ui.dice_type,ui.dice_count,ui.dice_result,ui.log_scroll]:
 			inside(control,bounds,str(resolution))
+		for nav_button in ui.nav_bar.get_children():
+			inside(nav_button,bounds,"Navigation "+nav_button.text)
+			var width = nav_button.get_theme_font("font").get_string_size(nav_button.text,HORIZONTAL_ALIGNMENT_LEFT,-1,nav_button.get_theme_font_size("font_size")).x
+			expect(width+8<=nav_button.size.x+1,"Navigation label clipped: "+nav_button.text)
 		expect(not ui.composer.editable and ui.send_button.disabled,"Future action input unexpectedly active")
 		for caption in ["4 / 7","30 ft.","Weight: 18.38 / 150 lb","17 gp","2 sp","Passive Perception","Proficiency"]:
 			expect(has_text(ui,caption),"Missing displayed campaign value: "+caption)
@@ -121,14 +130,58 @@ func run() -> void:
 				expect(has_text(ui.right_content,"Class Save DC 13") and has_text(ui.right_content,"Attack +5") and has_text(ui.right_content,"Level 1 slots: 1 / 2"),"Spell statistics not displayed from actor")
 			elif tab=="Skills":
 				expect(has_text(ui.right_content,"◆ Arcana   +5"),"Stored skill modifier or proficiency missing")
-		ui.navigate("Settings")
-		ui.navigate("Campaign")
+		for caption in ["Settings","Campaign"]:
+			for nav_button in ui.nav_bar.get_children():
+				if nav_button.text==caption: nav_button.pressed.emit()
 		expect(called==["settings","leave"],"Navigation callbacks failed")
+		# Empty and long-inventory/missing-art synthetic views exercise layout without writes.
+		base.remove_child(ui)
+		ui.queue_free()
+		for item_count in [0,48]:
+			var sparse = snapshot.duplicate(true)
+			sparse["actor"]["spellcasting"]={}
+			sparse["inventory"]=[]
+			for i in range(item_count):
+				sparse["inventory"].append({"item_id":"unmapped-long-equipment-name-"+str(i),"quantity":i+1,"equipped":false})
+			sparse["campaign"]["thumbnail_id"]="missing-art-id"
+			var variant_ui = UI.new()
+			variant_ui.configure(sparse,campaign,func(): pass,func(): pass,func(): pass,false)
+			base.add_child(variant_ui)
+			variant_ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			await settle()
+			inside(variant_ui.right_panel,bounds,"Sparse/long inventory right panel")
+			inside(variant_ui.composer,bounds,"Sparse/long inventory composer")
+			expect(variant_ui.inventory_cells.size()==item_count,"Inventory cells missing")
+			variant_ui.show_tab("Spells")
+			await settle()
+			expect(has_text(variant_ui.right_content,"No spells recorded."),"Non-caster fabricated spells")
+			base.remove_child(variant_ui)
+			variant_ui.queue_free()
 		root.remove_child(base)
 		base.queue_free()
 		await settle()
 	expect(store.gameplay_view(id)==original,"Read-only workspace changed campaign state")
 	expect(store.actor_record(id)==raw_actor,"Read-only workspace changed underlying actor payload")
+	# Corrupt only a separate disposable campaign, not the original/master fixture.
+	var bad = store.create_campaign("Malformed fixture",master_id,"road","standard")
+	expect(not bad.is_empty(),"Malformed fixture creation failed")
+	if not bad.is_empty():
+		var bad_id = str(bad["id"])
+		var bad_path = store.path_for(bad_id)
+		var bad_actor = store.actor_record(bad_id)
+		var malformed = SQL.run(bad_path,[SQL.stmt("UPDATE inventory SET quantity=1.5 WHERE actor_id=? AND item_id='backpack'",[bad["actor_id"]])])
+		expect(malformed.get("ok",false) and store.gameplay_view(bad_id).is_empty(),"Fractional SQL quantity silently truncated")
+		var restored = SQL.run(bad_path,[SQL.stmt("UPDATE inventory SET quantity=1 WHERE actor_id=? AND item_id='backpack'",[bad["actor_id"]])])
+		expect(restored.get("ok",false) and not store.gameplay_view(bad_id).is_empty(),"Valid integer quantity not readable")
+		var wrong = bad_actor.duplicate(true)
+		wrong["master_character_id"]="00000000000000000000000000000000"
+		var wrong_identity = SQL.run(bad_path,[SQL.stmt("UPDATE actors SET payload=? WHERE id=?",[JSON.stringify(wrong),bad["actor_id"]])])
+		expect(wrong_identity.get("ok",false) and store.gameplay_view(bad_id).is_empty(),"Mismatched campaign actor identity displayed")
+		wrong=bad_actor.duplicate(true)
+		wrong["equipment"]=null
+		var wrong_shape = SQL.run(bad_path,[SQL.stmt("UPDATE actors SET payload=? WHERE id=?",[JSON.stringify(wrong),bad["actor_id"]])])
+		expect(wrong_shape.get("ok",false) and store.gameplay_view(bad_id).is_empty(),"Malformed actor container displayed")
+		expect(store.gameplay_view(id)==original,"Bad campaign affected sibling")
 	expect(players.load_record(master_id)==master,"Workspace modified master")
 	finish()
 

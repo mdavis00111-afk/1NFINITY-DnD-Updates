@@ -266,7 +266,7 @@ func gameplay_view(id: String) -> Dictionary:
 	var result = SQL.run(path_for(id),[
 		SQL.stmt("BEGIN"),
 		SQL.stmt("SELECT value FROM meta WHERE key='campaign'"),
-		SQL.stmt("SELECT payload,location_id FROM actors WHERE id=? AND kind='player'",[actor_id]),
+		SQL.stmt("SELECT payload,location_id,master_character_id FROM actors WHERE id=? AND kind='player'",[actor_id]),
 		SQL.stmt("SELECT item_id,quantity,payload FROM inventory WHERE actor_id=? ORDER BY item_id",[actor_id]),
 		SQL.stmt("SELECT id,turn,kind,payload FROM events WHERE kind IN ('campaign_created','narration') ORDER BY id"),
 		SQL.stmt("SELECT id,name,kind,x,y,payload FROM locations ORDER BY name COLLATE NOCASE,id"),
@@ -285,8 +285,11 @@ func gameplay_view(id: String) -> Dictionary:
 	var can_open = not sets[7].is_empty()
 	sets = sets.slice(2,7)
 	var actor = JSON.parse_string(str(sets[0][0]["payload"]))
-	if not actor is Dictionary or actor.get("id")!=actor_id:
-		last_error = "Invalid campaign player payload."
+	if not actor is Dictionary or actor.get("id")!=actor_id or not valid_id(str(record.get("master_character_id",""))) or actor.get("master_character_id")!=record["master_character_id"] or sets[0][0].get("master_character_id")!=record["master_character_id"]:
+		last_error = "Invalid campaign player identity."
+		return {}
+	if not display_shape_valid(actor):
+		last_error = "Campaign player data is malformed. No saved data was changed."
 		return {}
 	actor["location_id"] = sets[0][0]["location_id"]
 	var items: Array = []
@@ -295,7 +298,12 @@ func gameplay_view(id: String) -> Dictionary:
 		if not payload is Dictionary:
 			payload = {}
 		payload["item_id"] = str(row["item_id"])
-		payload["quantity"] = int(row["quantity"])
+		# SQLite affinity and CHECK(quantity>0) alone do not exclude REAL or text.
+		var quantity_text = str(row["quantity"])
+		if not quantity_text.is_valid_int() or int(quantity_text)<=0:
+			last_error = "Campaign inventory quantity is invalid. No saved data was changed."
+			return {}
+		payload["quantity"] = int(quantity_text)
 		items.append(payload)
 	DISPLAY.project_inventory(CATALOG.new(),actor,items)
 	var events: Array = []
@@ -318,3 +326,36 @@ func gameplay_view(id: String) -> Dictionary:
 		var payload = JSON.parse_string(str(row["payload"]))
 		quests.append({"id":str(row["id"]),"status":str(row["status"]),"payload":payload if payload is Dictionary else {}})
 	return {"campaign":record,"actor":actor,"inventory":items,"events":events,"locations":locations,"location":current,"quests":quests,"opening_available":can_open}
+
+# Reject malformed present containers before display code dereferences them. Missing
+# optional fields remain supported for older snapshots; never rewrite saved data.
+func display_shape_valid(actor: Dictionary) -> bool:
+	for key in ["combat","ability_scores","ability_modifiers","saving_throws","skills","coins","equipment","spellcasting","resources","background_feature"]:
+		if actor.has(key) and not actor[key] is Dictionary:
+			return false
+	for key in ["attacks","proficiency_ids","expertise_ids","racial_trait_ids","class_feature_ids","language_ids"]:
+		if actor.has(key) and not actor[key] is Array:
+			return false
+	for value in actor.get("attacks",[]):
+		if not value is Dictionary:
+			return false
+	for key in ["skills","resources"]:
+		for value in actor.get(key,{}).values():
+			if not value is Dictionary:
+				return false
+	var equipment = actor.get("equipment",{})
+	if not equipment.get("weapon_ids",[]) is Array:
+		return false
+	var spellcasting = actor.get("spellcasting",{})
+	var slots = spellcasting.get("slots",{})
+	if not slots is Dictionary:
+		return false
+	for slot in slots.values():
+		if not slot is Dictionary:
+			return false
+	for key in ["cantrip_ids","racial_cantrip_ids","known_ids","prepared_ids","always_prepared_ids"]:
+		if not spellcasting.get(key,[]) is Array:
+			return false
+	if not actor.get("combat",{}).get("conditions",[]) is Array:
+		return false
+	return true

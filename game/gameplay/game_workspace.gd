@@ -221,6 +221,8 @@ func number(value: Variant, signed_value: bool = false) -> String:
 	if value == null:
 		return "—"
 	if value is int or value is float:
+		if not is_finite(float(value)):
+			return "—"
 		var n = str(int(value)) if float(value)==floor(float(value)) else str(value)
 		return "+"+n if signed_value and float(value)>=0 else n
 	return str(value)
@@ -230,7 +232,7 @@ func title_for(table: String, id: Variant) -> String:
 	return "—" if key.is_empty() else cat.title(table,key)
 
 func actor_portrait() -> Texture2D:
-	return PORTRAIT.texture_for(str(actor.get("portrait","")))
+	return EMPTY_PARTY if actor.is_empty() else PORTRAIT.texture_for(str(actor.get("portrait","")))
 
 func build_header() -> void:
 	var header = frame(self,1.0,false,false,5)
@@ -292,7 +294,10 @@ func stat(parent: Node, caption: String, value: String, icon_id: String = "", he
 	one_line(row,caption,15,GOLD)
 	var val = one_line(row,value,16,IVORY)
 	val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	val.size_flags_stretch_ratio = 0.8
+	# Values must retain their natural width; the caption receives remaining space.
+	# Equal expanding labels clipped Passive Perception and long HP totals.
+	val.size_flags_horizontal = Control.SIZE_SHRINK_END
+	val.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 
 func build_left(parent: VBoxContainer) -> void:
 	var top = hbox(parent,6)
@@ -415,7 +420,7 @@ func build_center(parent: VBoxContainer) -> void:
 	var band_panel = location_band.get_parent() as PanelContainer
 	band_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	band_panel.offset_top = -25
-	one_line(location_band,str(campaign.get("title","Campaign"))+"  ·  "+str(location.get("name",campaign.get("location_name",campaign.get("start_name","Location unavailable")))),15,GOLD,true)
+	one_line(location_band,str(campaign.get("title","Campaign"))+"  ·  "+str(location.get("name","Location unavailable")),15,GOLD,true)
 	var log = frame(parent,1.0,true,false,5)
 	log.get_parent().size_flags_vertical = Control.SIZE_EXPAND_FILL
 	log_scroll = scroll(log,120)
@@ -482,6 +487,7 @@ func build_center(parent: VBoxContainer) -> void:
 	roll_button.size_flags_horizontal = Control.SIZE_FILL
 	dice_result = one_line(controls,"Result: —",16)
 	dice_result.size_flags_stretch_ratio = 2.0
+	dice_result.custom_minimum_size.x = 68
 	for tool in [["Log","initiative"],["Rules","focus"],["Clear","diamond"]]:
 		var target = str(tool[0])
 		var icon_button = button(controls,"",func(): dice_tool(target),14,str(tool[1]))
@@ -511,9 +517,12 @@ func roll_dice() -> void:
 	for die in last_roll["values"]:
 		values.append(str(die))
 	var text = "Total "+str(last_roll["total"])+"  ["+", ".join(values)+"]"
-	dice_result.text = text
+	var font = dice_result.get_theme_font("font")
+	var text_width = font.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,dice_result.get_theme_font_size("font_size")).x
+	var needs_detail = values.size()>4 or text_width>dice_result.size.x
+	dice_result.text = "Total "+str(last_roll["total"]) if needs_detail else text
 	dice_result.tooltip_text = text
-	if values.size()>4:
+	if needs_detail:
 		popup_text("Manual dice — "+str(last_roll["quantity"])+"d"+str(last_roll["sides"]),text)
 
 func build_right(parent: VBoxContainer) -> void:
@@ -544,7 +553,7 @@ func build_right(parent: VBoxContainer) -> void:
 	var card = frame(cards,1.0,false,true,3)
 	var avatar = picture(card,actor_portrait(),Vector2(0,52),true)
 	avatar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	one_line(card,str(actor.get("name","Player")),14,GOLD,true)
+	one_line(card,str(actor.get("name","Unavailable")),14,GOLD,true)
 	one_line(card,"Lv "+number(actor.get("level")),13,IVORY,true)
 	var c = actor.get("combat",{})
 	var hp_strip = PanelContainer.new()

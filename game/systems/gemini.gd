@@ -126,8 +126,12 @@ func received(result: int, code: int, _headers: PackedStringArray, body: PackedB
 		fail("Gemini returned an unreadable response.")
 		return
 	if mode == "models":
-		for item in data.get("models",[]):
-			if not item is Dictionary or not "generateContent" in item.get("supportedGenerationMethods",[]):
+		var models = data.get("models",[])
+		if not models is Array:
+			fail("Gemini returned an invalid model list.")
+			return
+		for item in models:
+			if not item is Dictionary or not item.get("supportedGenerationMethods",[]) is Array or not "generateContent" in item.get("supportedGenerationMethods",[]):
 				continue
 			var id = str(item.get("name","")).trim_prefix("models/")
 			if id.begins_with("gemini-") and not id.is_empty() and not id in discovered:
@@ -186,16 +190,21 @@ static func generation_text(data: Dictionary, require_complete: bool = false) ->
 		if require_complete:
 			if part.has("thought") and not part["thought"] is bool:
 				return failure
-			for key in ["functionCall","functionResponse","executableCode","codeExecutionResult","inlineData","fileData"]:
-				if part.has(key):
+			for key in part:
+				if key not in ["text","thought","thoughtSignature"]:
 					return failure
+			if (part.has("text") and not part["text"] is String) or (part.has("thoughtSignature") and not part["thoughtSignature"] is String):
+				return failure
 			if not part.get("thought",false) and not part.has("text"):
 				return failure
 		if part.has("text") and not part.get("thought",false):
 			if not part["text"] is String:
 				return failure
 			texts.append(part["text"])
-	var output = "\n".join(texts).strip_edges()
+	# Structured parts are chunks of a single JSON document; inserting a newline
+	# can corrupt a split string or escape sequence. Preserve prose behavior.
+	var separator = "" if require_complete else "\n"
+	var output = separator.join(texts).strip_edges()
 	if output.is_empty() or (require_complete and output.length()>4000):
 		return failure
 	return {"ok":true,"message":output.left(4000)}

@@ -89,6 +89,13 @@ func run() -> void:
 	mixed.erase("promptFeedback")
 	mixed["candidates"].append(mixed["candidates"][0].duplicate(true))
 	expect(not GEMINI.generation_text(mixed,true)["ok"],"Multiple structured candidates accepted")
+	var split = {"candidates":[{"finishReason":"STOP","content":{"parts":[{"text":"{\"location_name\":\"North"},{"text":" Road\"}"}]}}]}
+	expect(GEMINI.generation_text(split,true).get("message")=="{\"location_name\":\"North Road\"}","Structured text chunks changed JSON")
+	split["candidates"][0]["content"]["parts"][1]["unknownMedia"]={}
+	expect(not GEMINI.generation_text(split,true)["ok"],"Unknown structured part field accepted")
+	split["candidates"][0]["content"]["parts"][1].erase("unknownMedia")
+	split["candidates"][0]["content"]["parts"].append({"thought":true,"text":42})
+	expect(not GEMINI.generation_text(split,true)["ok"],"Malformed thought text accepted")
 	for failure in failures:
 		push_error(failure)
 	print("AI profile smoke failures: ", failures.size())

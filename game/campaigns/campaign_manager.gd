@@ -404,7 +404,19 @@ func request_opening() -> void:
 	var id = str(active["id"])
 	var prepared = store.prepare_opening(id)
 	if prepared.is_empty():
-		show_note(store.last_error)
+		# Another session may have committed the opening or deleted this campaign
+		# since rendering the retry button. Refresh instead of keeping a stale UI.
+		var failure = store.last_error
+		var refreshed = store.load_campaign(id)
+		if refreshed.is_empty():
+			active={}
+			mode="library"
+			return_error="Campaign is no longer available. Reopen it from the library."
+			render()
+		else:
+			active=refreshed
+			render()
+			show_note(failure)
 		return
 	ensure_gemini()
 	pending_campaign=id
