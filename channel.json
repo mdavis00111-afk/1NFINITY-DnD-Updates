@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.7",
-  "source_commit": "cb8002b338bc3e8d4147a370cc3713e67e52c2ce",
-  "notes": "Shared Arcane menu typography based on approved gold specimen: bundled EB Garamond, text-only controls, bright gold hover/focus with luminous star flourish. All existing artwork and menus retained.",
+  "version": "0.0.8",
+  "source_commit": "c1b9104eeb5a6941d46c73d9be94b476e44e22fa",
+  "notes": "Actual supplied gold lettering extracted to a transparent atlas and native Godot bitmap font. Shared theme uses the image-derived font; Garamond is only a fallback for absent characters. All existing menu screens and artwork retained.",
   "files": [
     {
       "path": "main.tscn",
@@ -29,40 +29,48 @@
       "blob": "c7f6e5a9d24d3e43d7d0fb2029a84439cf308592"
     },
     {
-      "path": "main.gd",
-      "blob": "d35b89dd2b5eb04f816e6d45bac05517c9c1a491"
-    },
-    {
-      "path": "project.godot",
-      "blob": "2a5e6953cd1a0dad73016c60090a6052e431c65a"
-    },
-    {
-      "path": "version.txt",
-      "blob": "5a5831ab6bf692d5c93e7784852b0b5a05c153b4"
-    },
-    {
-      "path": "themes/master_theme.tres",
-      "blob": "24b02723fe5889cf3660810d78f8a52518666b9b"
-    },
-    {
       "path": "themes/gold_flourish.svg",
       "blob": "b18833292ef5dd034e1c7b6f3fb4bf57a18023a9"
-    },
-    {
-      "path": "themes/menu_button.gd",
-      "blob": "ee99bade3f5f2b852be87a93ed2156b400306b4c"
     },
     {
       "path": "themes/fonts/OFL.txt",
       "blob": "c1ec5e1818415eab6f8fca95a230af477d64eb61"
     },
     {
-      "path": "themes/TYPOGRAPHY.md",
-      "blob": "aae43bfacce3c3e739c867ecd246065fecd404ac"
-    },
-    {
       "path": "themes/fonts/EBGaramond.ttf",
       "blob": "52d34b86ec20977f222ce37e8158e6b3002c0a31"
+    },
+    {
+      "path": "main.gd",
+      "blob": "b3397c4c1ca32965313b2939a9b9c5e30424bf7a"
+    },
+    {
+      "path": "project.godot",
+      "blob": "46916b0361d9286660b8eb45b4e604a8c466283b"
+    },
+    {
+      "path": "version.txt",
+      "blob": "d169b2f2d0a4961be2e01a31cebeffdefac24e43"
+    },
+    {
+      "path": "themes/master_theme.tres",
+      "blob": "b667aab8c437498df94e6e8a02dbee8c772c006d"
+    },
+    {
+      "path": "themes/menu_button.gd",
+      "blob": "add4fdc49ac89bd7bb412c7d7a0db33e7259f93a"
+    },
+    {
+      "path": "themes/TYPOGRAPHY.md",
+      "blob": "c1a5aa6c20cb440eaa85bacd8215f1c39a5516bf"
+    },
+    {
+      "path": "themes/fonts/arcane.fnt",
+      "blob": "7f6aba96ecb6966800d8ed59afeb9e20c9d7d92d"
+    },
+    {
+      "path": "themes/fonts/arcane_atlas.png",
+      "blob": "9404512d0977a189bcb5e5c61b023387894cb217"
     }
   ]
 }
