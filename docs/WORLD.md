@@ -1,0 +1,2 @@
+# 03 — Campaign and world
+Baseline 0.0.21: game/systems/campaign_schema.sql is schema only; no gameplay controller. character_store.gd campaign_template clones ready master record. Define campaign creation/load/archive, migrations, isolated transactions for actors/locations/inventory/events/relationships/quests/encounters before live turns. Godot owns authoritative state, dice and time; persist NPCs and location occupancy, no forced epic plots. Next P2 campaign persistence then P3 turn resolution; do not claim implementation until tests and source exist.

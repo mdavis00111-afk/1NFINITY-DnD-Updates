@@ -52,3 +52,6 @@ Evidence: user-pasted Codex report, baseline branch 4ea43b7 / live 0.0.20; not i
 
 ## Reference readiness — 2026-11-27
 Executed local Python SQLite checks on supplied expanded rules_private.db: integrity_check ok, foreign_key_check empty, FTS MATCH fireball 50 hits, all four source PDF SHA256 matches; 1327 page records (44 no text, 11 sparse), 1968 catalogue rows, 2701 outline entries. All 12 GUI image SHA256 values matched. Combined ZIP CRC verification passed. No Godot runtime tests executed; private Codex access and Windows book browser integration remain unverified.
+
+## Shared development setup — 2026-11-27
+Repository-only check at f31ada67209cafa86e36ce3c24dd7cf3bcf7cbf6: channel 0.0.21, version.txt and project.godot match; all 81 manifest path/blob entries match the immutable source tree 871746df1760f7b5b502688e6b327141682be1e2. Documentation-only coordination update; no new runtime tests executed. Prior cloud test evidence remains as recorded. Windows playtest acceptance pending.
