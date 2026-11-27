@@ -4,3 +4,5 @@ Branch godot; live v0.0.26, target v0.0.27; no intermediate publication. Read PR
 3b.3c.1 regression implemented; next 3b.3c.2 geography/discovery exact binding. Native execution remains outstanding; no release.
 
 3b.3c.1 follow-up source check: SQLite bridge returns arrays directly in results, corrected fixture decoding. Runtime remains unexecuted.
+
+3b.3c.2 positive regression authored; negative binding/forgery cases outstanding before 3b.3c.3. Native execution not run.

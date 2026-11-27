@@ -229,6 +229,7 @@ func run() -> void:
 	await request_count_cases(id,shield)
 	await authority_cases(id,shield)
 	await persistent_npc_location(id)
+	await geography_discovery_case(id)
 	expect(players.load_record(master)==original and base.gameplay_view(b["id"])==sibling,"Master and sibling isolation")
 	ctrl.close_session()
 	workspace.queue_free()
@@ -279,6 +280,66 @@ func persistent_npc_location(id: String) -> void:
 	var npc=JSON.parse_string(npcs[0]["payload"])
 	expect(npc is Dictionary and npc.get("id")==npcs[0]["id"] and npc.get("occupation")=="weaver","NPC persisted identity and occupation")
 	expect(SQL.run(base.path_for(id),statements,true)==persisted,"World identities stable on independent SQLite read")
+
+func geography_discovery_case(id: String) -> void:
+	var rows=SQL.run(base.path_for(id),[SQL.stmt("SELECT id FROM locations WHERE name=?",["Willowfen"])],true)
+	if not expect(rows.get("ok",false) and rows["results"][0].size()==1,"Existing named location"):
+		return
+	var village=rows["results"][0][0]["id"]
+	var location=session.token(id)["location_id"]
+	var before=durable_snapshot(id)
+	var calls=outbound.size()
+	var input="I ask about the road and look at the counter."
+	workspace.composer.text=input
+	workspace.submit_chat()
+	if not await pump("interpret"):
+		return
+	reply({"kind":"conversation","args":{"text":input}})
+	if not await pump("narrate"):
+		return
+	var evidence="An abandoned carved amber tally lies on the counter, free to take."
+	var relation="Willowfen lies north of Oak Inn."
+	var road="The Willow Road connects Oak Inn and Willowfen."
+	var response=combined(relation+" "+road+" "+evidence)
+	var from={"id":location,"local_key":null}
+	var to={"id":village,"local_key":null}
+	response["geography"]["facts"]=[
+		{"kind":"relationship","from":from,"to":to,"relation_kind":"relative","direction":"north","distance_miles":null,"precision":"provisional","visibility":"player","evidence":relation},
+		{"kind":"route","subject":{"id":null,"local_key":"willow-road"},"from":from,"to":to,"name":"Willow Road","route_kind":"road","precision":"provisional","distance_miles":null,"points":[],"visibility":"player","evidence":road}
+	]
+	var definition={"name":"Carved amber tally","category":"gear","description":"A carved amber tally.","unit_weight_lb":0.1,"cost_cp":1,"properties":[],"charges_max":null,"attunement_required":false}
+	response["discoveries"]=[
+		{"kind":"define_custom","evidence":evidence,"args":{"definition":definition,"official_equivalent_id":null}},
+		{"kind":"loot_discover","evidence":evidence,"args":{"location_id":location,"name":"Counter discovery","items":[{"definition_id":"@0","quantity":1,"charges":null,"condition":"intact","attunement":"not_required"}],"coins":money(0)}}
+	]
+	reply(response)
+	if not await pump("idle"):
+		return
+	expect(outbound.size()-calls==2,"Geography and discovery exactly two provider calls")
+	var after=durable_snapshot(id)
+	expect(after["actor"]==before["actor"] and after["owned"]==before["owned"],"Discovery does not grant resources")
+	var persisted=SQL.run(base.path_for(id),[
+		SQL.stmt("SELECT l.id,l.x,l.y,d.status FROM locations l JOIN world_discovery d ON d.location_id=l.id WHERE l.name=?",["Willowfen"]),
+		SQL.stmt("SELECT from_id,to_id,direction FROM geographic_relationships WHERE from_id=? AND to_id=?",[location,village]),
+		SQL.stmt("SELECT r.from_id,r.to_id,d.status FROM world_routes r JOIN world_discovery d ON d.route_id=r.id WHERE r.name=?",["Willow Road"]),
+		SQL.stmt("SELECT request_id,request_payload,result_payload FROM gameplay_requests WHERE kind IN ('define_custom','loot_discover') AND status='committed' ORDER BY settled_revision")
+	],true)
+	if not expect(persisted.get("ok",false),"Persisted geography and discovery query"):
+		return
+	var result=persisted["results"]
+	if not expect(result[0].size()==1 and result[1].size()==1 and result[2].size()==1 and result[3].size()==2,"Exact persisted world and discovery rows"):
+		return
+	expect(result[0][0]["id"]==village and result[0][0]["x"]==null and result[0][0]["y"]==null and result[0][0]["status"]=="reported","Stable reported village with unknown coordinates")
+	expect(result[1][0]["direction"]=="north" and result[2][0]["from_id"]==location and result[2][0]["to_id"]==village and result[2][0]["status"]=="reported","Persisted relationship and untraveled route")
+	var defined=JSON.parse_string(result[3][0]["result_payload"])
+	var request=JSON.parse_string(result[3][1]["request_payload"])
+	var settlement=session.settlement(id,result[3][1]["request_id"])
+	expect(request["args"]["items"][0]["definition_id"]==defined["definition_id"] and request["args"]["location_id"]==location,"Proposal-local definition resolves to persistent ID at current location")
+	expect(settlement.get("request")==request and request["campaign_id"]==id and request["request_id"]==result[3][1]["request_id"],"Exact durable transformed request")
+	var source=session.source(session.token(id),request["args"]["source_event_id"])
+	expect(source.get("kind")=="narration" and str(source.get("data",{}).get("text","")).contains(evidence),"Discovery binds committed narrative evidence")
+	var loot=ctrl.view["interaction_extension"]["loot_containers"]
+	expect(loot.size()==1 and loot[0]["items"][0]["name"]=="Carved amber tally","Discovered item remains in local loot")
 
 func wait_frames() -> void:
 	for i in range(12):
