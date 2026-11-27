@@ -1,12 +1,12 @@
 {
   "channel": "godot",
-  "version": "0.0.4",
-  "source_commit": "f882c823fa29e83cc8503aa2d709ec45e04d70db",
-  "notes": "New shared gold text theme and separate Settings, Player Manager and Campaign Manager screens. API key and per-role prompt editing saved locally. Temporary vector backgrounds; gameplay and legacy content rules integration pending.",
+  "version": "0.0.5",
+  "source_commit": "a86c827c8e614baaf7c42d7de25bf8fff36f0e60",
+  "notes": "Menu placement matched to approved painted logo. Supports actual castle art in res://art/castle.png or user://art/castle.png. Artwork must be installed separately for this version; source-only release.",
   "files": [
     {
       "path": "project.godot",
-      "blob": "5b1cd6363f247b1889ed4794396a4006cd7cbb45"
+      "blob": "a4f69087ad83ee48290722587fd76420c886001c"
     },
     {
       "path": "main.tscn",
@@ -14,11 +14,11 @@
     },
     {
       "path": "version.txt",
-      "blob": "81340c7e72d5c852585d0faea06985a720d4c2df"
+      "blob": "bbdeab6222cb8ad8ab423239cbeff9e6163d0d38"
     },
     {
       "path": "main.gd",
-      "blob": "bf711f63a855f2e7a783ce17923f2f655c45d3fc"
+      "blob": "7faf8b4e4f93fd3b00474bdd372fe0d8f0d6e0c3"
     },
     {
       "path": "themes/master_theme.tres",
