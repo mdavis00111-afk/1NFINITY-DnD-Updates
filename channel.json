@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.9",
-  "source_commit": "51764f9bc356d23ad4ac43c41317451b69ad7334",
-  "notes": "Approved Hall of Heroes art, extracted italic font and gold sheet components. Shortened menus, separate delete screen, level-one character draft calculator and personal rules library import/search. Full RAW validation and player storage still pending. Private rules archive not bundled.",
+  "version": "0.0.10",
+  "source_commit": "7fbc5421241803bdbeaa76ca3ba2bf41b91612d5",
+  "notes": "Recovery: windowed startup, threaded update check, delayed readiness handshake and edition-separated master reference browser. Recovery ZIP includes local 544-page reference library; original rules remain active.",
   "files": [
     {
       "path": "main.tscn",
@@ -49,10 +49,6 @@
       "blob": "9404512d0977a189bcb5e5c61b023387894cb217"
     },
     {
-      "path": "main.gd",
-      "blob": "4b6906a4fb81b52cc54080d9f3a0af358e4456ce"
-    },
-    {
       "path": "themes/master_theme.tres",
       "blob": "e13c9b93e804183cad51fe59603ed35caaeebff2"
     },
@@ -63,14 +59,6 @@
     {
       "path": "themes/TYPOGRAPHY.md",
       "blob": "d751acb334d0c7f8e99e47177c5794f29a2385f9"
-    },
-    {
-      "path": "project.godot",
-      "blob": "5f0f7d249880eb58d8d37c047e61bed62ab33441"
-    },
-    {
-      "path": "version.txt",
-      "blob": "c5d54ec32616aacce853f12c79602312c7ac04ec"
     },
     {
       "path": "rules/library.gd",
@@ -119,6 +107,26 @@
     {
       "path": "art/sheet_reference.jpg",
       "blob": "74cbe1105d673f88659c5246d5d757cdb397e240"
+    },
+    {
+      "path": "main.gd",
+      "blob": "0ad0cdd3953e61928c11016a0a9cef291b338474"
+    },
+    {
+      "path": "project.godot",
+      "blob": "1a8bd2df535c94ed4c39bf656c7c6183e6ab0c36"
+    },
+    {
+      "path": "version.txt",
+      "blob": "7c1886bb9f472af88c02b1f7e1d940132bdf5795"
+    },
+    {
+      "path": "rules/master_reference.gd",
+      "blob": "843b2de08848b38784e014ba50033ae13e6848e9"
+    },
+    {
+      "path": "rules/MASTER_REFERENCE.md",
+      "blob": "e40d949408961503eccd434967fdd50ee72256b3"
     }
   ]
 }
