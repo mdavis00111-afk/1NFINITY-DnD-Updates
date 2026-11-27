@@ -181,7 +181,7 @@ func public_context(id: String, related_ids: Array) -> Dictionary:
 	var local_history: Array = []
 	for row in sets[11]:
 		var event = JSON.parse_string(row["payload"])
-		if not event is Dictionary or not DTO.bounded_text(event.get("text"),12000):
+		if not event is Dictionary or event.get("visibility","player")!="player" or not DTO.bounded_text(event.get("text"),12000):
 			continue
 		# Only committed opening or B4-reconciled text; never audit/candidate prose.
 		if event.get("phase")!="opening" and event.get("b4_reconciled")!=true:

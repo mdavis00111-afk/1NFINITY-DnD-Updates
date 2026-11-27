@@ -22,6 +22,8 @@ func review(req: Dictionary,scope: Dictionary,intent: Dictionary) -> Dictionary:
 		out["reason"]="Active encounter: combat not supported."
 		return out
 	var exact=intent["kind"]==req["kind"] and intent["args"]==req["args"]
+	var evidence=controller.active().get("input_evidence",{})
+	var matched=intent["kind"]=="chat" and evidence.get("request")==req and evidence.get("original")==intent["args"].get("text") and evidence.get("revision")==state["revision"]
 	# Ordinary conversation and looking do not change possessions, position,
 	# HP, time, resources or quests. No roll is implied.
 	if req["kind"] in ["conversation","observe"] and intent["kind"]=="chat" and req["args"]["text"]==intent["args"]["text"]:
@@ -31,10 +33,20 @@ func review(req: Dictionary,scope: Dictionary,intent: Dictionary) -> Dictionary:
 		return out
 	# Explicit local selections; C3 checks ownership, slot displacement,
 	# capacity and supported effect eligibility. No implicit target.
-	if exact and req["kind"] in ["equip","swap","unequip","item_drop","loot_pickup","loot_take_all","reconcile_legacy_slots"] and controller.registry.noncombat.safe_actor(state):
+	if (exact or matched) and req["kind"] in ["equip","quick_equip","swap","unequip","item_drop","loot_pickup","loot_take_all","reconcile_legacy_slots","item_use","resource_use","spell_cast"] and controller.registry.noncombat.safe_actor(state):
 		out["accepted"]=true
-		out["reason"]="Explicit scoped selection; C3 validates actual state."
+		out["reason"]="Explicit selection or matching independent interpretations; C3 validates actual state, quantities, effects and targets."
 		return out
+	if matched and req["kind"] in ["ability_check","skill_check","object_check"] and req["args"]["circumstances"].is_empty() and controller.registry.noncombat.safe_actor(state):
+		# Only the simple known actor slice; other features/circumstances need
+		# independent contextual resolution, not an invented numeric DC.
+		var actor=state["actor"]
+		var source=controller.registry.session.source(state,req["args"]["source_event_id"])
+		if actor.get("class_id")=="fighter" and actor.get("race_id")=="human" and controller.registry.session.public_source(source) and controller.registry.source_valid(state,int(req["args"]["source_event_id"])):
+			out["accepted"]=true
+			out["ruling"]={"seconds":null,"establish_clock":false,"optional_features_resolved":true,"verified_circumstances":[],"effect_dc":null}
+			out["reason"]="Matching contextual difficulty proposal, local public source and simple actor; RAW resolution in C3."
+			return out
 	# More consequential / context-dependent actions require independent local
 	# evidence and judgment (safe rest, casting components, consent, DC, etc.).
 	if contextual.is_valid():

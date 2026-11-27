@@ -21,18 +21,18 @@ static func open(parent: Node,on_change: Callable) -> void:
 	summary.max_length=500
 	col.add_child(summary)
 	var consent=CheckBox.new()
-	consent.text="I have reviewed the saved prompt and authorize this local export."
+	consent.text="I have reviewed the saved prompt and authorize this local export_button."
 	col.add_child(consent)
-	var export=Button.new()
-	export.text="Export prompt-only proposal"
-	col.add_child(export)
-	export.pressed.connect(func():
+	var export_button=Button.new()
+	export_button.text="Export prompt-only proposal"
+	col.add_child(export_button)
+	export_button.pressed.connect(func():
 		var result=SHARE.export_proposal(summary.text,consent.button_pressed)
 		info.text=("Exported locally (not published): "+result["path"]) if result.get("ok",false) else result["error"])
-	var import=Button.new()
-	import.text="Inspect Lead-approved shared revision"
-	col.add_child(import)
-	import.pressed.connect(func():
+	var import_button=Button.new()
+	import_button.text="Inspect Lead-approved shared revision"
+	col.add_child(import_button)
+	import_button.pressed.connect(func():
 		var picker=FileDialog.new()
 		picker.file_mode=FileDialog.FILE_MODE_OPEN_FILE
 		picker.access=FileDialog.ACCESS_FILESYSTEM

@@ -144,7 +144,7 @@ func refresh() -> void:
 	ext["queued_text"]=work["queued"].get("intent",{}).get("args",{}).get("text","")
 	ext["can_queue"]=busy and work["queued"].is_empty()
 	ext["processing"]=busy
-	ext["reviewed_preview"]=job.get("candidate",{}).get("text","") if job.get("critical_verified",false) and data["state"]["pending_turn_id"]!=null else ""
+	ext["reviewed_preview"]=preview_text(job,data["state"])
 	ext["work_stage"]=job.get("stage","")
 	ext["last_terminal"]=last
 	ext["accepted_request_ids"]=[job.get("intent",{}).get("request_id"),work["queued"].get("intent",{}).get("request_id")]
@@ -759,3 +759,6 @@ func block_view(message: String) -> void:
 	notifying=true
 	view_changed.emit(blocked.duplicate(true))
 	notifying=false
+
+func preview_text(job: Dictionary,state: Dictionary) -> String:
+	return str(job.get("candidate",{}).get("text","")) if job.get("critical_verified",false) and state["pending_turn_id"]!=null else ""

@@ -53,6 +53,7 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 		expanded["intent"]=job["intent"]
 		expanded["next_step_hint"]=job.get("remaining",[]).front() if not job.get("remaining",[]).is_empty() else null
 		expanded["completed_steps"]=job.get("completed_steps",[])
+		expanded["independent_pass"]=job.has("input_candidate")
 	elif stage=="narrate":
 		var refs: Array=[]
 		for section in REG.TOOLS.get(job.get("tool",{}).get("kind",""),[{}, "", []])[2]:
@@ -88,6 +89,26 @@ func receive_interpretation(identity: Dictionary,result: Dictionary,selected: Ar
 		if step["kind"] in DISCOVERY+["story_update","party_membership","reconcile_legacy_slots"]:
 			stop("clarification","World proposal needs an established source and independent review.")
 			return failure(status)
+	var pending=job.get("input_candidate",{})
+	# A fresh, independent interpretation sees the original words and actual
+	# read-only context, not the first proposed action or an approval flag.
+	if job["intent"]["kind"]=="chat" and not steps[0]["kind"] in ["conversation","observe"]:
+		if pending.is_empty():
+			job["input_candidate"]={"steps":steps.duplicate(true),"revision":data["state"]["revision"]}
+			job["selected_context"]=selected.slice(0,8) if JSON.stringify(selected).length()<=32000 else []
+			job["attempt"]={}
+			inflight={}
+			if not update_active(job):
+				return failure("Interpretation persistence unconfirmed.")
+			advance.call_deferred()
+			return {"ok":true}
+		if pending["revision"]!=data["state"]["revision"] or steps[0]!=pending["steps"][0]:
+			stop("clarification","Independent interpretations disagree. Clarify the intended action; no effect committed.")
+			return failure(status)
+		steps=pending["steps"]
+	elif not pending.is_empty():
+		stop("clarification","Independent interpretations disagree. No effect committed.")
+		return failure(status)
 	var remaining=job.get("remaining",[])
 	if not remaining.is_empty():
 		if steps.size()!=1 or steps[0]["kind"]!=remaining[0]["kind"]:
@@ -108,8 +129,16 @@ func receive_interpretation(identity: Dictionary,result: Dictionary,selected: Ar
 				stop("clarification","Repeated dependent action requires explicit new intent.")
 				return failure(status)
 	job["remaining"]=remaining
+	if not pending.is_empty():
+		job["input_evidence"]={"request":req.duplicate(true),"original":job["intent"]["args"]["text"],"revision":data["state"]["revision"]}
+	job.erase("input_candidate")
 	job["tool"]=req
-	job["selected_context"]=selected.slice(0,8) if JSON.stringify(selected).length()<=32000 else []
+	var combined=job.get("selected_context",[])+selected
+	var distinct: Array=[]
+	for entry in combined:
+		if not distinct.any(func(row): return row.get("query")==entry.get("query")):
+			distinct.append(entry)
+	job["selected_context"]=distinct.slice(0,8) if JSON.stringify(distinct).length()<=32000 else []
 	job["stage"]="execute"
 	job["attempt"]={}
 	inflight={}
@@ -323,6 +352,15 @@ func finish(status_code: String,message: String) -> void:
 		return
 	if status_code=="committed" and not job.get("remaining",[]).is_empty():
 		var settled=registry.session.settlement(campaign_id,job["tool"]["request_id"])
+		if settled.get("found",false) and settled.get("logical_turn_id")!=null:
+			var receipt=registry.resolver.store.receipt_by_id(campaign_id,settled["logical_turn_id"])
+			if not receipt.get("found",false):
+				stop("retry","Dependent action receipt unavailable.")
+				return
+			for result in receipt["receipt"]["results"]:
+				if result.get("outcome") in ["failure","automatic_failure","failed"]:
+					super.finish("cancelled","Prior mechanical outcome remains committed; dependent actions stopped after failure.")
+					return
 		if not settled.get("found",false) or settled["status"]!="committed":
 			stop("retry","Dependent action cannot start without prior settlement.")
 			return
@@ -340,15 +378,46 @@ func finish(status_code: String,message: String) -> void:
 		message="Earlier ordered steps remain committed. Remaining action stopped. "+message
 	super.finish(status_code,message)
 
-func refresh() -> void:
-	super.refresh()
-	# Standalone preview follows the same distinction as B2 pending receipt.
-	# Emit only when base view matches current committed revision.
-	if closed or view.is_empty():
-		return
-	var job=active()
-	if standalone(job) and job.get("critical_verified",false) and job.get("narration_event_id")==null and view.get("interaction_extension",{}).get("revision")==data.get("state",{}).get("revision"):
-		view["interaction_extension"]["reviewed_preview"]=job["candidate"]["text"]
-		notifying=true
-		view_changed.emit(view.duplicate(true))
-		notifying=false
+func preview_text(job: Dictionary,state: Dictionary) -> String:
+	if standalone(job) and job.get("critical_verified",false) and job.get("narration_event_id")==null:
+		return str(job.get("candidate",{}).get("text",""))
+	return super.preview_text(job,state)
+
+# Explicit recovery path: retain the committed mechanical result when the
+# semantic service cannot safely reconcile prose. Never erase a visible preview
+# without user choosing this alternative; remaining dependent steps are stopped.
+func settle_verified_only() -> Dictionary:
+	if closed or running or notifying or not reload():
+		return failure("Controller unavailable.")
+	var job=active().duplicate(true)
+	if job.is_empty() or not job.get("stage") in ["retry","critical_blocked","clarification"] or job.get("narration_event_id")!=null:
+		return failure("No unresolved committed outcome eligible for this recovery.")
+	var verified=outcome(job)
+	if verified.is_empty():
+		return failure("Committed outcome unavailable.")
+	retire_attempt()
+	var state=data["state"]
+	var turn_id=job["tool"]["request_id"] if standalone(job) else verified["turn_id"]
+	var text=str(verified.get("summary","")) if standalone(job) else RECON.new().receipt_line(verified)
+	if text.is_empty():
+		return failure("Verified summary unavailable.")
+	var candidate=PACK.identity(state,turn_id,registry.session.make_id())
+	candidate["text"]=text
+	var geography=PACK.identity(state,turn_id,registry.session.make_id())
+	geography["source_event_id"]=null
+	geography["facts"]=[]
+	job["turn_id"]=turn_id
+	job["candidate"]=candidate
+	job["geography"]=geography
+	job["critical_verified"]=true
+	job["story"]=[]
+	job["discoveries"]=[]
+	job["story_index"]=0
+	job["discovery_index"]=0
+	job["remaining"]=[]
+	job["stage"]="reconcile"
+	job["attempt"]={}
+	if not update_active(job):
+		return failure("Verified-only recovery not confirmed.")
+	advance.call_deferred()
+	return {"ok":true}

@@ -639,7 +639,7 @@ func commit_standalone(id: String,request: Dictionary,candidate: Dictionary,geog
 	if not state.get("ok",false) or not settled.get("found",false) or settled["status"]!="committed" or settled["request"]!=request or settled["logical_turn_id"]!=null or state["pending_turn_id"]!=null or settled["revision"]!=state["revision"]:
 		return {"ok":false,"error":"Standalone settlement or revision mismatch."}
 	var source=session.source(state,settled["event_id"])
-	if not session.public_source(source) or not PACK.valid_narration(candidate,PACK.identity(state,rid,candidate.get("request_id",""))) or geography.get("request_id")==candidate.get("request_id"):
+	if not session.public_source(source) or not DTO.id_valid(candidate.get("request_id")) or not PACK.valid_narration(candidate,PACK.identity(state,rid,candidate.get("request_id",""))) or geography.get("request_id")==candidate.get("request_id"):
 		return {"ok":false,"error":"Standalone source or narrative envelope invalid."}
 	var planned=plan(state,geography,candidate["text"],known_ids,rid)
 	if not planned.get("ok",false):

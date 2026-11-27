@@ -172,7 +172,7 @@ static func public_world(token: Dictionary, dm: Dictionary, visible: Dictionary)
 	for event in visible.get("opening_events",[])+dm["recent_events"]:
 		if event.get("kind") in ["campaign_created","narration"] and not event.get("event_id") in seen_events:
 			var payload = JSON.parse_string(str(event.get("payload","")))
-			if payload is Dictionary and DTO.bounded_text(payload.get("text"),4000):
+			if payload is Dictionary and payload.get("visibility","player")=="player" and DTO.bounded_text(payload.get("text"),4000):
 				history.append({"event_id":event["event_id"],"turn":event["turn"],"kind":event["kind"],"text":payload["text"]})
 				seen_events.append(event["event_id"])
 	history.sort_custom(func(a,b): return a["event_id"]<b["event_id"])

@@ -1719,7 +1719,12 @@ func show_processing() -> void:
 		if not result.get("ok",false): show_status(str(result.get("error","No optional work available.")))
 		popup.queue_free()
 	)
-	popup.popup_centered(Vector2i(580,420))
+	if development_controller.has_method("settle_verified_only"):
+		button(col,"Continue with verified outcome only",func():
+			var result=development_controller.settle_verified_only()
+			if not result.get("ok",false): show_status(str(result.get("error","Recovery unavailable.")))
+			popup.queue_free())
+	popup.popup_centered(Vector2i(580,460))
 
 func show_world_menu() -> void:
 	var popup=popup_base("Campaign records")
