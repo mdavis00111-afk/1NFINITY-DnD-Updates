@@ -710,7 +710,12 @@ func advance() -> void:
 			var event=registry.session.source(state,req["args"]["source_event_id"])
 			if registry.session.public_source(event):
 				source={"event_id":req["args"]["source_event_id"],"text":policy.source_text(event)}
-		ask("adjudicate",job,{"request":req,"original":policy.intent_text(req,job,state),"scene":context["scene"],"rules":refs,"ruling_shape":policy.rule_shape(req),"source":source,"proposed_consequence":job.get("pending_consequence",{}),"committed_narration":policy.source_text(registry.session.source(state,job.get("narration_event_id")))})
+		var pending=job.get("pending_consequence",{})
+		var committed_source=registry.session.source(state,job.get("narration_event_id"))
+		var public_source={}
+		if registry.session.public_source(committed_source):
+			public_source={"event_id":job["narration_event_id"],"text":policy.source_text(committed_source)}
+		ask("adjudicate",job,{"request":req,"original":policy.intent_text(req,job,state),"scene":context["scene"],"rules":refs,"ruling_shape":policy.rule_shape(req),"source":source,"proposed_consequence":{"proposal":pending.get("proposal",{}),"unconfirmed_candidate":pending.get("candidate",{}).get("text","")} if not pending.is_empty() else {},"committed_source":public_source})
 		return
 	super.advance()
 

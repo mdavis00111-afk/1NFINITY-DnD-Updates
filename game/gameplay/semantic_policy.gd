@@ -28,7 +28,7 @@ func rule_shape(req: Dictionary) -> Dictionary:
 	if req["kind"] in ROUTES:
 		return {"difficult":"boolean based on actual route/terrain","clearance":"verified_unobstructed_supplied_foot_travel only if established","establish_clock":"false"}
 	if req["kind"] in ROUTINE+["wait"]:
-		return {"safe_nonmechanical":"true only if no unresolved challenge","seconds":req["args"].get("seconds",0),"establish_clock":"false"}
+		return {"safe_nonmechanical":"true only if no unresolved challenge","seconds":req["args"].get("seconds",0),"establish_clock":"false, or true for explicit known-duration wait starting a local tracked epoch if unknown"}
 	return {}
 
 func bound_request(req: Dictionary,job: Dictionary,state: Dictionary) -> bool:
@@ -99,9 +99,9 @@ func validate_assessment(req: Dictionary,report: Variant,job: Dictionary,state: 
 			return {"ok":false,"error":"Route is not an established local route."}
 		ruling={"difficult":proposed["difficult"],"clearance":"verified_unobstructed_supplied_foot_travel","establish_clock":false}
 	elif kind in ROUTINE+["wait"]:
-		if not DTO.exact_keys(proposed,["safe_nonmechanical","seconds","establish_clock"]) or proposed["safe_nonmechanical"]!=true or proposed["seconds"]!=args.get("seconds",0) or proposed["establish_clock"]!=false:
-			return {"ok":false,"error":"No-roll action or duration not established."}
-		ruling={"safe_nonmechanical":true,"seconds":args.get("seconds",0),"establish_clock":false}
+		if not DTO.exact_keys(proposed,["safe_nonmechanical","seconds","establish_clock"]) or proposed["safe_nonmechanical"]!=true or proposed["seconds"]!=args.get("seconds",0) or not proposed["establish_clock"] is bool or (proposed["establish_clock"] and (kind!="wait" or state["elapsed_seconds"]!=null or not DTO.whole(args.get("seconds"),1,RAW.MAX_WALK_SECONDS))):
+			return {"ok":false,"error":"No-roll action, duration or tracked epoch not established."}
+		ruling={"safe_nonmechanical":true,"seconds":args.get("seconds",0),"establish_clock":proposed["establish_clock"]}
 	else:
 		if not proposed.is_empty():
 			return {"ok":false,"error":"Standalone tool cannot accept proposed mechanical patches."}

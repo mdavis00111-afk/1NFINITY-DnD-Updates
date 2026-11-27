@@ -1,5 +1,7 @@
 # C5 development AI integration — acceptance boundary
 
+**C5b supersedes the historical review and continuation limitations below. See [C5B_SEMANTIC_CONTRACT.md](C5B_SEMANTIC_CONTRACT.md) for the current actual review policy, binding and continuation contract.**
+
 Branch feature/complete-gameplay; base 0ddb4d6. C5 is explicit development binding only: instantiate semantic_controller.gd as a Node, call bind_ai(campaign_id, trusted_context_reviewer, trusted_prose_reviewer, optional_test_transport_factory), mount existing workspace. No main campaign-manager activation. Existing narrator_prompt.gd is preserved byte-for-byte. Main settings adds only a prompt handover dialog.
 
 ## Semantic pipeline

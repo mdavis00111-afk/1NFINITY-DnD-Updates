@@ -22,6 +22,10 @@ const PENDING="Mara holds out two gold pieces. \"For your trouble,\" she says."
 const TRANSFERRED="Mara smiles as the two gold pieces pass to you. \"A debt paid,\" she says."
 const DECLINE="I decline her offer."
 const DECLINED="Mara nods. \"Fair enough.\" She puts her purse away."
+const ACCEPT_ITEM="I accept one of Mara’s daggers."
+const ITEM_PROPOSED="Mara hands you one of her daggers."
+const ITEM_PENDING="Mara holds out one of her daggers for you."
+const ITEM_SETTLED="Mara passes the dagger across. \"Keep it sharp,\" she says."
 const INPUT="I lift that shield onto my arm."
 var base=BASE.new()
 var session=SESSION.new()
@@ -419,6 +423,58 @@ func run() -> void:
 		finish()
 		return
 	expect(workspace.actor["coins"]["gp"]==7,"Decline produces no extra transfer")
+	# Definition-only reference to an actual NPC possession, never guessed ID.
+	workspace.composer.text=ACCEPT_ITEM
+	workspace.submit_chat()
+	if not await pump("interpret"):
+		finish()
+		return
+	reply({"kind":"conversation","args":{"text":ACCEPT_ITEM}})
+	if not await pump("narrate"):
+		finish()
+		return
+	reply(ITEM_PROPOSED)
+	if not await pump("critical"):
+		finish()
+		return
+	var item_proposal={"kind":"item_transfer","args":{"from_actor_id":mara,"to_actor_id":ctrl.actor_id,"definition_id":"dagger","quantity":1},"consent":ACCEPT_ITEM}
+	var item_claims=[claim("required_effect",ITEM_PROPOSED,item_proposal,[mara,ctrl.actor_id])]
+	var item_serial=ctrl.adapter.serial
+	reply(report(ITEM_PROPOSED,item_claims))
+	if not await pump("critical",item_serial):
+		finish()
+		return
+	reply(report(ITEM_PROPOSED,item_claims))
+	if not await pump("narrate"):
+		finish()
+		return
+	reply(ITEM_PENDING)
+	if not await review_twice(ITEM_PENDING,[claim("offer",ITEM_PENDING,null,[mara])]):
+		finish()
+		return
+	reply({"geography":geography(),"story":[],"discoveries":[]})
+	if not await pump("adjudicate"):
+		finish()
+		return
+	var item_req=ctrl.active()["consequence_request"]
+	expect(item_req["args"].has("instance_id") and not item_req["args"].has("definition_id"),"Locally resolved actual NPC instance")
+	assess(ACCEPT_ITEM,ctrl.active()["narration_event_id"],ITEM_PENDING)
+	if not await pump("narrate"):
+		finish()
+		return
+	var owned=REG.new().noncombat.read_owned(session.token(id),mara)
+	var player_pack=REG.new().noncombat.read_owned(session.token(id),ctrl.actor_id)
+	var registry=REG.new()
+	expect(owned.get("ok",false) and player_pack.get("ok",false) and registry.noncombat.aggregate(owned)["dagger"]["quantity"]==1 and registry.noncombat.aggregate(player_pack)["dagger"]["quantity"]==3,"Actual item quantity conserved")
+	reply(ITEM_SETTLED)
+	if not await review_twice(ITEM_SETTLED,[claim("receipt_claim","Mara passes the dagger across.",{"path":["result","quantity"],"value":1},[mara,ctrl.actor_id]),claim("dialogue","Keep it sharp",null,[mara])]):
+		finish()
+		return
+	reply({"geography":geography(),"story":[],"discoveries":[]})
+	if not await pump("idle"):
+		finish()
+		return
+	expect(session.settlement(id,item_req["request_id"]).get("status")=="committed","Exact item transfer settlement")
 	expect(players.load_record(master)==original and base.gameplay_view(b["id"])==sibling,"Master and sibling isolation")
 	expect(not ctrl.adapter.metrics.is_empty(),"Mock call timing instrumentation")
 	expect(not ctrl.timing_samples.is_empty(),"Controller context timing instrumentation")
