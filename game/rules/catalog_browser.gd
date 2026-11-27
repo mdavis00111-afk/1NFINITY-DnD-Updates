@@ -1,6 +1,6 @@
 extends Control
 const CAT=preload("res://rules/catalog.gd")
-const FRAME=preload("res://themes/parts/frame.png")
+const FRAME=preload("res://themes/parts/panel_gold.png")
 var cat=CAT.new()
 var exit_action: Callable
 var table: OptionButton
@@ -61,6 +61,7 @@ func build_layout() -> void:
 	columns.add_child(results)
 	detail=TextEdit.new()
 	detail.editable=false
+	detail.add_theme_color_override("font_readonly_color",Color("#fff0cf"))
 	detail.wrap_mode=TextEdit.LINE_WRAPPING_BOUNDARY
 	detail.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 	detail.size_flags_stretch_ratio=1.5
@@ -87,4 +88,4 @@ func refresh() -> void:
 		if q.is_empty() or name.to_lower().contains(q):
 			filtered.append(rec)
 			results.add_item(name)
-	detail.text=str(filtered.size())+" entries. Select one for its description. Catalogue is SRD 5.1 plus 2018 supplements, not the entire Player's Handbook."
+	detail.text=cat.last_error if not cat.last_error.is_empty() else str(filtered.size())+" entries. Select one for details."

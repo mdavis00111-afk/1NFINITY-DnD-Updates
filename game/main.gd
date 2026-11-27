@@ -3,6 +3,7 @@ extends Control
 const CHANNEL = "https://raw.githubusercontent.com/mdavis00111-afk/1NFINITY-DnD-Updates/godot/channel.json"
 const GOLD = Color("#f4ce7b")
 const MUTED = Color("#a8997e")
+const GEMINI = preload("res://systems/gemini.gd")
 const THEME = preload("res://themes/master_theme.tres")
 const CONFIG_PATH = "user://settings.cfg"
 var version: String = ""
@@ -271,14 +272,31 @@ func navigate(item: String) -> void:
 		show_screen(item)
 
 func api_screen(menu: VBoxContainer) -> void:
-	menu.add_child(make_label("Gemini API key (stored locally)", 22))
 	var key = LineEdit.new()
 	key.secret = true
+	key.placeholder_text = "Gemini API key"
 	key.text = str(config.get_value("gemini", "api_key", ""))
 	menu.add_child(key)
-	var note = make_label("Not connected to Gemini yet.", 17)
-	menu.add_child(menu_button("Save API Key", func():
+	var model = LineEdit.new()
+	model.placeholder_text = "Gemini model ID"
+	model.text = str(config.get_value("gemini", "model", GEMINI.DEFAULT_MODEL))
+	menu.add_child(model)
+	var note = make_label("", 19)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var client = GEMINI.new()
+	screen.add_child(client)
+	var test = menu_button("Test Connection", func():
+		if key.text.strip_edges().is_empty():
+			note.text = "Enter an API key."
+			return
+		note.text = "Connecting…"
+		client.generate("Reply with exactly: Connection OK",key.text,model.text))
+	menu.add_child(test)
+	client.completed.connect(func(ok: bool, message: String):
+		note.text = "Connected to Gemini." if ok else message)
+	menu.add_child(menu_button("Save API Settings", func():
 		config.set_value("gemini", "api_key", key.text.strip_edges())
+		config.set_value("gemini", "model", model.text.strip_edges() if not model.text.strip_edges().is_empty() else GEMINI.DEFAULT_MODEL)
 		note.text = "Saved locally." if config.save(CONFIG_PATH) == OK else "Save failed."))
 	menu.add_child(note)
 	menu.add_child(menu_button("Return to Settings", func(): show_screen("Settings")))

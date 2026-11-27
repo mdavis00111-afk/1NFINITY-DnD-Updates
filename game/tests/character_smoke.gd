@@ -3,6 +3,10 @@ const RULES=preload("res://rules/character_rules.gd")
 var rules=RULES.new()
 var failures: Array=[]
 func _initialize() -> void:
+	if not rules.cat.initialize():
+		push_error(rules.cat.last_error)
+		quit(1)
+		return
 	var cases: Array=[]
 	for role in rules.cat.rows("classes"):
 		cases.append(["human","",role["index"],"acolyte"])

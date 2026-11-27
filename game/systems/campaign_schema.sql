@@ -1,0 +1,11 @@
+PRAGMA foreign_keys=ON;
+CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS actors(id TEXT PRIMARY KEY,master_character_id TEXT,kind TEXT NOT NULL CHECK(kind IN ('player','npc','enemy')),catalog_id TEXT,location_id TEXT,payload TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS locations(id TEXT PRIMARY KEY,parent_id TEXT REFERENCES locations(id),kind TEXT NOT NULL,name TEXT NOT NULL,x REAL,y REAL,payload TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS inventory(actor_id TEXT NOT NULL REFERENCES actors(id) ON DELETE CASCADE,item_id TEXT NOT NULL,quantity INTEGER NOT NULL CHECK(quantity>0),payload TEXT NOT NULL,PRIMARY KEY(actor_id,item_id));
+CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY,turn INTEGER NOT NULL,game_time TEXT NOT NULL,kind TEXT NOT NULL,payload TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS relationships(actor_a TEXT REFERENCES actors(id),actor_b TEXT REFERENCES actors(id),payload TEXT NOT NULL,PRIMARY KEY(actor_a,actor_b));
+CREATE TABLE IF NOT EXISTS quests(id TEXT PRIMARY KEY,status TEXT NOT NULL,payload TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS encounters(id TEXT PRIMARY KEY,status TEXT NOT NULL,payload TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS actor_location ON actors(location_id);
+CREATE INDEX IF NOT EXISTS event_turn ON events(turn);

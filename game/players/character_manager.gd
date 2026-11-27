@@ -1,7 +1,7 @@
 extends Control
 const CAT = preload("res://rules/catalog.gd")
 const STORE = preload("res://players/character_store.gd")
-const FRAME = preload("res://themes/parts/frame.png")
+const FRAME = preload("res://themes/parts/panel_gold.png")
 var cat = CAT.new()
 var store = STORE.new()
 var on_edit: Callable
@@ -106,6 +106,7 @@ func build_layout() -> void:
 	right.add_child(label_text("Rules & Reference"))
 	info=TextEdit.new()
 	info.editable=false
+	info.add_theme_color_override("font_readonly_color",Color("#fff0cf"))
 	info.wrap_mode=TextEdit.LINE_WRAPPING_BOUNDARY
 	info.size_flags_vertical=Control.SIZE_EXPAND_FILL
 	info.custom_minimum_size.x=240
@@ -116,6 +117,8 @@ func build_layout() -> void:
 func refresh() -> void:
 	list.clear()
 	records=store.list_records()
+	if not store.last_error.is_empty():
+		note.text=store.last_error
 	for rec in records:
 		list.add_item(str(rec.get("name","Unnamed"))+" ["+str(rec.get("status","draft"))+"]")
 	active={}

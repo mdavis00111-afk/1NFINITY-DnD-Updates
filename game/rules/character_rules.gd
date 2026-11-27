@@ -27,7 +27,7 @@ func roll_scores(d: Dictionary, method: String) -> void:
 	elif method == "array":
 		pool = [15,14,13,12,10,8]
 	else:
-		pool = [15,14,13,12,10,8]
+		pool = [8,8,8,8,8,8]
 	pool.sort()
 	pool.reverse()
 	d["base_scores"] = {}
@@ -318,6 +318,8 @@ func groups(d: Dictionary,step: int) -> Array:
 	return result
 
 func validate_step(d: Dictionary,step: int) -> String:
+	if not cat.initialize():
+		return "Rules database unavailable."
 	if step == 1:
 		if str(d.get("name","")).strip_edges().is_empty():
 			return "Enter a character name."
@@ -458,12 +460,28 @@ func full_record(d: Dictionary) -> Dictionary:
 			if value > ac:
 				armor = id
 				ac = value
-	if not shield.is_empty() and role_id != "monk":
+	if d.has("equipped_armor") or d.has("equipped_shield"):
+		var selected_armor = str(d.get("equipped_armor",armor))
+		var selected_shield = str(d.get("equipped_shield",shield))
+		if selected_armor.is_empty() or (inventory.has(selected_armor) and cat.get_record("equipment",selected_armor).get("armor_category","") in ["Light","Medium","Heavy"]):
+			armor=selected_armor
+		if selected_shield.is_empty() or (inventory.has(selected_shield) and cat.get_record("equipment",selected_shield).get("armor_category","")=="Shield"):
+			shield=selected_shield
+		ac=10+int(mods["dex"])
+		if armor.is_empty():
+			if role_id=="barbarian": ac+=int(mods["con"])
+			if role_id=="monk" and shield.is_empty(): ac+=int(mods["wis"])
+			if d.get("subclass_id")=="draconic": ac=13+int(mods["dex"])
+		else:
+			var ar=cat.get_record("equipment",armor).get("armor_class",{})
+			ac=int(ar.get("base",10))
+			if ar.get("dex_bonus",false): ac+=mini(int(mods["dex"]),int(ar.get("max_bonus",99)))
+	if not shield.is_empty():
 		ac += 2
 	if not armor.is_empty() and "fighter-fighting-style-defense" in features:
 		ac += 1
 	var hit_die = int(b["role"].get("hit_die",0))
-	var hp = hit_die + int(mods["con"])
+	var hp = maxi(1,hit_die + int(mods["con"]))
 	if "dwarven-toughness" in traits:
 		hp += 1
 	if d.get("subclass_id") == "draconic":
@@ -475,10 +493,23 @@ func full_record(d: Dictionary) -> Dictionary:
 	var prepared = collect(gs,d,"prepared")
 	var always: Array = ["bless","cure-wounds"] if d.get("subclass_id")=="life" else []
 	var casting = str(b["role"].get("spellcasting",{}).get("spellcasting_ability",{}).get("index",""))
+	if int(b["level"].get("spellcasting",{}).get("spell_slots_level_1",0))==0:
+		casting=""
 	var slots: Dictionary = {}
 	for i in range(1,10):
 		slots[str(i)] = {"maximum":int(b["level"].get("spellcasting",{}).get("spell_slots_level_"+str(i),0)),"spent":0}
 	var spell_data = {"ability":casting,"save_dc":8+2+int(mods.get(casting,0)) if not casting.is_empty() and int(slots["1"]["maximum"])>0 else null,"attack_bonus":2+int(mods.get(casting,0)) if not casting.is_empty() and int(slots["1"]["maximum"])>0 else null,"cantrip_ids":cantrips,"racial_cantrip_ids":racial,"racial_casting_ability":"int" if d.get("subrace_id")=="high-elf" else ("cha" if d.get("race_id")=="tiefling" else ""),"known_ids":collect(gs,d,"known-spells"),"prepared_ids":prepared,"always_prepared_ids":always,"slots":slots,"pact_magic":role_id=="warlock","concentration":null}
+	var resources: Dictionary = {}
+	match role_id:
+		"barbarian": resources["rage"]={"max":2,"spent":0,"reset":"long_rest"}
+		"bard": resources["bardic_inspiration"]={"max":maxi(1,int(mods["cha"])),"spent":0,"reset":"long_rest","die":"1d6"}
+		"fighter": resources["second_wind"]={"max":1,"spent":0,"reset":"short_or_long_rest"}
+		"paladin":
+			resources["lay_on_hands"]={"max":5,"spent":0,"reset":"long_rest"}
+			resources["divine_sense"]={"max":maxi(1,1+int(mods["cha"])),"spent":0,"reset":"long_rest"}
+		"wizard": resources["arcane_recovery"]={"max":1,"spent":0,"reset":"long_rest","recover_slot_levels":1}
+	if "breath-weapon" in traits: resources["breath_weapon"]={"max":1,"spent":0,"reset":"short_or_long_rest","save_dc":10+int(mods["con"])}
+	if "relentless-endurance" in traits: resources["relentless_endurance"]={"max":1,"spent":0,"reset":"long_rest"}
 	var attacks: Array = []
 	for id in inventory:
 		var weapon = cat.get_record("equipment",id)
@@ -490,16 +521,35 @@ func full_record(d: Dictionary) -> Dictionary:
 			if pr.get("reference",{}).get("index") == id:
 				trained = true
 		var ability = "dex" if weapon.get("weapon_range") == "Ranged" else "str"
+		if role_id == "monk" and armor.is_empty() and shield.is_empty() and (id == "shortsword" or (weapon.get("weapon_category") == "Simple" and weapon.get("weapon_range") == "Melee" and not "two-handed" in cat.references(weapon.get("properties",[])))) and int(mods["dex"]) > int(mods["str"]):
+			ability="dex"
 		if "finesse" in cat.references(weapon.get("properties",[])) and int(mods["dex"]) > int(mods["str"]):
 			ability = "dex"
 		var attack_bonus = int(mods[ability])+(2 if trained else 0)
 		if weapon.get("weapon_range") == "Ranged" and "fighter-fighting-style-archery" in features:
 			attack_bonus += 2
 		attacks.append({"item_id":id,"ability":ability,"proficient":trained,"attack_bonus":attack_bonus,"damage_dice":weapon.get("damage",{}).get("damage_dice",""),"damage_modifier":mods[ability],"damage_type":weapon.get("damage",{}).get("damage_type",{}).get("index",""),"range":weapon.get("range",{})})
+	var equipped_weapons: Array = []
+	for id in d.get("equipped_weapons",[]):
+		if inventory.has(id) and cat.get_record("equipment",id).has("weapon_category") and not id in equipped_weapons:
+			equipped_weapons.append(id)
 	var items: Array = []
 	for id in inventory:
-		items.append({"item_id":id,"quantity":inventory[id],"equipped":id==armor or id==shield})
+		items.append({"item_id":id,"quantity":inventory[id],"equipped":id==armor or id==shield or id in equipped_weapons})
+	var speed = int(b["sub"].get("speed",b["race"].get("speed",0)))
+	if not armor.is_empty() and d.get("race_id")!="dwarf" and int(cat.get_record("equipment",armor).get("str_minimum",0))>int(s["str"]):
+		speed=maxi(0,speed-10)
+	var weight = 0.0
+	for item in items:
+		var w = cat.get_record("equipment",item["item_id"]).get("weight")
+		if w is float or w is int: weight += float(w)*int(item["quantity"])
 	var review: Array = []
+	var hands = 0 if shield.is_empty() else 1
+	for id in equipped_weapons:
+		hands+=2 if "two-handed" in cat.references(cat.get_record("equipment",id).get("properties",[])) else 1
+	if hands>2: review.append("Equipped weapons and shield require more than two hands.")
+	var armor_proficient = armor.is_empty() or str(cat.get_record("equipment",armor).get("armor_category","")).to_lower()+"-armor" in profs
+	var shield_proficient = shield.is_empty() or "shields" in profs
 	if role_id == "ranger":
 		review.append("Favored enemy language and humanoid-pair alternatives require a rule review.")
 	if role_id == "cleric":
@@ -510,4 +560,4 @@ func full_record(d: Dictionary) -> Dictionary:
 		if cat.get_record("equipment",it["item_id"]).is_empty():
 			review.append("Unresolved equipment reference: "+it["item_id"])
 	var passive = 10+int(skill_values.get("perception",{}).get("modifier",0))
-	return {"schema_version":1,"ruleset":CATALOG.RULESET,"catalog_revision":CATALOG.REVISION,"name":d.get("name",""),"race_id":d.get("race_id",""),"subrace_id":d.get("subrace_id",""),"class_id":role_id,"subclass_id":d.get("subclass_id",""),"background_id":d.get("background_id",""),"level":1,"xp":0,"sex":d.get("sex",""),"alignment":d.get("alignment",""),"description":d.get("description",""),"portrait":d.get("portrait",""),"personality":d.get("personality",""),"ideal":d.get("ideal",""),"bond":d.get("bond",""),"flaw":d.get("flaw",""),"backstory":d.get("backstory",""),"ability_scores":s,"ability_modifiers":mods,"base_scores":d.get("base_scores",{}),"ability_method":d.get("ability_method",""),"dice_history":d.get("roll_history",[]),"proficiency_bonus":2,"proficiency_ids":profs,"expertise_ids":expertise,"saving_throws":saving,"skills":skill_values,"language_ids":languages,"racial_trait_ids":traits,"class_feature_ids":features,"background_feature":b["bg"].get("feature",{}),"spellcasting":spell_data,"inventory":items,"coins":{"cp":0,"sp":0,"ep":0,"gp":int(b["bg"].get("starting_gold",{}).get("quantity",0)),"pp":0},"equipment":{"armor_id":armor,"shield_id":shield},"attacks":attacks,"combat":{"armor_class":ac,"hp_max":hp,"hp_current":hp,"hp_temp":0,"initiative":mods["dex"],"speed_feet":int(b["sub"].get("speed",b["race"].get("speed",0))),"size":b["race"].get("size",""),"passive_perception":passive,"hit_die":hit_die,"hit_dice_total":1,"hit_dice_spent":0,"death_save_successes":0,"death_save_failures":0,"inspiration":false,"conditions":[],"exhaustion":0,"active_effects":[]},"review_required":review,"draft":d.duplicate(true)}
+	return {"schema_version":1,"ruleset":CATALOG.RULESET,"catalog_revision":CATALOG.REVISION,"name":d.get("name",""),"race_id":d.get("race_id",""),"subrace_id":d.get("subrace_id",""),"class_id":role_id,"subclass_id":d.get("subclass_id",""),"background_id":d.get("background_id",""),"level":1,"xp":0,"sex":d.get("sex",""),"alignment":d.get("alignment",""),"description":d.get("description",""),"portrait":d.get("portrait",""),"personality":d.get("personality",""),"ideal":d.get("ideal",""),"bond":d.get("bond",""),"flaw":d.get("flaw",""),"backstory":d.get("backstory",""),"ability_scores":s,"ability_modifiers":mods,"base_scores":d.get("base_scores",{}),"ability_method":d.get("ability_method",""),"dice_history":d.get("roll_history",[]),"proficiency_bonus":2,"proficiency_ids":profs,"expertise_ids":expertise,"saving_throws":saving,"skills":skill_values,"language_ids":languages,"racial_trait_ids":traits,"class_feature_ids":features,"background_feature":b["bg"].get("feature",{}),"spellcasting":spell_data,"inventory":items,"coins":{"cp":0,"sp":0,"ep":0,"gp":int(b["bg"].get("starting_gold",{}).get("quantity",0)),"pp":0},"equipment":{"armor_id":armor,"shield_id":shield,"weapon_ids":equipped_weapons,"armor_proficient":armor_proficient,"shield_proficient":shield_proficient,"armor_penalty":not armor_proficient or not shield_proficient},"attacks":attacks,"resources":resources,"carried_weight_lb":weight,"carrying_capacity_lb":15*int(s["str"]),"favored_enemy_ids":collect(gs,d,"favored-enemy"),"favored_terrain_ids":collect(gs,d,"terrain"),"combat":{"armor_class":ac,"hp_max":hp,"hp_current":hp,"hp_temp":0,"initiative":mods["dex"],"speed_feet":speed,"size":b["race"].get("size",""),"passive_perception":passive,"hit_die":hit_die,"hit_dice_total":1,"hit_dice_spent":0,"death_save_successes":0,"death_save_failures":0,"inspiration":false,"conditions":[],"exhaustion":0,"active_effects":[]},"review_required":review,"draft":d.duplicate(true)}
