@@ -24,6 +24,15 @@ Baseline: v0.0.20, 2026-11-27. Status definitions: PASS = executed with recorded
 | Six specialist profile definitions | PASS. Python `tomllib` parsed `.codex/config.toml` and every referenced profile, and all six names and descriptions matched. This is a static check. |
 | Managed-cloud CLI profile activation | BLOCKED. `codex app-server` could not open its default state database in the read-only home directory. Retrying with a writable SQLite state directory still reported project-trust and read-only filesystem errors. No CLI-profile delegation run was completed. |
 
+## Development reference and GUI baseline
+
+- At `godot` commit `3f07db1`, the cloud executor rejected the combined upload because it exceeded the 32 MiB transfer limit. GUI checksum verification, expanded database verification and independent retrieval from private storage remain blocked.
+- Linux Godot 4.7.2, isolated XDG directories and a temporary copy of the game. `godot --headless --path "$qa_tmp/game" --editor --import` and `godot --headless --path "$qa_tmp/game" --quit-after 12` both exited 0.
+- With the same Godot binary and project, `timeout 20s godot --headless --path "$qa_tmp/game" --script res://tests/<suite>_smoke.gd` exited 0 for `layout` and 1 for `sqlite`, `character` and `assets`. The layout result covers the existing minimum-size assertions. The SQLite and character suites require the Windows SQLite adapter, and the assets suite requires the optional local asset library.
+- `sha256sum --strict --check design/SHA256SUMS` reported 11 missing files and one malformed digest. The listed Ability Scores PNG checksum contains 62 hexadecimal characters.
+- `python3 design/tools/validate_private_reference.py /tmp/infinity-no-reference/private_rules.db` exited 1 with a missing-file diagnostic. Independent QA exercised the validator on a temporary synthetic FTS5 database and verified source hashes, linked hits, missing and sparse pages, unchanged database bytes and absence of sidecars. The supplied database remains untested here.
+- GUI implementation and visual acceptance remain pending the approved images and audit. Windows bridge, updater and visual checks were not run.
+
 ## Release procedure
 Run applicable Godot headless tests and Windows manual checks; preserve logs (redact credentials and personal saves). Confirm version.txt/project.godot and manifest match; validate every Git blob hash against immutable source; test updater staging, smoke gates and rollback. Record scope, actual commands, date, version, environment, result and evidence. A successful updater handshake is not full gameplay acceptance. No CI workflow exists in audited branch.
 

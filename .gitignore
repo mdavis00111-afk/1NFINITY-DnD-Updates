@@ -1,0 +1,7 @@
+# Authorized local book references and original handoff archives
+/private-reference/
+/reference/
+/1NFINITY_Development_References*.zip
+/1NFINITY_GUI_References*.zip
+**/private_rules.db
+**/private_rules.db-*
