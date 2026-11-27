@@ -402,7 +402,7 @@ func drop(id: String,request: Dictionary,clearance: Dictionary) -> Dictionary:
 	var args: Dictionary = request["args"]
 	if not DTO.id_valid(args["instance_id"]) or not DTO.whole(args["quantity"],1):
 		return fail("Invalid drop selection.")
-	var data = read(state,[SQL.stmt(INSTANCE_ROWS+" WHERE i.id=? AND i.actor_id=?",[args["instance_id"],state["actor_id"]]),SQL.stmt("SELECT instance_id FROM equipment_assignments WHERE instance_id=? UNION ALL SELECT instance_id FROM equipment_review WHERE instance_id=?",[args["instance_id"],args["instance_id"]]),SQL.stmt("SELECT definition_id,sum(quantity) AS quantity FROM item_instances WHERE actor_id=? GROUP BY definition_id",[state["actor_id"]]),SQL.stmt("SELECT 1 FROM world_discovery WHERE location_id=? AND visibility='player' AND status<>'unknown'",[state["location_id"]])])
+	var data = read(state,[SQL.stmt(INSTANCE_ROWS+" WHERE i.id=? AND i.actor_id=?",[args["instance_id"],state["actor_id"]]),SQL.stmt("SELECT instance_id FROM equipment_assignments WHERE instance_id=? UNION ALL SELECT instance_id FROM equipment_review WHERE instance_id=?",[args["instance_id"],args["instance_id"]]),SQL.stmt("SELECT i.definition_id,sum(i.quantity) AS quantity,d.unit_weight_lb FROM item_instances i JOIN item_definitions d ON d.id=i.definition_id WHERE i.actor_id=? GROUP BY i.definition_id,d.unit_weight_lb",[state["actor_id"]]),SQL.stmt("SELECT 1 FROM world_discovery WHERE location_id=? AND visibility='player' AND status<>'unknown'",[state["location_id"]])])
 	if not data.get("ok",false):
 		return data
 	var sets: Array = data["sets"]
@@ -446,8 +446,21 @@ func drop(id: String,request: Dictionary,clearance: Dictionary) -> Dictionary:
 		commands.append(SQL.stmt("UPDATE inventory SET quantity=?,payload=? WHERE actor_id=? AND item_id=?",[mirror["quantity"],JSON.stringify(mirror),state["actor_id"],row["definition_id"]]))
 	var actor: Dictionary = state["actor"].duplicate(true)
 	actor["inventory"]=items.values()
-	# Recompute weight in the authoritative view, not from a stale saved total.
-	actor["carried_weight_lb"]=null
+	var remaining_load=0.0
+	var known=coin_map(actor.get("coins"))
+	for entry in sets[2]:
+		var count=int(aggregate[entry["definition_id"]])-(amount if entry["definition_id"]==row["definition_id"] else 0)
+		if count==0:
+			continue
+		var unit=DTO.sql_number(entry["unit_weight_lb"])
+		if not DTO.number(unit,0,1000000):
+			known=false
+		else:
+			remaining_load+=float(unit)*count
+	if known:
+		for denom in DENOMS:
+			remaining_load+=float(actor["coins"][denom])/50.0
+	actor["carried_weight_lb"]=remaining_load if known else null
 	refresh_owned_profiles(actor)
 	commands.append(SQL.stmt("UPDATE actors SET payload=? WHERE id=?",[JSON.stringify(actor),state["actor_id"]]))
 	return _commit(ctx,commands,{"container_id":container_id,"instance_id":destination,"quantity":amount},"Selected possession dropped.")

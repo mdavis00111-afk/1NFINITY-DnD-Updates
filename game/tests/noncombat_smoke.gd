@@ -142,6 +142,24 @@ func run() -> void:
 	expect(retried.get("ok",false) and retried.get("result",{}).get("rolls",[])==held and base.actor_record(id)["resources"]["second_wind"]["spent"]==1,"Prepared retry changed dice or expenditure")
 	var short=action(id,"rest",{"rest_kind":"short","hit_dice":0,"prepared_ids":null})
 	expect(short.get("ok",false) and base.actor_record(id)["resources"]["second_wind"]["spent"]==0,"Short rest reset failed")
+	# Source-backed object and contextual difficulty, no keyword matching.
+	var evidence=SQL.run(base.path_for(id),[SQL.stmt("SELECT max(id) AS id FROM events WHERE kind='gameplay_change'")],true)
+	var source_id=int(evidence["results"][0][0]["id"]) if evidence.get("ok",false) else 0
+	var object=action(id,"story_update",{"record_id":null,"identity_key":"object:fixture-door","kind":"circumstance","title":"Fixture door","description":"An established unlocked door.","status":"closed","visibility":"player","certainty":"fact","location_id":session.token(id)["location_id"],"parent_id":null,"source_event_id":source_id,"progress_current":null,"progress_max":null,"participants":[]})
+	expect(object.get("ok",false),"Object fact failed")
+	if object.get("ok",false):
+		var opened=action(id,"object_interact",{"object_id":object["result"]["record_id"],"operation":"open","source_event_id":source_id})
+		expect(opened.get("ok",false) and opened.get("result",{}).get("status")=="open","Routine object open failed")
+	var direct=session.token(id)
+	var test_turn=session.make_id()
+	var raw_action={"handler_id":"observe","target_refs":[],"reference_refs":[],"intent_text":"Fixture direct bypass attempt.","arguments":{}}
+	var approval={"campaign_id":id,"actor_id":actor_id,"turn_id":test_turn,"expected_revision":direct["revision"],"action":raw_action,"ruling":{"safe_nonmechanical":true,"seconds":0,"establish_clock":false}}
+	var prepared=registry.resolver.prepare(direct,test_turn,raw_action,approval)
+	expect(prepared.get("ok",false) and not TURN.new().commit_receipt(id,direct,prepared.get("receipt",{}),"Fixture direct bypass attempt.").get("ok",false),"B2 bypassed C2 adoption")
+	var challenge=request(id,"ability_check",{"ability":"str","skill":null,"difficulty":"medium","text":"Try the heavy latch.","source_event_id":source_id,"circumstances":[]})
+	var checked=registry.execute(id,challenge,review)
+	expect(checked.get("ok",false) and checked.get("receipt",{}).get("results",[{}])[0].get("dc")==15 and checked.get("receipt",{}).get("rolls",[]).size()==1,"Contextual check receipt failed")
+	expect(finish_turn(id,challenge,checked),"Check settlement failed")
 	var conversation=request(id,"conversation",{"text":"Good morning."})
 	var result=registry.execute(id,conversation,review)
 	expect(result.get("ok",false) and result.get("receipt",{}).get("rolls",[]).is_empty(),"Conversation rolled dice or failed")

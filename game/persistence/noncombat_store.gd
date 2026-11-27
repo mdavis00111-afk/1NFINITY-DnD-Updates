@@ -202,6 +202,8 @@ func gear_stats(pack: Dictionary,actor: Dictionary) -> Dictionary:
 		var grip = pack["slots"][slot]["grip"]
 		if slot=="off_hand" and grip=="two_handed" and slotted(pack,"main_hand")==iid:
 			continue
+		if slot in ["main_hand","off_hand"] and (grip=="worn" or (grip=="two_handed" and slot!="main_hand")):
+			return {}
 		if not catalogue.physical_options(def).any(func(opt): return opt["slot"]==slot and opt["grip"]==grip):
 			return {}
 		if pack["items"][iid]["condition"] in ["damaged","broken"]:
@@ -426,11 +428,25 @@ func retry_prepared(id: String,rid: String) -> Dictionary:
 func abandon_prepared(id: String,rid: String) -> Dictionary:
 	if not prepared.has(id) or prepared[id]["context"]["request"]["request_id"]!=rid:
 		return fail("No matching local prepared request.")
+	var req=prepared[id]["context"]["request"]
 	var prior=settlement(id,rid)
-	if not prior.get("ok",false) or prior.get("found",false):
-		return fail("Cannot abandon a committed or unconfirmed settlement.")
+	if not prior.get("ok",false):
+		return fail("Cannot abandon an unconfirmed settlement.")
+	if prior.get("found",false):
+		if prior["status"]=="cancelled" and prior["request"]==req:
+			prepared.erase(id)
+			return prior
+		return fail("Cannot abandon a committed or conflicting settlement.")
+	var state=token(id)
+	if not state.get("ok",false) or state["actor_id"]!=req["actor_id"] or state["pending_turn_id"]!=null:
+		return fail("Campaign or pending narration changed.")
+	var batch=[TURN.new().guard(state),SQL.stmt("INSERT INTO meta(key,value) VALUES('c3_cancel_guard',(SELECT 'ok' WHERE NOT EXISTS(SELECT 1 FROM gameplay_requests WHERE request_id=? OR status='accepted_pending')))",[rid]),SQL.stmt("INSERT INTO gameplay_requests(request_id,actor_id,kind,expected_revision,status,request_payload,result_payload,settled_revision) VALUES(?,?,?,?,'cancelled',?,'{}',?)",[rid,req["actor_id"],req["kind"],req["expected_revision"],JSON.stringify(req),state["revision"]]),SQL.stmt("DELETE FROM meta WHERE key='c3_cancel_guard'"),SQL.stmt("DELETE FROM meta WHERE key='turn_write_guard'")]
+	SQL.run(path(id),batch)
+	var confirmed=settlement(id,rid)
+	if not confirmed.get("found",false) or confirmed["status"]!="cancelled" or confirmed["request"]!=req:
+		return fail("Cancellation not confirmed; retain prepared request.")
 	prepared.erase(id)
-	return {"ok":true,"abandoned_request_id":rid}
+	return confirmed
 
 func consume(id: String,req: Dictionary,clearance: Dictionary) -> Dictionary:
 	var ctx = begin(id,req,"item_use",["instance_id","quantity","target_id"])
@@ -821,7 +837,7 @@ func object_interact(id: String,req: Dictionary,clearance: Dictionary) -> Dictio
 	var evidence=source(state,a["source_event_id"])
 	if not DTO.id_valid(a["object_id"]) or not a["operation"] in ["open","close"] or not public_source(evidence) or (evidence["data"].get("location_id")!=state["location_id"] and (evidence["kind"]!="campaign_created" or state["turn"]!=0)):
 		return fail("Established local object evidence required.")
-	var readback=read(state,[SQL.stmt("SELECT * FROM story_records WHERE id=? AND kind='circumstance' AND identity_key LIKE 'object:%' AND certainty='fact' AND visibility='player' AND location_id=? AND status IN ('open','closed')",[a["object_id"],state["location_id"]]),SQL.stmt("SELECT actor_id,role FROM story_participants WHERE record_id=? ORDER BY actor_id,role",[a["object_id"]])])
+	var readback=read(state,[SQL.stmt("SELECT * FROM story_records WHERE id=? AND kind='circumstance' AND identity_key LIKE 'object:%' AND certainty='fact' AND visibility='player' AND location_id=? AND status IN ('open','closed') AND parent_id IS NULL AND progress_current IS NULL AND progress_max IS NULL",[a["object_id"],state["location_id"]]),SQL.stmt("SELECT actor_id,role FROM story_participants WHERE record_id=? ORDER BY actor_id,role",[a["object_id"]])])
 	if not readback.get("ok",false) or readback["sets"][0].size()!=1:
 		return fail("Object identity or physical state not established.")
 	var old=readback["sets"][0][0]
