@@ -6520,6 +6520,81 @@
         "style_reference_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
         "method": "Original vector decoration matching owner ink and parchment style; no fixed geography or example map labels."
       }
+    },
+    {
+      "id": "settlement.bridge.vintage",
+      "category": "settlements",
+      "kind": "bridge",
+      "variant": "vintage",
+      "path": "res://cartography/art/settlement.bridge.vintage.svg",
+      "width": 196,
+      "height": 148,
+      "anchor": [
+        0.5,
+        0.9
+      ],
+      "scale": {
+        "recommended_px": 24,
+        "min_px": 12,
+        "max_px": 48
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "open_license_reference_crop",
+        "source_sha256": "b130371612dcac0c3c83aa8b22398605f53fe94246a8bf18098c1d93427cfc28",
+        "crop_xyxy": [
+          29,
+          69,
+          78,
+          106
+        ],
+        "method": "Grayscale threshold 105; remove tiny components; contour approximation .7px; even-odd fill",
+        "license_status": "Owner confirmed open licence; exact attribution pending release review"
+      }
+    },
+    {
+      "id": "adventure.military_camp.vintage",
+      "category": "adventure",
+      "kind": "military_camp",
+      "variant": "vintage",
+      "path": "res://cartography/art/adventure.military_camp.vintage.svg",
+      "width": 212,
+      "height": 204,
+      "anchor": [
+        0.5,
+        0.9
+      ],
+      "scale": {
+        "recommended_px": 24,
+        "min_px": 12,
+        "max_px": 48
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "open_license_reference_crop",
+        "source_sha256": "b130371612dcac0c3c83aa8b22398605f53fe94246a8bf18098c1d93427cfc28",
+        "crop_xyxy": [
+          222,
+          57,
+          275,
+          108
+        ],
+        "method": "Grayscale threshold 105; remove tiny components; contour approximation .7px; even-odd fill",
+        "license_status": "Owner confirmed open licence; exact attribution pending release review"
+      }
+    }
+  ],
+  "additional_sources": [
+    {
+      "filename": "A1967C02-BBDB-428F-AC72-E318F4286343.jpeg",
+      "sha256": "b130371612dcac0c3c83aa8b22398605f53fe94246a8bf18098c1d93427cfc28",
+      "dimensions": [
+        736,
+        736
+      ],
+      "license_status": "Owner confirmed open licence 2026-11-27; specific licence identifier, original author and attribution terms not yet supplied; verify before release."
     }
   ]
 }
