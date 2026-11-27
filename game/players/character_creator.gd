@@ -118,7 +118,7 @@ func frame_style(active: bool = false, margin: int = 9) -> StyleBoxTexture:
 
 func soft_style(lit: bool = false, field: bool = false) -> StyleBoxFlat:
 	var s = StyleBoxFlat.new()
-	s.bg_color = Color(0.08,0.14,0.23,0.86 if field else 0.57)
+	s.bg_color = Color(0.08,0.14,0.23,0.90 if field else 0.66)
 	s.border_color = Color("#ffe3a1") if lit else Color(0.73,0.53,0.27,0.72)
 	s.set_border_width_all(1)
 	s.set_corner_radius_all(5)
@@ -133,7 +133,7 @@ func score_tile(parent: Container) -> VBoxContainer:
 	var panel = PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var surface = StyleBoxFlat.new()
-	surface.bg_color = Color(0.06,0.11,0.19,0.24)
+	surface.bg_color = Color(0.06,0.11,0.19,0.31)
 	surface.border_color = Color(0.80,0.62,0.34,0.74)
 	surface.set_border_width_all(1)
 	surface.set_corner_radius_all(5)

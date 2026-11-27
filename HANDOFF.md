@@ -4,3 +4,5 @@ Task P0-02 Windows GUI refinement: owner authorized publication of 0.0.22 playte
 
 ## P0-03 final management polish
 Owner Windows screenshot confirms v0.0.22 manager layout and sample portraits displayed; owner accepts layout subject to Delete-only management action, removing Rules Catalogue button, lighter manager backing and darker creator backing. Lead owns scoped manager/sheet/creator/layout-test and documentation changes. Fix visible wrapped CON/CHA abbreviations. Delete removes active roster entry through existing recoverable archive transaction; no hard deletion or schema changes. Branch feature/p0-management-final-polish, base 4954974bc09a3804c69db33a3e4a78e47eecc03e. No new release authorization yet; live channel remains 0.0.22. No concurrent writer assigned.
+
+P0-03 implemented on current feature branch; changed manager, sheet, creator, layout smoke and Brain. Manager Delete uses existing archive transaction; no hard deletion. Visual and runtime tests pending. No release authorization for this checkpoint. Owner now requests campaign management and persistence; build next checkpoint on this work without modifying live channel.

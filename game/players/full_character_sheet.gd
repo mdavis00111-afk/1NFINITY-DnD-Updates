@@ -49,6 +49,7 @@ func number(value: Variant, signed: bool = false) -> String:
 func frame_style(lit: bool = false, margin: int = 8) -> StyleBoxTexture:
 	var s = StyleBoxTexture.new()
 	s.texture = ACTIVE if lit else FRAME
+	s.modulate_color = Color(1,1,1,0.95)
 	for edge in [SIDE_LEFT,SIDE_RIGHT,SIDE_TOP,SIDE_BOTTOM]:
 		s.set_texture_margin(edge,22)
 		s.set_content_margin(edge,margin)
@@ -290,7 +291,8 @@ func ability_section() -> void:
 		var id = ABILITIES[i]
 		var r = row(abilities,4)
 		var tag = centered(id.to_upper(),20,GOLD)
-		tag.custom_minimum_size.x = 43
+		tag.custom_minimum_size.x = 49
+		tag.autowrap_mode = TextServer.AUTOWRAP_OFF
 		tag.size_flags_horizontal = Control.SIZE_FILL
 		r.add_child(tag)
 		ref_button(r,"ability-scores",id,ABILITY_NAMES[i],19)
