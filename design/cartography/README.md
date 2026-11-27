@@ -1,0 +1,18 @@
+# A1 — Cartography art library
+
+250 registered standalone SVG assets; 993668 source bytes (excluding registry and styles). {"settlements":70,"adventure":54,"terrain":53,"decor":21,"tools":17,"water":30,"markers":5}. Provenance breakdown {"original_vector":217,"reference_vector_crop":33}. 13 separate geometry stroke recipes, not counted as illustrations. All named geographic categories from WORLD_CARTOGRAPHY_SPEC.md covered; no missing named category. No actual geography encoded.
+
+- `game/cartography/art/catalog.json` is stable ID registry with source provenance, dimensions, normalized anchor, display scale/LOD, exact byte size and Git blob SHA-1. Two blank parchment textures are intentionally opaque; other art intended transparent. Art is not a visibility mask or authoritative location.
+- `navigation_styles.json` is purely visual; A2 renders authoritative committed route/water/region geometry and only actual movement in red. Never assign coordinates from a stamp. Keep secret locations excluded from renderer inputs.
+- Open `contact_sheet.html` in a checkout to inspect every actual SVG at a common display size. It is a catalogue proof, not a map. Original generator JS is development-only, never a Godot dependency. Do not regenerate stable IDs without review.
+- After importing the project in native Godot, run `godot --headless --path game --script res://tests/cartography_assets_smoke.gd`. This suite is read-only and tests source bytes, SVG decode, dimensions, alpha and imported textures; **not run here**. Manually inspect clipping, stroke weight, symbol legibility, parchment seams, and map fidelity at both target resolutions during A2/QA. No Godot or direct repo clone available in current container; full contact sheet not rendered here.
+- Owner-approved mockup harvest SHA256 6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567. C1 removed both vintage-derived candidate files and replaced them with original bridge/military-camp ink symbols, 250 total. Old saved IDs map through renderer aliases, not SQL rewrites. No vintage source pixels in candidate tree.
+
+Remaining review gates: full SVG decode/import and per-asset visual proof, A2 world projection and renderer (including fog, scale, navigation and all controls), integration and Windows visual/runtime acceptance. No fixed world, no publication.
+
+Independent proof: 41 hash-verified SVG samples rasterized with CairoSVG; one fog contour corrected. Full Godot import and visual review, including architectural edge clipping, remain pending.
+
+## C1 checkpoint 1 — original art replacement
+Start 045fbb5aab95f8c2ece5b837e34d3908ea741765, sole active specialist 01 per lead assignment on feature/complete-gameplay. Replaced two vintage-derived SVG files with original independently drawn bridge and military camp symbols; removed old paths from candidate tree, kept 250 registry entries, exact new Git hashes and dimensions, updated contact sheet and art smoke expectations. Old saved asset IDs resolve only through renderer compatibility aliases, never rewrite saves. Original source reference retained; unlicensed pack no longer in registry. Native Godot unavailable (command -v godot/godot4/wine/gdparse empty; Python gdtoolkit absent). Next typed UI adapter and controls; no mechanics/schema/Gemini/release changes.
+
+C1 current source verification: both replacement SVGs independently rasterized using CairoSVG 2.8.2 from exact Git-hash-matched source bytes; declared dimensions, transparent backgrounds, nonempty ink and edge margins passed. Registry/contact sheet updated; 250 unique hashes, 993668 SVG bytes. Native full import and actual visual acceptance still pending.

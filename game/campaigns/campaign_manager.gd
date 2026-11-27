@@ -1,6 +1,7 @@
 extends Control
 ## Campaign creation, library and saved opening workspace. No turn adjudication yet.
 const STORE = preload("res://campaigns/campaign_store.gd")
+const CONTROLLER = preload("res://gameplay/semantic_controller.gd")
 const WORKSPACE = preload("res://gameplay/game_workspace.gd")
 const PLAYERS = preload("res://players/character_store.gd")
 const STARTS = preload("res://campaigns/campaign_starts.gd")
@@ -37,6 +38,7 @@ var listing_error = ""
 var roster_buttons: Array[Button] = []
 var layout: MarginContainer
 var workspace: Control
+var gameplay_controller: Node
 var workspace_settings_action: Callable
 var resume_id = ""
 var return_error = ""
@@ -83,6 +85,7 @@ func cancel_opening() -> void:
 		retired.queue_free()
 
 func _exit_tree() -> void:
+	close_gameplay()
 	# The child HTTPRequest is destroyed on screen exit; ignore any late signal.
 	pending_campaign=""
 	pending_metadata=""
@@ -174,7 +177,14 @@ func art_entry(parent: Container, caption: String, picture: Texture2D, callback:
 	button.toggle_mode = true
 	return button
 
+func close_gameplay() -> void:
+	if is_instance_valid(gameplay_controller):
+		gameplay_controller.close_session()
+		gameplay_controller.queue_free()
+	gameplay_controller=null
+
 func render() -> void:
+	close_gameplay()
 	if is_instance_valid(layout):
 		remove_child(layout)
 		layout.queue_free()
@@ -221,7 +231,7 @@ func render() -> void:
 	elif mode=="new":
 		action(nav,"Content Rules",func(): settings_action.call())
 		var begin = action(nav,"Create Campaign",create)
-		begin.tooltip_text = "Save the campaign and open its opening workspace. Gameplay is not implemented yet."
+		begin.tooltip_text = "Save the campaign and open its opening workspace. Experimental gameplay follows the opening."
 		begin.disabled = profiles.is_empty() or players.is_empty()
 		if profiles.is_empty():
 			show_note("Configure maturity profiles in Content Rules first.")
@@ -449,7 +459,7 @@ func opening_received(ok: bool, message: String, source: Node) -> void:
 	active=refreshed
 	render()
 	if error.is_empty():
-		show_note("Opening saved. Gameplay turn resolution is not implemented yet.")
+		show_note("Opening saved. Experimental gameplay ready.")
 	else:
 		show_note(error)
 
@@ -475,6 +485,22 @@ func build_workspace(parent: Container) -> void:
 		active = snapshot["campaign"]
 	elif error.is_empty():
 		error = "Campaign workspace unavailable. Return to Campaign and reopen."
+	if not snapshot.is_empty() and not snapshot.get("opening_available",false) and pending_campaign.is_empty():
+		gameplay_controller=CONTROLLER.new()
+		add_child(gameplay_controller)
+		var bound: Dictionary=gameplay_controller.bind_ai(str(active["id"]))
+		if bound.get("ok",false):
+			workspace=WORKSPACE.new()
+			var mounted: Dictionary=gameplay_controller.mount_workspace(workspace,leave,open_workspace_settings)
+			if mounted.get("ok",false):
+				parent.add_child(workspace)
+				return
+			workspace.free()
+			error=str(mounted.get("error","Gameplay mount failed."))
+		else:
+			error=str(bound.get("error","Gameplay binding failed."))
+		close_gameplay()
+		snapshot=store.gameplay_view(str(active["id"]))
 	workspace = WORKSPACE.new()
 	workspace.configure(snapshot,active,leave,open_workspace_settings,request_opening,not pending_campaign.is_empty(),error)
 	parent.add_child(workspace)

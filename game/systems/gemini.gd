@@ -14,6 +14,7 @@ var pages = 0
 var current_key = ""
 var current_model = ""
 var complete_response_required = false
+var response_limit = 4000
 
 func _ready() -> void:
 	request = HTTPRequest.new()
@@ -51,14 +52,14 @@ func list_page(token: String) -> void:
 		fail("Could not start model discovery.")
 
 # Only trusted engine callers supply a schema. Plain-prose callers keep their existing payload.
-static func request_payload(prompt: String, response_schema: Dictionary = {}) -> Dictionary:
-	var payload = {"contents":[{"role":"user","parts":[{"text":prompt}]}],"generationConfig":{"temperature":0.8,"maxOutputTokens":2048}}
+static func request_payload(prompt: String, response_schema: Dictionary = {}, output_tokens: int = 2048, temperature: float = 0.8) -> Dictionary:
+	var payload = {"contents":[{"role":"user","parts":[{"text":prompt}]}],"generationConfig":{"temperature":clampf(temperature,0.0,1.0),"maxOutputTokens":clampi(output_tokens,1,8192)}}
 	if not response_schema.is_empty():
 		payload["generationConfig"]["responseMimeType"] = "application/json"
 		payload["generationConfig"]["responseJsonSchema"] = response_schema.duplicate(true)
 	return payload
 
-func generate(prompt: String, key_override: String = "", model_override: String = "", require_complete: bool = false, response_schema: Dictionary = {}) -> void:
+func generate(prompt: String, key_override: String = "", model_override: String = "", require_complete: bool = false, response_schema: Dictionary = {}, max_chars: int = 4000, output_tokens: int = 2048, temperature: float = 0.8) -> void:
 	if active:
 		return
 	var cfg = ConfigFile.new()
@@ -74,7 +75,8 @@ func generate(prompt: String, key_override: String = "", model_override: String 
 	if valid.search(model) == null:
 		completed.emit(false,"Enter a valid Gemini model ID in Settings.")
 		return
-	var payload = request_payload(prompt,response_schema)
+	var payload = request_payload(prompt,response_schema,output_tokens,temperature)
+	response_limit = clampi(max_chars,1,65536)
 	active = true
 	mode = "generate"
 	current_key = key
@@ -115,6 +117,8 @@ func error_message(code: int, data: Variant) -> String:
 	return message
 
 func received(result: int, code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	if not active:
+		return
 	if result != HTTPRequest.RESULT_SUCCESS:
 		fail("Gemini connection failed or timed out.")
 		return
@@ -156,13 +160,15 @@ func received(result: int, code: int, _headers: PackedStringArray, body: PackedB
 	mode = ""
 	current_key = ""
 	current_model = ""
-	var output = generation_text(data,complete_response_required)
+	var output = generation_text(data,complete_response_required,response_limit)
+	response_limit = 4000
 	complete_response_required = false
 	completed.emit(output["ok"],output["message"])
 
 # Parse the provider envelope defensively. Opening proposals must be complete,
 # never truncated into an apparently valid JSON prefix. Prose callers retain their cap.
-static func generation_text(data: Dictionary, require_complete: bool = false) -> Dictionary:
+static func generation_text(data: Dictionary, require_complete: bool = false, max_chars: int = 4000) -> Dictionary:
+	max_chars = clampi(max_chars,1,65536)
 	var failure = {"ok":false,"message":"Gemini did not return a complete usable response. Try again or choose another model."}
 	var feedback = data.get("promptFeedback",{})
 	if require_complete and (not feedback is Dictionary or (feedback.has("blockReason") and feedback["blockReason"] not in ["","BLOCK_REASON_UNSPECIFIED"])):
@@ -205,6 +211,20 @@ static func generation_text(data: Dictionary, require_complete: bool = false) ->
 	# can corrupt a split string or escape sequence. Preserve prose behavior.
 	var separator = "" if require_complete else "\n"
 	var output = separator.join(texts).strip_edges()
-	if output.is_empty() or (require_complete and output.length()>4000):
+	if output.is_empty() or (require_complete and output.length()>max_chars):
 		return failure
-	return {"ok":true,"message":output.left(4000)}
+	return {"ok":true,"message":output.left(max_chars)}
+
+# Controller retires each request node. Clear credentials and suppress signals
+# before canceling; cancellation cannot report a usable provider response.
+func cancel_generation() -> void:
+	var was_active = active
+	active=false
+	mode=""
+	current_key=""
+	current_model=""
+	discovery_key=""
+	complete_response_required=false
+	response_limit=4000
+	if was_active and is_instance_valid(request):
+		request.cancel_request()

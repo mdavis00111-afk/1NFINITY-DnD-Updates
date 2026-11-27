@@ -1,0 +1,25 @@
+# C4 — development gameplay controller and semantic boundary
+
+Status: implementation source checkpoint; native acceptance outstanding. Production campaign manager remains deliberately unbound. No live Gemini or prompt changes.
+
+## Binding and authority
+Create `game/gameplay/complete_controller.gd` as a Node, add to tree, explicitly bind a campaign with trusted local mechanical/context reviewer and trusted critical prose reviewer, then mount a new workspace before adding it to the tree. Never supply indiscriminate fixture approval in production. Binding runs C2 migration/backup and reads actual committed snapshots. The C3 registry owns mechanical effects and C2 settlements; B2 receipts and B4 geography own adopted turn/narration. The workspace cannot write HP, inventory, currency, spells, resources, or travel. Acknowledgement means durable input only, not success. Standalone C3 writes refresh directly; adopted turns require receipt recovery and B4 narration. Unsupported or ambiguous selections stop with explanation.
+
+## Durable journal and recovery
+`meta.c4_work_v1` is a campaign-local versioned orchestration document, not canonical gameplay state. Exact journal CAS plus TurnStore revision/actor/metadata guard protects updates without advancing gameplay revision. Stores active intent, stage, attempts, proposed tool, reviewed candidate, deferred story work, one queued natural input, draft and bounded terminal history. Exact receipt/settlement lookup precedes retry; same-process prepared C3 failures retain their rolls. Restart of uncommitted prepared work follows existing C3 recovery limitations; committed mechanics are never repeated. In-process one controller per campaign. Cross-process concurrent campaign ownership is not enabled or certified.
+
+## Semantic adapter (mock now; C5 later)
+Signals: semantic_requested(stage, packet), semantic_cancelled(identity). A packet has identity (campaign_id, actor_id, request_id, attempt_id, revision, stage) and bounded data; return through receive(identity,result) or provider_failed(identity). No provider receives SQL handles or writes. Stale/wrong-campaign/duplicate/retired replies rejected.
+- interpret: natural player text or typed intention, catalogue and public actor/scene/loot/story context. Reply {kind,args} matching a C3 tool or {status: clarification/unsupported,message}. C3 request gets locally generated identity and current revision. Exact natural chat text preserved when tool accepts text.
+- narrate: public committed receipt, original player text and public context; reply {text}. Not yet displayed as confirmed.
+- critical: candidate and receipt; reply {claims:[{kind,evidence,proposal}]}. Exact textual evidence; only null proposal accepted. Independent trusted reviewer compares candidate, claims, actual receipt and scene. Required new mechanics or unverified claims block, not silently applied.
+- background: exact B4 geography proposal envelope using current turn/attempt plus story array {evidence,args}, where args matches C3 story_update minus source_event_id. Story source assigned only from committed narration. Geography reconciles with B4; deferred story updates use actual C3 transactions and journaled per-step IDs. Invalid/unconfirmed work blocks next execution; optional story skipping requires no ambiguous prepared write.
+- C5 must supply a genuine trusted context/critical review policy, bidirectional semantic adapters, continuation/correction for additional mechanics and natural language handling; no live AI tuning in C4.
+
+Critically reviewed prose can be read in a separately labeled preview before geography/story reconciliation, not in the canonical log until committed. Existing composer remains editable; one queued text can be saved during work. It is reinterpreted at fresh revision only after preceding work settles; no typed action rebasing. Draft and unfinished work survive save/resume. Native performance and responsive layout still require testing; database service calls remain synchronous on the Godot main thread; network adapter boundary is asynchronous/deferred, not a threaded SQL implementation.
+
+## UI coverage
+Committed snapshot refresh rebuilds existing HUD and controls. World menu provides disclosed actor sheets, loot selection and take-all (explicit quantities and coins), overview and story/history, legacy assignment review. Explicit self-target picker, rest/hit dice, spell preparation, known travel route and pace, action selections. Support follows C3; other-target effects and full combat remain deferred. No production activation. Standalone tool settlements do not yet generate separate live AI narration.
+
+## Verification
+`complete_gameplay_smoke` exercises actual workspace/controller/SQLite through fixture semantic responses and local fixture-only reviewers; register in native and Linux runners. Native execution blocked in current environment. Independent SQLite fixture 9/9 (journal CAS, stale guards, reopening, duplicate narration, deferred history and isolation) executed separately; not equivalent to native integration or visual proof.
