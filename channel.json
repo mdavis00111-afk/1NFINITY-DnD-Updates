@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.10",
-  "source_commit": "7fbc5421241803bdbeaa76ca3ba2bf41b91612d5",
-  "notes": "Recovery: windowed startup, threaded update check, delayed readiness handshake and edition-separated master reference browser. Recovery ZIP includes local 544-page reference library; original rules remain active.",
+  "version": "0.0.11",
+  "source_commit": "dc450c6f7281b84c44a348eee025255df2a42e1e",
+  "notes": "Four-stage character creator, quick generation, persistent local player records, original 2014/2018 SRD catalogue with side reference pane and tooltips, cleaner scalable italic typography. SRD subset plus 2018 supplements; full PHB and gameplay mechanics remain pending. 1596 catalogue reference checks passed; Windows runtime testing outstanding.",
   "files": [
     {
       "path": "main.tscn",
@@ -47,18 +47,6 @@
     {
       "path": "themes/fonts/arcane_atlas.png",
       "blob": "9404512d0977a189bcb5e5c61b023387894cb217"
-    },
-    {
-      "path": "themes/master_theme.tres",
-      "blob": "e13c9b93e804183cad51fe59603ed35caaeebff2"
-    },
-    {
-      "path": "themes/menu_button.gd",
-      "blob": "44ad6da6abcb4745a82f357aec43e9d3c1363981"
-    },
-    {
-      "path": "themes/TYPOGRAPHY.md",
-      "blob": "d751acb334d0c7f8e99e47177c5794f29a2385f9"
     },
     {
       "path": "rules/library.gd",
@@ -109,24 +97,160 @@
       "blob": "74cbe1105d673f88659c5246d5d757cdb397e240"
     },
     {
-      "path": "main.gd",
-      "blob": "0ad0cdd3953e61928c11016a0a9cef291b338474"
-    },
-    {
-      "path": "project.godot",
-      "blob": "1a8bd2df535c94ed4c39bf656c7c6183e6ab0c36"
-    },
-    {
-      "path": "version.txt",
-      "blob": "7c1886bb9f472af88c02b1f7e1d940132bdf5795"
-    },
-    {
       "path": "rules/master_reference.gd",
       "blob": "843b2de08848b38784e014ba50033ae13e6848e9"
     },
     {
       "path": "rules/MASTER_REFERENCE.md",
       "blob": "e40d949408961503eccd434967fdd50ee72256b3"
+    },
+    {
+      "path": "data/2014/races.json",
+      "blob": "3b0864fb0f01592bc4ceeb2544cb6538787a059e"
+    },
+    {
+      "path": "data/2014/subraces.json",
+      "blob": "c61f4f9c27ef7f225a29c36f43a9039ad7c356a8"
+    },
+    {
+      "path": "data/2014/classes.json",
+      "blob": "cbf375149b82b0093fb2e7ecc3a69a1e40fe2096"
+    },
+    {
+      "path": "data/2014/subclasses.json",
+      "blob": "c80b0484b7c80815ed5576b492e7686fa7e71e13"
+    },
+    {
+      "path": "data/2014/backgrounds.json",
+      "blob": "c29c642b5ccc41cc60f2b7698c6ea70b42e6ef4a"
+    },
+    {
+      "path": "data/2014/skills.json",
+      "blob": "e6461eb8fb5bcafb2b1c1abe0409b5ca14b3470e"
+    },
+    {
+      "path": "data/2014/spells.json",
+      "blob": "141e79d370367e157025ec53b98d6293714311ad"
+    },
+    {
+      "path": "data/2014/equipment.json",
+      "blob": "2de4750ba8a2f2b14799c3dcb03b539b24cc1ca9"
+    },
+    {
+      "path": "data/2014/equipment-categories.json",
+      "blob": "cda2624102f88bd360a3446b2ee24de5b97b062d"
+    },
+    {
+      "path": "data/2014/features.json",
+      "blob": "854afaed5e98d3f47a4da870a1c8af217e3f33ac"
+    },
+    {
+      "path": "data/2014/levels.json",
+      "blob": "614a330c9dc1f638672f4dbf282a4a3d22914a0a"
+    },
+    {
+      "path": "data/2014/languages.json",
+      "blob": "5a19769fcc171a25e1672e6e553f3d35bd335b92"
+    },
+    {
+      "path": "data/2014/proficiencies.json",
+      "blob": "64d8be4ad6bd1cb40ec7da2d975a910bf06db9d7"
+    },
+    {
+      "path": "data/2014/traits.json",
+      "blob": "7d39f0483421a1135958670238406bdcf617ffce"
+    },
+    {
+      "path": "data/2014/ability-scores.json",
+      "blob": "50dd5029f0aed1354d89c8674cb6ce420aa87d74"
+    },
+    {
+      "path": "data/2014/magic-items.json",
+      "blob": "dbce372189b5cade8b106942a8caad7599615cae"
+    },
+    {
+      "path": "data/2014/conditions.json",
+      "blob": "27b981e91e0d5ce0e334f547b132600e8efa8491"
+    },
+    {
+      "path": "data/2014/feats.json",
+      "blob": "af42c2a12e7462a5acf57d651a49cc3f1b580bd1"
+    },
+    {
+      "path": "data/2014/weapon-properties.json",
+      "blob": "68e33903260d24f7bbe1289c98bbf8412da13fcf"
+    },
+    {
+      "path": "data/2014/rule-sections.json",
+      "blob": "42969e45a3d5a01941f7d0e9bca2f06b8ec69776"
+    },
+    {
+      "path": "data/2014/INDEX.json",
+      "blob": "df54d5578688e72f5558abe206b27ed214ee23de"
+    },
+    {
+      "path": "data/2014/ATTRIBUTION.txt",
+      "blob": "a1250899a49f9d14a96e7641d3c73c3ecc9c2268"
+    },
+    {
+      "path": "themes/fonts/EBGaramond-Italic.ttf",
+      "blob": "f9ad996001c8ee72fd43b4b8e67c8924b7f615b1"
+    },
+    {
+      "path": "rules/catalog.gd",
+      "blob": "cb271355cad80ac22a912fbcc6b95a033aa01be3"
+    },
+    {
+      "path": "rules/character_rules.gd",
+      "blob": "96343e93c0eaa8e6010348fd2ab7247f26b3b24a"
+    },
+    {
+      "path": "players/character_creator.gd",
+      "blob": "0ad9e94f4c9a2a1b9d55baeb27f77cf47a1b4b63"
+    },
+    {
+      "path": "players/character_manager.gd",
+      "blob": "65344fe25c52d4ff276bfaff3f9c950e4c74708d"
+    },
+    {
+      "path": "players/character_store.gd",
+      "blob": "b6dbc0349d6d62f1163c2ed534b3ea1532359748"
+    },
+    {
+      "path": "rules/catalog_browser.gd",
+      "blob": "709175f10f5c64e66c1eeed6c9f1aba3f0f1fba5"
+    },
+    {
+      "path": "main.gd",
+      "blob": "e8659fd5141550c73cf061f37114963f0b76869b"
+    },
+    {
+      "path": "project.godot",
+      "blob": "abe9e9772656360bf2f91693482f75620cbfd154"
+    },
+    {
+      "path": "version.txt",
+      "blob": "2cfabea2f1e6e353e6999e9b2508d971fdbbef0f"
+    },
+    {
+      "path": "themes/master_theme.tres",
+      "blob": "c6cb9b5ef9779d593373e9224cc2c19f1cac7bf3"
+    },
+    {
+      "path": "themes/menu_button.gd",
+      "blob": "f2a1709b307e26c9fe13bcb666a76c4dbba2d380"
+    },
+    {
+      "path": "players/CHARACTER_SYSTEM.md",
+      "blob": "9b5813556e58b5a5c50982ccfc2550c2944a00e6"
+    },
+    {
+      "path": "tests/character_smoke.gd",
+      "blob": "b20dec9a2d39106f684438d77c5698c61524b36b"
+    },
+    {
+      "path": "themes/TYPOGRAPHY.md",
+      "blob": "eac8bb8e11a693fbc6eff88c7cbd428c6cfadc2e"
     }
   ]
 }
