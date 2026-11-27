@@ -21,7 +21,7 @@ static func open(parent: Node,on_change: Callable) -> void:
 	summary.max_length=500
 	col.add_child(summary)
 	var consent=CheckBox.new()
-	consent.text="I have reviewed the saved prompt and authorize this local export_button."
+	consent.text="I have reviewed the saved prompt and authorize this local export."
 	col.add_child(consent)
 	var export_button=Button.new()
 	export_button.text="Export prompt-only proposal"
