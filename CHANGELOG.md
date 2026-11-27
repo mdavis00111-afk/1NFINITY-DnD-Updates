@@ -1,7 +1,10 @@
 # 1NFINITY D&D — Changelog
 Live channel: godot. Entries below are reconstructed from published Git commit messages, not evidence of runtime test success. Source commit and manifest commit prefixes are provided for traceability.
 
-## Unreleased / documentation
+## Unreleased
+
+- Reconstruct the four character creation stages and searchable choice dialog. Add a portrait sheet viewer with fit-width, zoom, reset, and two-axis scrolling. Normalize integral scores when resuming a JSON-backed draft so rolled characters can be finalized.
+- Archive approved GUI references, document authorized private reference retrieval, and add reproducible Linux smoke checks for creator and sheet behavior.
 - Establish ROADMAP.md, CHANGELOG.md and TESTING.md; update PROJECT_BRAIN.md. Documentation only; no game version change.
 
 | Release | Source / manifest | Published scope |

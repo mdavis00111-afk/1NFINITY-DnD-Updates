@@ -83,6 +83,8 @@ game/
   themes/master_theme.tres
   tests/{sqlite,character,layout,assets}_smoke.gd (SceneTree scripts)
 ```
+The P0 GUI candidate uses a fixed creator frame, shared stage navigation, page-specific forms, and independent scrolling for reference, long text, and option lists. Character creation and review still use the existing Godot rules and store. The shared picker preserves search, selection, confirmation and cancellation. The manager keeps its actions outside the portrait sheet viewport and supports fit-width, 50–200% zoom, reset, and two-axis navigation. The sheet renders live record values and reuses existing ornamental assets. Campaign play remains unavailable from Begin Adventure until a campaign runtime exists.
+
 main.gd show_screen removes old screen, creates new anchored Control; creator/manager/browser early return routes supersede stale legacy branches. Creator configure(quick,on_exit,on_finish,saved), manager configure(edit,exit,browse), sheet configure(record,on_reference), browser configure(on_exit). Signals: Gemini completed(bool,String), models_completed(bool,Array,String); HTTPRequest.request_completed; ordinary UI pressed/item_selected/text_changed/confirmed/file_selected etc connected locally. No global custom signals. Character rules fresh/roll_scores/points_used/groups/validate_step/full_record own calculations, not Gemini. Level 1 only; stored draft includes answers and roll history; full_record includes stats, combat, attacks, resources, inventory, spellcasting, review_required. No gameplay scene.
 
 ## 4. GEMINI PROMPTS & API INTEGRATION
