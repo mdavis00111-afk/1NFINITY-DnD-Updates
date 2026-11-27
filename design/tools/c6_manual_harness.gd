@@ -101,7 +101,9 @@ func open_campaign(id: String) -> void:
 	clear_screen()
 	controller=CTRL.new()
 	root.add_child(controller)
-	var factory=Callable() if allow_provider else func(): return OfflineTransport.new()
+	var factory=Callable()
+	if not allow_provider:
+		factory=func(): return OfflineTransport.new()
 	var bound=controller.bind_ai(id,Callable(),Callable(),factory)
 	if not bound.get("ok",false):
 		show_selector(str(bound.get("error","Binding failed.")))

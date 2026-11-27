@@ -116,120 +116,7 @@ COMPLETION = {
 
 def require_suite_success(code, output, suite):
     require_success(code, output, suite)
-    if len(re.findall(r'(?m)^' + COMPLETION[suite] + r'\s*
-    # Unique test-copy project name, not a mutation of the committed config.
-    name = '1NFINITY_QA_' + uuid.uuid4().hex
-    config = project / 'project.godot'
-    original = config.read_text(encoding='utf-8')
-    updated, count = re.subn(r'^config/custom_user_dir_name="[^"\n]+"$',
-                            'config/custom_user_dir_name="' + name + '"', original, flags=re.M)
-    if count != 1 or 'config/use_custom_user_dir=true' not in original:
-        raise ValueError('Cannot safely isolate user directory')
-    config.write_text(updated, encoding='utf-8')
-    probe = project / 'qa_user_probe.gd'
-    probe.write_text('extends SceneTree\nfunc _initialize():\n\tprint("QA_USER_ROOT=" + ProjectSettings.globalize_path("user://"))\n\tquit(0)\n', encoding='utf-8')
-    code, output = execute(command + ['--log-file', str(logs / (label + '-probe-engine.log')),
-                                      '--script', 'res://qa_user_probe.gd'], env,
-                           logs / (label + '-probe.log'), 45)
-    require_success(code, output, label + ' isolation probe')
-    roots = re.findall(r'(?m)^QA_USER_ROOT=(.+)$', output)
-    if len(roots) != 1:
-        raise RuntimeError('User directory probe ambiguous')
-    root = Path(roots[0].strip()).resolve()
-    if root.name != name or (root.exists() and (not root.is_dir() or any(root.iterdir()))):
-        raise RuntimeError('User directory is not a fresh isolated directory: ' + str(root))
-    root.mkdir(parents=True, exist_ok=True)
-    probe.unlink()
-    return original, root, {**env, 'INFINITY_TEST_USER_ROOT': root.as_posix()}
-
-
-def run(args):
-    repo = Path(args.repo).resolve()
-    logs = Path(args.logs).resolve()
-    logs.mkdir(parents=True, exist_ok=False)
-    report = {'status': 'FAILED', 'suites': {}, 'transport': 'not run'}
-    try:
-        with tempfile.TemporaryDirectory(prefix='infinity-native-qa-') as temp:
-            root = Path(temp)
-            project = root / 'game'
-            audit = materialize(repo, args.ref, project)
-            (logs / 'inventory.json').write_text(json.dumps(audit, indent=2), encoding='utf-8')
-            report.update(commit=audit['commit'], version=audit['version'], files=len(audit['files']),
-                          pending_art_clearance=audit['pending_art_clearance'])
-            if args.audit_only:
-                report['status'] = 'BYTE_AUDIT_ONLY'
-                return 0
-            if len(args.suites) != len(set(args.suites)):
-                raise ValueError('Duplicate suite name')
-            if not args.godot:
-                raise ValueError('--godot is required unless --audit-only')
-            engine = Path(args.godot).resolve(strict=True)
-            env = {**os.environ, 'XDG_CACHE_HOME': str(root / 'cache'),
-                   'XDG_CONFIG_HOME': str(root / 'config'), 'XDG_DATA_HOME': str(root / 'data'),
-                   'APPDATA': str(root / 'roaming'), 'LOCALAPPDATA': str(root / 'local')}
-            env.pop('INFINITY_TEST_USER_ROOT', None)
-            code, output = execute([str(engine), '--version'], env, logs / 'engine.log', 30)
-            require_success(code, output, 'engine version')
-            if not re.search(r'(?m)^4\.7\.2(?:\.|\s|$)', output):
-                raise ValueError('Godot 4.7.2 required')
-            report['engine'] = output.strip()
-            if os.name == 'nt':
-                report['transport'] = 'Windows production bridge (unchanged)'
-            elif sys.platform.startswith('linux'):
-                helper = Path(__file__).with_name('run_linux_smoke.py').resolve()
-                spec = importlib.util.spec_from_file_location('linux_smoke', helper)
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
-                module.patch_copy(project / 'systems/sqlite.gd')
-                env.update(INFINITY_TEST_PYTHON=sys.executable, INFINITY_TEST_TRANSPORT=str(helper))
-                report['transport'] = 'Linux disposable Python SQLite test transport (NOT production)'
-            else:
-                raise ValueError('Only Windows and Linux supported')
-            command = [str(engine), '--headless', '--path', str(project)]
-            original, user, child = isolate(project, 'import', env, command, logs)
-            report['import_user_root'] = str(user)
-            code, output = execute(command + ['--editor', '--import'], child, logs / 'import.log', 300)
-            require_success(code, output, 'Godot import')
-            (project / 'project.godot').write_text(original, encoding='utf-8')
-            report['import'] = 'PASS'
-            for suite in args.suites:
-                original, user, child = isolate(project, suite, env, command, logs)
-                code, output = execute(command + ['--script', 'res://tests/' + suite + '_smoke.gd'],
-                                       child, logs / (suite + '.log'), 600)
-                reason = ''
-                try:
-                    require_suite_success(code, output, suite)
-                    result = 'PASS'
-                except RuntimeError as exc:
-                    result = 'FAIL'
-                    reason = str(exc)
-                report['suites'][suite] = {'status': result, 'exit': code, 'user_root': str(user),
-                                            'reason': reason}
-                (project / 'project.godot').write_text(original, encoding='utf-8')
-            report['status'] = 'PASS' if all(x['status'] == 'PASS' for x in report['suites'].values()) else 'FAILED'
-            return int(report['status'] != 'PASS')
-    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
-        report['error'] = str(exc)
-        print(str(exc), file=sys.stderr)
-        return 1
-    finally:
-        (logs / 'report.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
-
-
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--repo', required=True)
-    parser.add_argument('--ref', required=True)
-    parser.add_argument('--logs', required=True, help='new directory, never an existing folder')
-    parser.add_argument('--godot', help='absolute path to a standalone Godot 4.7.2 executable')
-    parser.add_argument('--audit-only', action='store_true')
-    parser.add_argument('--suites', nargs='+', choices=SUITES + ('assets',), default=list(SUITES))
-    return run(parser.parse_args())
-
-
-if __name__ == '__main__':
-    sys.exit(main())
-, output)) != 1:
+    if len(re.findall(r'(?m)^' + COMPLETION[suite] + r'\s*$', output)) != 1:
         raise RuntimeError(suite + ' missing or ambiguous successful completion marker')
     if suite == 'layout' and 'Layout smoke exercised save, reload and archive in isolated user data.' not in output:
         raise RuntimeError('layout did not execute required persistence checks')
@@ -315,12 +202,13 @@ def run(args):
                 original, user, child = isolate(project, suite, env, command, logs)
                 code, output = execute(command + ['--script', 'res://tests/' + suite + '_smoke.gd'],
                                        child, logs / (suite + '.log'), 600)
+                reason = ''
                 try:
-                    require_success(code, output, suite)
+                    require_suite_success(code, output, suite)
                     result = 'PASS'
-                except RuntimeError:
-                    result = 'FAIL'
-                report['suites'][suite] = {'status': result, 'exit': code, 'user_root': str(user)}
+                except RuntimeError as exc:
+                    result, reason = 'FAIL', str(exc)
+                report['suites'][suite] = {'status': result, 'exit': code, 'user_root': str(user), 'reason': reason}
                 (project / 'project.godot').write_text(original, encoding='utf-8')
             report['status'] = 'PASS' if all(x['status'] == 'PASS' for x in report['suites'].values()) else 'FAILED'
             return int(report['status'] != 'PASS')
