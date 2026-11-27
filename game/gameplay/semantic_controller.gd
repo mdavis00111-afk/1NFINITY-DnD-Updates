@@ -2,9 +2,11 @@ extends "res://gameplay/complete_controller.gd"
 ## C5 development integration. Production campaign manager remains unbound.
 const ADAPTER=preload("res://gameplay/semantic_adapter.gd")
 const POLICY=preload("res://gameplay/semantic_policy.gd")
+const REVIEW=preload("res://gameplay/independent_review.gd")
 const DISCOVERY=["define_official","define_custom","actor_generate","loot_discover"]
 const NARRATABLE=["equip","quick_equip","swap","unequip","attune","unattune","item_use","item_drop","item_transfer","currency_transfer","loot_pickup","loot_take_all","spell_cast","spell_prepare","spell_unprepare","resource_use","rest","object_interact","reconcile_legacy_slots","party_membership"]
 var policy=POLICY.new()
+var independent=REVIEW.new()
 var adapter: Node
 # Session-local monotonic timing only. No text, IDs, keys or campaign data
 # are included in the samples. Restarted jobs have no fabricated durations.
@@ -15,6 +17,7 @@ func bind_ai(id: String,context_reviewer: Callable=Callable(),prose_reviewer: Ca
 	if not is_inside_tree() or is_instance_valid(adapter):
 		return failure("Explicit development AI binding required.")
 	policy.controller=self
+	independent.controller=self
 	policy.contextual=context_reviewer
 	policy.prose=prose_reviewer
 	adapter=ADAPTER.new()
@@ -59,6 +62,13 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	expanded["remaining_intents"]=job.get("remaining",[])
 	expanded["original_intent"]=job["intent"]
 	expanded["correction"]=job.get("correction","")
+	if stage=="critical":
+		expanded["candidate_hash"]=job["candidate"]["text"].sha256_text()
+		expanded["candidate_length"]=job["candidate"]["text"].length()
+		expanded["independent_review"]=job.has("first_review")
+		expanded["known_public_ids"]=independent.public_ids(expanded.get("scene",{}),ext)
+		expanded["original_player_text"]=job["intent"]["args"].get("text","")
+		expanded["verified_outcome"]=expanded.get("receipt",expanded.get("settlement",{}))
 	if stage=="interpret":
 		expanded["intent"]=job["intent"]
 		expanded["next_step_hint"]=job.get("remaining",[]).front() if not job.get("remaining",[]).is_empty() else null
@@ -214,17 +224,37 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 		return failure("Stale semantic response.")
 	var job=active().duplicate(true)
 	if stage=="critical":
-		if not DTO.exact_keys(result,["claims"]) or not valid_claims(result["claims"],job["candidate"]["text"]):
-			return correction(job,"Unresolved mechanical/agency claim. Leave it as an offer or pending consequence, not a completed event.")
 		var verified=outcome(job)
 		var context=scene_context(data["state"])
 		if verified.is_empty() or not context.get("ok",false):
 			stop("retry","Outcome or canon unavailable.")
 			return failure(status)
-		if not policy.review_prose(job["candidate"],result["claims"],verified,context["scene"]):
-			return correction(job,"Independent review could not verify the exact passage. Preserve confirmed mechanics and avoid unverified claims.")
+		var public_outcome=verified if standalone(job) else PACK.public_receipt(verified)
+		var ext=BASE.new().gameplay_view(campaign_id).get("interaction_extension",{})
+		if ext.get("revision")!=data["state"]["revision"]:
+			stop("retry","Review context changed.")
+			return failure(status)
+		var known=independent.public_ids(context["scene"],ext)
+		var original=str(job["intent"]["args"].get("text",""))
+		var checked=independent.parse_report(result,job["candidate"]["text"],original,public_outcome,known)
+		if not checked.get("ok",false):
+			return correction(job,checked["error"])
+		if not job.has("first_review"):
+			job["first_review"]=result.duplicate(true)
+			job["attempt"]={}
+			inflight={}
+			if not update_active(job):
+				return failure("First review persistence unconfirmed.")
+			advance.call_deferred()
+			return {"ok":true}
+		var merged=independent.reconcile(job["first_review"],result,job["candidate"]["text"],original,public_outcome,known)
+		if not merged.get("ok",false):
+			return correction(job,merged["error"])
+		if not merged["effects"].is_empty():
+			return prepare_consequence(job,merged["effects"][0])
 		job["critical_verified"]=true
 		job["critical_claims"]=result["claims"].duplicate(true)
+		job["second_review"]=result.duplicate(true)
 		job["stage"]="background"
 		job["attempt"]={}
 		inflight={}
@@ -256,6 +286,8 @@ func correction(job: Dictionary,message: String) -> Dictionary:
 	job.erase("candidate")
 	job.erase("critical_verified")
 	job.erase("critical_claims")
+	job.erase("first_review")
+	job.erase("second_review")
 	job["stage"]="narrate"
 	job["attempt"]={}
 	if not update_active(job):
@@ -477,3 +509,7 @@ func settle_verified_only() -> Dictionary:
 		return failure("Verified-only recovery not confirmed.")
 	advance.call_deferred()
 	return {"ok":true}
+
+# C5b continuation staging is implemented in the next checkpoint.
+func prepare_consequence(job: Dictionary,claim: Dictionary) -> Dictionary:
+	return correction(job,"New effect needs a committed continuation before it can be narrated: "+claim["evidence"].left(240))
