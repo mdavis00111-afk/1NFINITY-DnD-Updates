@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.14",
-  "source_commit": "f394630ef9b551fa9abfc71bd455a307bb73ffdb",
-  "notes": "SQLite rules and player persistence, legacy JSON migration, redesigned four-screen creator, Gemini description generation and API settings, campaign schema. Public rules DB is losslessly compressed and SHA-256 verified on first use. Private references remain local. Windows runtime testing pending.",
+  "version": "0.0.18",
+  "source_commit": "b582b68bc365640dc0d5542aa7855e37aec0e2ab",
+  "notes": "Full saved character sheet, four-screen creator polish, Gemini model discovery, asset catalogue support and SQLite persistence. Private reference files remain outside the updater. Windows runtime test pending.",
   "files": [
     {
       "path": "main.tscn",
@@ -209,36 +209,12 @@
       "blob": "eac8bb8e11a693fbc6eff88c7cbd428c6cfadc2e"
     },
     {
-      "path": "tests/layout_smoke.gd",
-      "blob": "3d565a8d9bca828a9a8c260e73935f3cda7f0096"
-    },
-    {
-      "path": "main.gd",
-      "blob": "9c2748805797682b37396b33cb43442ee5a80586"
-    },
-    {
       "path": "players/CHARACTER_SYSTEM.md",
       "blob": "2912089d5d98f7eba9f120fece0d9c5f176fcf44"
     },
     {
-      "path": "players/character_creator.gd",
-      "blob": "524f8e19aea31aab867cff6360c96ca539093a4f"
-    },
-    {
-      "path": "players/character_manager.gd",
-      "blob": "acf35377ce579c8f3120deaf2fab534d9139f65e"
-    },
-    {
       "path": "players/character_store.gd",
       "blob": "60d189601a4bd4db7d5dcfdcf5cec71f47e4eb23"
-    },
-    {
-      "path": "project.godot",
-      "blob": "f93d8bdac5d6e63becd1850e9dd4fd69dab6ec0c"
-    },
-    {
-      "path": "rules/catalog_browser.gd",
-      "blob": "259cf25eb351da456fb15fb5c255d155b1e9d399"
     },
     {
       "path": "rules/character_rules.gd",
@@ -247,10 +223,6 @@
     {
       "path": "systems/campaign_schema.sql",
       "blob": "e1a39e4957700a7cd2f1ef5e003254217f8a3b5b"
-    },
-    {
-      "path": "systems/gemini.gd",
-      "blob": "2bf07bb71014bf9f3503ad0430d5a2830c06c584"
     },
     {
       "path": "systems/sqlite.gd",
@@ -285,16 +257,64 @@
       "blob": "6907eaee2e216df48d04b4b279010f948de0fa6a"
     },
     {
-      "path": "version.txt",
-      "blob": "9789c4ccb0c8a10f055933a2eebb6eea8453b153"
-    },
-    {
       "path": "data/rules.db.gz",
       "blob": "ea6ba81a76751fc4e2e478ab7e52be7e4000fa75"
     },
     {
+      "path": "art/sheet_title.png",
+      "blob": "33c237a6e2b0c6c0bf49aca49481c27dd0dae22d"
+    },
+    {
+      "path": "main.gd",
+      "blob": "715c51e614a318f77322e290c4eb0e2f3bfcd5ae"
+    },
+    {
+      "path": "players/character_creator.gd",
+      "blob": "bffaf9f13b2c588c1f4ee68875888900a1406105"
+    },
+    {
+      "path": "players/character_manager.gd",
+      "blob": "6b83b48f30f7ed9a10ad42504bce91720798cde4"
+    },
+    {
+      "path": "players/full_character_sheet.gd",
+      "blob": "d5bd61127800de0a976e8e9ecaa4b35eae9f3297"
+    },
+    {
+      "path": "project.godot",
+      "blob": "b4855662f0b74cd8c110a317d079d2f4bfbbb3f1"
+    },
+    {
       "path": "rules/catalog.gd",
       "blob": "67b8329a2e3ca351007da1163bb5ba5499ec89cd"
+    },
+    {
+      "path": "rules/catalog_browser.gd",
+      "blob": "51337684ba2ec9a6f9af912fb99b5b0b77c1c0fb"
+    },
+    {
+      "path": "systems/asset_library.gd",
+      "blob": "0d9af299d1e705a545aadec8a402949d346ea69d"
+    },
+    {
+      "path": "systems/gemini.gd",
+      "blob": "b69ec25115a0cbf40e7ccc73548eb6ebab6213a9"
+    },
+    {
+      "path": "tests/assets_smoke.gd",
+      "blob": "bc2b099a038867e55659fd69fcf531fe0e479412"
+    },
+    {
+      "path": "tests/layout_smoke.gd",
+      "blob": "51ba964563f46ac6597ed628a8d199cb61f36832"
+    },
+    {
+      "path": "version.txt",
+      "blob": "32786aa437b1ac88d17aa6f54dfa6679c26a5725"
+    },
+    {
+      "path": "rules/PRIVATE_REFERENCE_POLICY.md",
+      "blob": "40cb5504b0a3e506e114d2f85940e6c7679d1853"
     }
   ]
 }
