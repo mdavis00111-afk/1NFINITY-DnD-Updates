@@ -1,0 +1,757 @@
+{
+  "schema_version": 1,
+  "source_reference": {
+    "sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+    "dimensions": [
+      1536,
+      864
+    ],
+    "permission": "owner-approved map mockup, extraction expressly authorized"
+  },
+  "assets": [
+    {
+      "id": "settlement.capital.harvest",
+      "category": "settlements",
+      "kind": "capital",
+      "variant": "harvest",
+      "path": "res://cartography/art/settlement.capital.harvest.svg",
+      "width": 196,
+      "height": 136,
+      "anchor": [
+        0.5,
+        0.9
+      ],
+      "scale": {
+        "recommended_px": 40,
+        "min_px": 16,
+        "max_px": 80
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          1335,
+          380,
+          1384,
+          414
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "settlement.city.harvest",
+      "category": "settlements",
+      "kind": "city",
+      "variant": "harvest",
+      "path": "res://cartography/art/settlement.city.harvest.svg",
+      "width": 180,
+      "height": 84,
+      "anchor": [
+        0.5,
+        0.9
+      ],
+      "scale": {
+        "recommended_px": 40,
+        "min_px": 16,
+        "max_px": 80
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          1337,
+          413,
+          1382,
+          434
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "settlement.town.harvest",
+      "category": "settlements",
+      "kind": "town",
+      "variant": "harvest",
+      "path": "res://cartography/art/settlement.town.harvest.svg",
+      "width": 168,
+      "height": 92,
+      "anchor": [
+        0.5,
+        0.9
+      ],
+      "scale": {
+        "recommended_px": 40,
+        "min_px": 16,
+        "max_px": 80
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          1338,
+          437,
+          1380,
+          460
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "settlement.village.harvest",
+      "category": "settlements",
+      "kind": "village",
+      "variant": "harvest",
+      "path": "res://cartography/art/settlement.village.harvest.svg",
+      "width": 136,
+      "height": 88,
+      "anchor": [
+        0.5,
+        0.9
+      ],
+      "scale": {
+        "recommended_px": 40,
+        "min_px": 16,
+        "max_px": 80
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          1343,
+          460,
+          1377,
+          482
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "settlement.keep.harvest",
+      "category": "settlements",
+      "kind": "keep",
+      "variant": "harvest",
+      "path": "res://cartography/art/settlement.keep.harvest.svg",
+      "width": 104,
+      "height": 76,
+      "anchor": [
+        0.5,
+        0.9
+      ],
+      "scale": {
+        "recommended_px": 40,
+        "min_px": 16,
+        "max_px": 80
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          1346,
+          484,
+          1372,
+          503
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "settlement.church.harvest",
+      "category": "settlements",
+      "kind": "church",
+      "variant": "harvest",
+      "path": "res://cartography/art/settlement.church.harvest.svg",
+      "width": 156,
+      "height": 112,
+      "anchor": [
+        0.5,
+        0.9
+      ],
+      "scale": {
+        "recommended_px": 40,
+        "min_px": 16,
+        "max_px": 80
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          1340,
+          505,
+          1379,
+          533
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "settlement.windmill.harvest",
+      "category": "settlements",
+      "kind": "windmill",
+      "variant": "harvest",
+      "path": "res://cartography/art/settlement.windmill.harvest.svg",
+      "width": 132,
+      "height": 92,
+      "anchor": [
+        0.5,
+        0.9
+      ],
+      "scale": {
+        "recommended_px": 40,
+        "min_px": 16,
+        "max_px": 80
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          1342,
+          534,
+          1375,
+          557
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "adventure.mine.harvest",
+      "category": "adventure",
+      "kind": "mine",
+      "variant": "harvest",
+      "path": "res://cartography/art/adventure.mine.harvest.svg",
+      "width": 132,
+      "height": 88,
+      "anchor": [
+        0.5,
+        0.9
+      ],
+      "scale": {
+        "recommended_px": 40,
+        "min_px": 16,
+        "max_px": 80
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          1342,
+          559,
+          1375,
+          581
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "adventure.ruins.harvest",
+      "category": "adventure",
+      "kind": "ruins",
+      "variant": "harvest",
+      "path": "res://cartography/art/adventure.ruins.harvest.svg",
+      "width": 180,
+      "height": 92,
+      "anchor": [
+        0.5,
+        0.9
+      ],
+      "scale": {
+        "recommended_px": 40,
+        "min_px": 16,
+        "max_px": 80
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          1335,
+          582,
+          1380,
+          605
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "adventure.cave.harvest",
+      "category": "adventure",
+      "kind": "cave",
+      "variant": "harvest",
+      "path": "res://cartography/art/adventure.cave.harvest.svg",
+      "width": 184,
+      "height": 100,
+      "anchor": [
+        0.5,
+        0.9
+      ],
+      "scale": {
+        "recommended_px": 40,
+        "min_px": 16,
+        "max_px": 80
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          1336,
+          605,
+          1382,
+          630
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "adventure.camp.harvest",
+      "category": "adventure",
+      "kind": "camp",
+      "variant": "harvest",
+      "path": "res://cartography/art/adventure.camp.harvest.svg",
+      "width": 180,
+      "height": 92,
+      "anchor": [
+        0.5,
+        0.9
+      ],
+      "scale": {
+        "recommended_px": 40,
+        "min_px": 16,
+        "max_px": 80
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          1337,
+          631,
+          1382,
+          654
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "adventure.point_of_interest.harvest",
+      "category": "adventure",
+      "kind": "point_of_interest",
+      "variant": "harvest",
+      "path": "res://cartography/art/adventure.point_of_interest.harvest.svg",
+      "width": 164,
+      "height": 100,
+      "anchor": [
+        0.5,
+        0.9
+      ],
+      "scale": {
+        "recommended_px": 40,
+        "min_px": 16,
+        "max_px": 80
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          1339,
+          654,
+          1380,
+          679
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "terrain.mountain_range.harvest",
+      "category": "terrain",
+      "kind": "mountain_range",
+      "variant": "harvest",
+      "path": "res://cartography/art/terrain.mountain_range.harvest.svg",
+      "width": 192,
+      "height": 120,
+      "anchor": [
+        0.5,
+        0.9
+      ],
+      "scale": {
+        "recommended_px": 40,
+        "min_px": 16,
+        "max_px": 80
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          1355,
+          182,
+          1403,
+          212
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "decor.quill.harvest",
+      "category": "decor",
+      "kind": "quill",
+      "variant": "harvest",
+      "path": "res://cartography/art/decor.quill.harvest.svg",
+      "width": 176,
+      "height": 112,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 40,
+        "min_px": 16,
+        "max_px": 80
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          1357,
+          263,
+          1401,
+          291
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "tool.zoom_in.harvest",
+      "category": "tools",
+      "kind": "zoom_in",
+      "variant": "harvest",
+      "path": "res://cartography/art/tool.zoom_in.harvest.svg",
+      "width": 156,
+      "height": 140,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 32,
+        "min_px": 18,
+        "max_px": 64
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          34,
+          333,
+          73,
+          368
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "tool.zoom_out.harvest",
+      "category": "tools",
+      "kind": "zoom_out",
+      "variant": "harvest",
+      "path": "res://cartography/art/tool.zoom_out.harvest.svg",
+      "width": 156,
+      "height": 136,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 32,
+        "min_px": 18,
+        "max_px": 64
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          34,
+          391,
+          73,
+          425
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "tool.pan.harvest",
+      "category": "tools",
+      "kind": "pan",
+      "variant": "harvest",
+      "path": "res://cartography/art/tool.pan.harvest.svg",
+      "width": 152,
+      "height": 136,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 32,
+        "min_px": 18,
+        "max_px": 64
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          35,
+          452,
+          73,
+          486
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "tool.measure.harvest",
+      "category": "tools",
+      "kind": "measure",
+      "variant": "harvest",
+      "path": "res://cartography/art/tool.measure.harvest.svg",
+      "width": 152,
+      "height": 136,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 32,
+        "min_px": 18,
+        "max_px": 64
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          35,
+          512,
+          73,
+          546
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "tool.pencil.harvest",
+      "category": "tools",
+      "kind": "pencil",
+      "variant": "harvest",
+      "path": "res://cartography/art/tool.pencil.harvest.svg",
+      "width": 156,
+      "height": 140,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 32,
+        "min_px": 18,
+        "max_px": 64
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          34,
+          571,
+          73,
+          606
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "tool.erase.harvest",
+      "category": "tools",
+      "kind": "erase",
+      "variant": "harvest",
+      "path": "res://cartography/art/tool.erase.harvest.svg",
+      "width": 156,
+      "height": 144,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 32,
+        "min_px": 18,
+        "max_px": 64
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          34,
+          630,
+          73,
+          666
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "tool.flag.harvest",
+      "category": "tools",
+      "kind": "flag",
+      "variant": "harvest",
+      "path": "res://cartography/art/tool.flag.harvest.svg",
+      "width": 148,
+      "height": 148,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 32,
+        "min_px": 18,
+        "max_px": 64
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          35,
+          691,
+          72,
+          728
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "tool.pin.harvest",
+      "category": "tools",
+      "kind": "pin",
+      "variant": "harvest",
+      "path": "res://cartography/art/tool.pin.harvest.svg",
+      "width": 140,
+      "height": 148,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 32,
+        "min_px": 18,
+        "max_px": 64
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          36,
+          750,
+          71,
+          787
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "decor.fog_hatch.harvest",
+      "category": "decor",
+      "kind": "fog_hatch",
+      "variant": "harvest",
+      "path": "res://cartography/art/decor.fog_hatch.harvest.svg",
+      "width": 236,
+      "height": 164,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 40,
+        "min_px": 16,
+        "max_px": 80
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          1332,
+          771,
+          1391,
+          812
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    },
+    {
+      "id": "decor.fog_cloud.harvest",
+      "category": "decor",
+      "kind": "fog_cloud",
+      "variant": "harvest",
+      "path": "res://cartography/art/decor.fog_cloud.harvest.svg",
+      "width": 216,
+      "height": 108,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": {
+        "recommended_px": 40,
+        "min_px": 16,
+        "max_px": 80
+      },
+      "lod": "symbol",
+      "transparent": true,
+      "provenance": {
+        "type": "reference_vector_crop",
+        "source_sha256": "6984a065564d8358685f807f42a9532f4876b1312acdeef4ea4393f39376f567",
+        "crop_xyxy": [
+          1353,
+          292,
+          1407,
+          319
+        ],
+        "method": "luminance threshold 135; connected component cleanup; OpenCV contour approximation 0.50px; even-odd fill"
+      }
+    }
+  ]
+}
