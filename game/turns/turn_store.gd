@@ -62,7 +62,7 @@ func receipt_by_id(id: String, turn_id: String) -> Dictionary:
 	var record = base.load_campaign(id)
 	if record.is_empty():
 		return failure("Campaign unavailable.")
-	var result = SQL.run(base.path_for(id),[SQL.stmt("BEGIN"),SQL.stmt("SELECT value FROM meta WHERE key='campaign'"),SQL.stmt("SELECT campaign_id FROM world_state"),SQL.stmt("SELECT r.payload,n.event_id AS narration_event_id FROM turn_receipts r LEFT JOIN turn_narrations n ON n.turn_id=r.turn_id WHERE r.turn_id=? AND r.actor_id=?",[turn_id,record["actor_id"]]),SQL.stmt("COMMIT")],true)
+	var result = SQL.run(base.path_for(id),[SQL.stmt("BEGIN"),SQL.stmt("SELECT value FROM meta WHERE key='campaign'"),SQL.stmt("SELECT campaign_id FROM world_state"),SQL.stmt("SELECT r.payload,e.payload AS event_payload,n.event_id AS narration_event_id FROM turn_receipts r JOIN events e ON e.id=r.event_id LEFT JOIN turn_narrations n ON n.turn_id=r.turn_id WHERE r.turn_id=? AND r.actor_id=?",[turn_id,record["actor_id"]]),SQL.stmt("COMMIT")],true)
 	if not result.get("ok",false):
 		return failure("Receipt lookup failed.")
 	var sets: Array = result["results"]
@@ -74,7 +74,11 @@ func receipt_by_id(id: String, turn_id: String) -> Dictionary:
 	var receipt = JSON.parse_string(row["payload"])
 	if not DTO.receipt_valid(receipt) or receipt["campaign_id"]!=id or receipt["actor_id"]!=record["actor_id"] or receipt["turn_id"]!=turn_id:
 		return failure("Stored receipt invalid.")
-	return {"ok":true,"found":true,"receipt":receipt,"narration_event_id":DTO.sql_int(row["narration_event_id"])}
+	var event = JSON.parse_string(row["event_payload"])
+	var player_text = ""
+	if event is Dictionary and event.get("turn_id")==turn_id and DTO.bounded_text(event.get("player_text"),2000):
+		player_text=event["player_text"]
+	return {"ok":true,"found":true,"receipt":receipt,"narration_event_id":DTO.sql_int(row["narration_event_id"]),"player_text":player_text}
 
 # Guard inserts NULL on mismatch, violating meta.value NOT NULL. The entire
 # transaction rolls back, including receipts, movement, metadata and events.
@@ -148,7 +152,9 @@ func route_guards(token: Dictionary, route: Dictionary) -> Array:
 
 # Engine-only API; strict registered RAW unions, exact state and SQL guards.
 # No generic patch or caller-supplied SQL.
-func commit_receipt(id: String, token: Dictionary, receipt: Dictionary) -> Dictionary:
+func commit_receipt(id: String, token: Dictionary, receipt: Dictionary, player_text: String = "") -> Dictionary:
+	if not player_text.is_empty() and not DTO.bounded_text(player_text,2000):
+		return failure("Invalid local player action text.")
 	if not DTO.receipt_valid(receipt) or receipt["campaign_id"]!=id:
 		return failure("Invalid receipt envelope or unsupported effect.")
 	var prior = receipt_by_id(id,receipt["turn_id"])
@@ -185,7 +191,7 @@ func commit_receipt(id: String, token: Dictionary, receipt: Dictionary) -> Dicti
 	var location_id = str(current["location_id"])
 	var elapsed = RAW.time_after(receipt["effects"].back(),current)
 	var game_time = "Unspecified" if elapsed==null else "Elapsed "+str(elapsed)+" seconds (tracked epoch)"
-	commands.append(SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(?,?,'mechanical_receipt',?)",[turn,game_time,JSON.stringify({"turn_id":turn_id,"text":RAW.summary(receipt)})]))
+	commands.append(SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(?,?,'mechanical_receipt',?)",[turn,game_time,JSON.stringify({"turn_id":turn_id,"text":RAW.summary(receipt),"player_text":player_text})]))
 	commands.append(SQL.stmt("INSERT INTO turn_receipts(turn_id,actor_id,prior_revision,next_revision,turn_number,event_id,payload) VALUES(?,?,?,?,?,last_insert_rowid(),?)",[turn_id,actor_id,int(receipt["prior_revision"]),int(receipt["next_revision"]),turn,JSON.stringify(receipt)]))
 	if receipt["effects"].size()==2:
 		var effect = receipt["effects"][0]

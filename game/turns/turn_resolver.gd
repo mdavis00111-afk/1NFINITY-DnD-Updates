@@ -143,7 +143,9 @@ func prepare(token: Dictionary, turn_id: String, action: Dictionary, approval: V
 
 # Lookup first, even after a network or commit error. A found receipt is
 # returned untouched. An unconfirmed in-memory receipt is retried as-is.
-func resolve(id: String, token: Dictionary, request_id: String, turn_id: String, proposal: Variant, offered_refs: Array, approval: Variant) -> Dictionary:
+func resolve(id: String, token: Dictionary, request_id: String, turn_id: String, proposal: Variant, offered_refs: Array, approval: Variant, player_text: String = "") -> Dictionary:
+	if not player_text.is_empty() and not DTO.bounded_text(player_text,2000):
+		return RAW.fail("Invalid local player action text.","invalid")
 	if not DTO.id_valid(id) or id!=token.get("campaign_id") or not DTO.id_valid(turn_id):
 		return RAW.fail("Wrong campaign or turn identity.","invalid")
 	var prior = store.receipt_by_id(id,turn_id)
@@ -164,7 +166,7 @@ func resolve(id: String, token: Dictionary, request_id: String, turn_id: String,
 			return latest
 		if not store.matching_token(pending["token"],latest):
 			return RAW.fail("Uncommitted receipt is stale; explicitly abandon it before replanning.")
-		var retry = store.commit_receipt(id,pending["token"],pending["receipt"])
+		var retry = store.commit_receipt(id,pending["token"],pending["receipt"],str(pending.get("player_text","")))
 		if retry.get("ok",false):
 			unresolved.erase(id)
 		return retry
@@ -177,8 +179,8 @@ func resolve(id: String, token: Dictionary, request_id: String, turn_id: String,
 	var planned = prepare(current,turn_id,verified["action"],approval)
 	if not planned.get("ok",false):
 		return planned
-	unresolved[id]={"token":current,"receipt":planned["receipt"]}
-	var committed = store.commit_receipt(id,current,planned["receipt"])
+	unresolved[id]={"token":current,"receipt":planned["receipt"],"player_text":player_text}
+	var committed = store.commit_receipt(id,current,planned["receipt"],player_text)
 	if committed.get("ok",false):
 		unresolved.erase(id)
 	return committed

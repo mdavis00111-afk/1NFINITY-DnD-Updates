@@ -117,6 +117,8 @@ func error_message(code: int, data: Variant) -> String:
 	return message
 
 func received(result: int, code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	if not active:
+		return
 	if result != HTTPRequest.RESULT_SUCCESS:
 		fail("Gemini connection failed or timed out.")
 		return
@@ -212,3 +214,16 @@ static func generation_text(data: Dictionary, require_complete: bool = false, ma
 	if output.is_empty() or (require_complete and output.length()>max_chars):
 		return failure
 	return {"ok":true,"message":output.left(max_chars)}
+
+# Controller retires each request node. Clear credentials and suppress signals
+# before canceling; cancellation cannot report a usable provider response.
+func cancel_generation() -> void:
+	active=false
+	mode=""
+	current_key=""
+	current_model=""
+	discovery_key=""
+	complete_response_required=false
+	response_limit=4000
+	if is_instance_valid(request):
+		request.cancel_request()

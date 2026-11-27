@@ -95,6 +95,8 @@ static func geo_schema(expected: Dictionary) -> Dictionary:
 static func rule_context(token: Dictionary, cat) -> Dictionary:
 	if not cat.initialize():
 		return RAW.fail("Pinned rules catalogue unavailable.")
+	if not token["actor"].get("combat") is Dictionary or not token["actor"]["combat"].get("conditions",[]) is Array:
+		return RAW.fail("Actor condition data requires local review.")
 	var refs: Array = []
 	for kind in RAW.HANDLERS:
 		if kind in ["ability_check","saving_throw"]:
@@ -209,3 +211,16 @@ static func valid_geography(packet: Variant, expected: Dictionary, text: String,
 		if fact.get("position")!=null or not fact.get("points",[]).is_empty() or not fact.get("footprint",[]).is_empty():
 			return false
 	return true
+
+# Narrator gets public outcome, not the raw persistence token or hidden DC.
+static func public_receipt(receipt: Dictionary) -> Dictionary:
+	var result = receipt.duplicate(true)
+	for roll in result["rolls"]:
+		roll.erase("target")
+	for action in result["results"]:
+		action.erase("dc")
+	for effect in result["effects"]:
+		if effect["kind"]=="movement":
+			for segment in effect["segments"]:
+				segment.erase("points")
+	return result
