@@ -1,0 +1,614 @@
+{
+  "purpose": "Audit inventory only; NOT deployable manifest",
+  "reviewed_source": "e52b8f22a82b7cbc4eece7c293c25dd9a7ee3f57",
+  "observed_game_version": "0.0.23",
+  "target_version": "0.0.24",
+  "files": [
+    {
+      "path": "art/arcane.svg",
+      "blob": "0ae7d418a135c4aea0eacf1e9475931cb18357bf",
+      "size": 3892,
+      "mode": "100644"
+    },
+    {
+      "path": "art/castle.jpg",
+      "blob": "c7f6e5a9d24d3e43d7d0fb2029a84439cf308592",
+      "size": 700103,
+      "mode": "100644"
+    },
+    {
+      "path": "art/castle.svg",
+      "blob": "74de64525449e8f7c58fee46f6a96c799f7469a2",
+      "size": 5716,
+      "mode": "100644"
+    },
+    {
+      "path": "art/forest.svg",
+      "blob": "c0f44ec3f375785af4f2e27e86f0d355849c21d5",
+      "size": 5031,
+      "mode": "100644"
+    },
+    {
+      "path": "art/hall.jpg",
+      "blob": "8ef7254bbdfcddd004b848014e79aba192c8bf5f",
+      "size": 297924,
+      "mode": "100644"
+    },
+    {
+      "path": "art/sheet_reference.jpg",
+      "blob": "74cbe1105d673f88659c5246d5d757cdb397e240",
+      "size": 373912,
+      "mode": "100644"
+    },
+    {
+      "path": "art/sheet_title.png",
+      "blob": "33c237a6e2b0c6c0bf49aca49481c27dd0dae22d",
+      "size": 146552,
+      "mode": "100644"
+    },
+    {
+      "path": "art/valley.svg",
+      "blob": "cf3481a79028208802de57859be2602b9ea8c24e",
+      "size": 3662,
+      "mode": "100644"
+    },
+    {
+      "path": "campaigns/campaign_manager.gd",
+      "blob": "9c5596a6425adda9cf6876cdcc821f61119095b6",
+      "size": 19039,
+      "mode": "100644"
+    },
+    {
+      "path": "campaigns/campaign_starts.gd",
+      "blob": "055b1e35937aa55a0b558341ba2a3d059b5a8029",
+      "size": 2346,
+      "mode": "100644"
+    },
+    {
+      "path": "campaigns/campaign_store.gd",
+      "blob": "9ecb17819393575d90d500cff21703ac40fb6b0f",
+      "size": 18698,
+      "mode": "100644"
+    },
+    {
+      "path": "campaigns/maturity_profiles.gd",
+      "blob": "f0562ffd24c235ece5bf62c5843e3cfa9121899d",
+      "size": 5477,
+      "mode": "100644"
+    },
+    {
+      "path": "campaigns/narrator_prompt.gd",
+      "blob": "14a7d7f51ce15a680e939f6c0fe4e62a8ecdcd13",
+      "size": 5450,
+      "mode": "100644"
+    },
+    {
+      "path": "campaigns/opening_scene.gd",
+      "blob": "96c72f47b4f64eefe733ae9a70fed53efb6b5b34",
+      "size": 5559,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/ATTRIBUTION.txt",
+      "blob": "a1250899a49f9d14a96e7641d3c73c3ecc9c2268",
+      "size": 1724,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/INDEX.json",
+      "blob": "df54d5578688e72f5558abe206b27ed214ee23de",
+      "size": 658,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/ability-scores.json",
+      "blob": "50dd5029f0aed1354d89c8674cb6ce420aa87d74",
+      "size": 4187,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/backgrounds.json",
+      "blob": "c29c642b5ccc41cc60f2b7698c6ea70b42e6ef4a",
+      "size": 15953,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/classes.json",
+      "blob": "cbf375149b82b0093fb2e7ecc3a69a1e40fe2096",
+      "size": 87686,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/conditions.json",
+      "blob": "27b981e91e0d5ce0e334f547b132600e8efa8491",
+      "size": 6269,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/creature_core_batch_001.json",
+      "blob": "9c6458d16e9b1e90d8540fe1e71843712e4bfc33",
+      "size": 15601,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/equipment-categories.json",
+      "blob": "cda2624102f88bd360a3446b2ee24de5b97b062d",
+      "size": 94749,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/equipment.json",
+      "blob": "2de4750ba8a2f2b14799c3dcb03b539b24cc1ca9",
+      "size": 136467,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/feats.json",
+      "blob": "af42c2a12e7462a5acf57d651a49cc3f1b580bd1",
+      "size": 591,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/features.json",
+      "blob": "854afaed5e98d3f47a4da870a1c8af217e3f33ac",
+      "size": 281063,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/languages.json",
+      "blob": "5a19769fcc171a25e1672e6e553f3d35bd335b92",
+      "size": 3323,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/levels.json",
+      "blob": "614a330c9dc1f638672f4dbf282a4a3d22914a0a",
+      "size": 160087,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/magic-items.json",
+      "blob": "dbce372189b5cade8b106942a8caad7599615cae",
+      "size": 380424,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/proficiencies.json",
+      "blob": "64d8be4ad6bd1cb40ec7da2d975a910bf06db9d7",
+      "size": 33255,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/races.json",
+      "blob": "3b0864fb0f01592bc4ceeb2544cb6538787a059e",
+      "size": 17914,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/rule-sections.json",
+      "blob": "42969e45a3d5a01941f7d0e9bca2f06b8ec69776",
+      "size": 195663,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/skills.json",
+      "blob": "e6461eb8fb5bcafb2b1c1abe0409b5ca14b3470e",
+      "size": 8178,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/spells.json",
+      "blob": "141e79d370367e157025ec53b98d6293714311ad",
+      "size": 494882,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/subclasses.json",
+      "blob": "c80b0484b7c80815ed5576b492e7686fa7e71e13",
+      "size": 34598,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/subraces.json",
+      "blob": "c61f4f9c27ef7f225a29c36f43a9039ad7c356a8",
+      "size": 3705,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/traits.json",
+      "blob": "7d39f0483421a1135958670238406bdcf617ffce",
+      "size": 38893,
+      "mode": "100644"
+    },
+    {
+      "path": "data/2014/weapon-properties.json",
+      "blob": "68e33903260d24f7bbe1289c98bbf8412da13fcf",
+      "size": 3453,
+      "mode": "100644"
+    },
+    {
+      "path": "data/rules.db.gz",
+      "blob": "ea6ba81a76751fc4e2e478ab7e52be7e4000fa75",
+      "size": 638925,
+      "mode": "100644"
+    },
+    {
+      "path": "gameplay/ART_PROVENANCE.md",
+      "blob": "f40d51c203e980e7426e646e5763212c829b4034",
+      "size": 901,
+      "mode": "100644"
+    },
+    {
+      "path": "gameplay/display_values.gd",
+      "blob": "1ea0f416cd74d76b542d6ec94f9d41da0a853108",
+      "size": 6473,
+      "mode": "100644"
+    },
+    {
+      "path": "gameplay/game_workspace.gd",
+      "blob": "b9aaa97cbadcc0c870848c3a00f45646f165a7e0",
+      "size": 37934,
+      "mode": "100644"
+    },
+    {
+      "path": "gameplay/manual_dice.gd",
+      "blob": "325d72b59ab3d65f9f8b1115cd8a969cacfd05c2",
+      "size": 506,
+      "mode": "100644"
+    },
+    {
+      "path": "gameplay/paper_doll.svg",
+      "blob": "f299060978d4e94707bfe0ff8da570c4e030e430",
+      "size": 1741,
+      "mode": "100644"
+    },
+    {
+      "path": "gameplay/reference_backpack.png",
+      "blob": "1cfbd796950e04e86e3c2c27e956c4cb7631fed8",
+      "size": 567,
+      "mode": "100644"
+    },
+    {
+      "path": "gameplay/reference_compass.png",
+      "blob": "addbea81ea0e5ccc56495b50a843a0e510d6d50a",
+      "size": 957,
+      "mode": "100644"
+    },
+    {
+      "path": "gameplay/reference_party.png",
+      "blob": "1e0fbf35f4d0ac22fd42229660afb0a2cfb15f1d",
+      "size": 516,
+      "mode": "100644"
+    },
+    {
+      "path": "gameplay/reference_shortsword.png",
+      "blob": "9125833f84ec3957a35be23b0ce16de845443350",
+      "size": 387,
+      "mode": "100644"
+    },
+    {
+      "path": "gameplay/reference_slots.png",
+      "blob": "18e20ff53b5b150496b07e52048da084f0e5fa1d",
+      "size": 2504,
+      "mode": "100644"
+    },
+    {
+      "path": "main.gd",
+      "blob": "4b7fe32f512b161aa8fa595a5de16d8000872c85",
+      "size": 26360,
+      "mode": "100644"
+    },
+    {
+      "path": "main.tscn",
+      "blob": "e31f2d10cc1c617542e2e21fc01e4bd09561e7e6",
+      "size": 269,
+      "mode": "100644"
+    },
+    {
+      "path": "players/CHARACTER_SYSTEM.md",
+      "blob": "2912089d5d98f7eba9f120fece0d9c5f176fcf44",
+      "size": 2786,
+      "mode": "100644"
+    },
+    {
+      "path": "players/character_creator.gd",
+      "blob": "f8292c4e7287c71e21a90471e816fbf1fca60a8d",
+      "size": 59598,
+      "mode": "100644"
+    },
+    {
+      "path": "players/character_manager.gd",
+      "blob": "f5294a1fdcd9f8c8ed44b33c18fdf936834c7312",
+      "size": 12140,
+      "mode": "100644"
+    },
+    {
+      "path": "players/character_sheet.gd",
+      "blob": "d0f546992e84073db1947dacfad0a8284e4a5bba",
+      "size": 3773,
+      "mode": "100644"
+    },
+    {
+      "path": "players/character_store.gd",
+      "blob": "f019ec85291aa47ad0609f07dd091d79ec6c6abf",
+      "size": 7419,
+      "mode": "100644"
+    },
+    {
+      "path": "players/full_character_sheet.gd",
+      "blob": "9524e38914323bbc094f9cdf70910292fd7de1e5",
+      "size": 21731,
+      "mode": "100644"
+    },
+    {
+      "path": "players/portrait_art.gd",
+      "blob": "7933cf7093e828e78de0e17c25750cf94aebda5a",
+      "size": 1078,
+      "mode": "100644"
+    },
+    {
+      "path": "project.godot",
+      "blob": "219e00a1840e1db22fc871f0181836794f1a51a3",
+      "size": 518,
+      "mode": "100644"
+    },
+    {
+      "path": "rules/MASTER_REFERENCE.md",
+      "blob": "e40d949408961503eccd434967fdd50ee72256b3",
+      "size": 612,
+      "mode": "100644"
+    },
+    {
+      "path": "rules/PRIVATE_REFERENCE_POLICY.md",
+      "blob": "40cb5504b0a3e506e114d2f85940e6c7679d1853",
+      "size": 823,
+      "mode": "100644"
+    },
+    {
+      "path": "rules/README.md",
+      "blob": "49b8a50578b083f0a70023c8d243a9bc7e403fd1",
+      "size": 1094,
+      "mode": "100644"
+    },
+    {
+      "path": "rules/REFERENCE_BATCHES.md",
+      "blob": "7179d64500a279a78d818466687958bd82be3620",
+      "size": 602,
+      "mode": "100644"
+    },
+    {
+      "path": "rules/batch_catalog.gd",
+      "blob": "ba45a7fca47369ac043eb3ad535d41b1dd5c13ef",
+      "size": 1580,
+      "mode": "100644"
+    },
+    {
+      "path": "rules/catalog.gd",
+      "blob": "abd5bafa1cefa0942aa83e3c6d27ff25ea31c0f7",
+      "size": 9299,
+      "mode": "100644"
+    },
+    {
+      "path": "rules/catalog_browser.gd",
+      "blob": "35770489c4613aa42615526af10cfa6b9ff81f64",
+      "size": 7390,
+      "mode": "100644"
+    },
+    {
+      "path": "rules/character_rules.gd",
+      "blob": "4c6540d5a3a9e6d545f8332714034dee4e07a8e9",
+      "size": 29024,
+      "mode": "100644"
+    },
+    {
+      "path": "rules/library.gd",
+      "blob": "b11f96198fb71abe398ec53e417a6f7045912910",
+      "size": 2862,
+      "mode": "100644"
+    },
+    {
+      "path": "rules/master_reference.gd",
+      "blob": "843b2de08848b38784e014ba50033ae13e6848e9",
+      "size": 2280,
+      "mode": "100644"
+    },
+    {
+      "path": "rules/mechanics.gd",
+      "blob": "785266cee39294f4b61cbcc63c8f7b5c6f9361dd",
+      "size": 3267,
+      "mode": "100644"
+    },
+    {
+      "path": "systems/asset_library.gd",
+      "blob": "0d9af299d1e705a545aadec8a402949d346ea69d",
+      "size": 2994,
+      "mode": "100644"
+    },
+    {
+      "path": "systems/campaign_schema.sql",
+      "blob": "e1a39e4957700a7cd2f1ef5e003254217f8a3b5b",
+      "size": 1320,
+      "mode": "100644"
+    },
+    {
+      "path": "systems/gemini.gd",
+      "blob": "d2a8ba0f4db32d64cf28238353bae4db16bba342",
+      "size": 8557,
+      "mode": "100644"
+    },
+    {
+      "path": "systems/sqlite.gd",
+      "blob": "4adae9e847fecd3e0a55a490275f3db3a98767ec",
+      "size": 1785,
+      "mode": "100644"
+    },
+    {
+      "path": "systems/sqlite_bridge.cs",
+      "blob": "49f8ad34c6cf9ef93e8d0aade3e08a04677744b8",
+      "size": 5251,
+      "mode": "100644"
+    },
+    {
+      "path": "systems/sqlite_bridge.ps1",
+      "blob": "32f343d787c0ac66b57b04a224ac41338678d114",
+      "size": 681,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/ai_profile_smoke.gd",
+      "blob": "3147cda7918c1ac62016575393fa18a6882a15f5",
+      "size": 8809,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/assets_smoke.gd",
+      "blob": "bc2b099a038867e55659fd69fcf531fe0e479412",
+      "size": 1353,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/campaign_smoke.gd",
+      "blob": "cdbc5ff410148204ffbde31f5537dcc84d59343a",
+      "size": 23263,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/character_smoke.gd",
+      "blob": "5c431040eba2aa07efad37af2709efe2f7090abb",
+      "size": 3639,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/gameplay_smoke.gd",
+      "blob": "41f48a82f13490f6dd425b2dd1d73755dcaf2a35",
+      "size": 13536,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/layout_smoke.gd",
+      "blob": "7fa2df8d24ec5435564e489195d2b6a77b45d4bf",
+      "size": 20388,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/sqlite_smoke.gd",
+      "blob": "378c85212bd8ba5f7579c39de4b440d91b602703",
+      "size": 1944,
+      "mode": "100644"
+    },
+    {
+      "path": "themes/TYPOGRAPHY.md",
+      "blob": "eac8bb8e11a693fbc6eff88c7cbd428c6cfadc2e",
+      "size": 403,
+      "mode": "100644"
+    },
+    {
+      "path": "themes/fonts/EBGaramond-Italic.ttf",
+      "blob": "f9ad996001c8ee72fd43b4b8e67c8924b7f615b1",
+      "size": 754468,
+      "mode": "100644"
+    },
+    {
+      "path": "themes/fonts/EBGaramond.ttf",
+      "blob": "52d34b86ec20977f222ce37e8158e6b3002c0a31",
+      "size": 851176,
+      "mode": "100644"
+    },
+    {
+      "path": "themes/fonts/OFL.txt",
+      "blob": "c1ec5e1818415eab6f8fca95a230af477d64eb61",
+      "size": 4398,
+      "mode": "100644"
+    },
+    {
+      "path": "themes/fonts/arcane.fnt",
+      "blob": "7f6aba96ecb6966800d8ed59afeb9e20c9d7d92d",
+      "size": 11844,
+      "mode": "100644"
+    },
+    {
+      "path": "themes/fonts/arcane_atlas.png",
+      "blob": "9404512d0977a189bcb5e5c61b023387894cb217",
+      "size": 185717,
+      "mode": "100644"
+    },
+    {
+      "path": "themes/fonts/italic.fnt",
+      "blob": "5a10c74a38ed1847fed6d0294a3e3799f22496be",
+      "size": 12203,
+      "mode": "100644"
+    },
+    {
+      "path": "themes/fonts/italic_atlas.png",
+      "blob": "9fa87df956ef24871e4436c2dfc522da5186a3a0",
+      "size": 234155,
+      "mode": "100644"
+    },
+    {
+      "path": "themes/gold_flourish.svg",
+      "blob": "b18833292ef5dd034e1c7b6f3fb4bf57a18023a9",
+      "size": 1009,
+      "mode": "100644"
+    },
+    {
+      "path": "themes/master_theme.tres",
+      "blob": "c6cb9b5ef9779d593373e9224cc2c19f1cac7bf3",
+      "size": 1358,
+      "mode": "100644"
+    },
+    {
+      "path": "themes/menu_button.gd",
+      "blob": "f2a1709b307e26c9fe13bcb666a76c4dbba2d380",
+      "size": 1358,
+      "mode": "100644"
+    },
+    {
+      "path": "themes/parts/corner.png",
+      "blob": "a4e0822d4872f902741514034e9869a65d22d2a6",
+      "size": 16888,
+      "mode": "100644"
+    },
+    {
+      "path": "themes/parts/frame.png",
+      "blob": "fbd9ae5f438502989da87573a9b2359095ad4f97",
+      "size": 25142,
+      "mode": "100644"
+    },
+    {
+      "path": "themes/parts/icons.json",
+      "blob": "28036c79de60273d941e8b253c0a831475cd9988",
+      "size": 301,
+      "mode": "100644"
+    },
+    {
+      "path": "themes/parts/icons.png",
+      "blob": "8a2ec001c63dfaed25f18c4bfecd9f83a0ce68f3",
+      "size": 27941,
+      "mode": "100644"
+    },
+    {
+      "path": "themes/parts/panel_active.png",
+      "blob": "14c7bd90e2370a6dbe8140a603939b6fad84fb5f",
+      "size": 4355,
+      "mode": "100644"
+    },
+    {
+      "path": "themes/parts/panel_gold.png",
+      "blob": "51d4506815ebdecf78c20e0f1b8d8cb230d10551",
+      "size": 2599,
+      "mode": "100644"
+    },
+    {
+      "path": "themes/parts/portrait_empty.png",
+      "blob": "6907eaee2e216df48d04b4b279010f948de0fa6a",
+      "size": 48177,
+      "mode": "100644"
+    },
+    {
+      "path": "version.txt",
+      "blob": "df5db66fed35a2fa0b4bc82c381aefe91fb2459d",
+      "size": 7,
+      "mode": "100644"
+    }
+  ]
+}
