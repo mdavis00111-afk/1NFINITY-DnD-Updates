@@ -112,7 +112,10 @@ func prepare(token: Dictionary, turn_id: String, action: Dictionary, approval: V
 	elif kind in ["move","travel"]:
 		if not DTO.exact_keys(ruling,["difficult","clearance","establish_clock"]) or not ruling["difficult"] is bool or not ruling["establish_clock"] is bool or ruling["clearance"]!="verified_unobstructed_supplied_foot_travel":
 			return RAW.fail("Route hazards, resources, terrain and travel clearance require local resolution.","clarification")
-		var actor = RAW.travel_actor(token["actor"],token["inventory"],cat)
+		var load=store.travel_load(token)
+		if not load.get("ok",false):
+			return load
+		var actor = RAW.travel_actor(token["actor"],token["inventory"],cat,load["load"])
 		if not actor.get("ok",false):
 			return actor
 		var route = store.route_context(token["campaign_id"],token,args["route_id"],args["destination_id"])

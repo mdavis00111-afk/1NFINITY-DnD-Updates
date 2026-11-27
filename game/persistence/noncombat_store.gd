@@ -134,6 +134,7 @@ func mirror_commands(pack: Dictionary, actor: Dictionary) -> Array:
 		commands.append(SQL.stmt("INSERT INTO inventory(actor_id,item_id,quantity,payload) VALUES(?,?,?,?) ON CONFLICT(actor_id,item_id) DO UPDATE SET quantity=excluded.quantity,payload=excluded.payload",[pack["owner"],key,row["quantity"],JSON.stringify(row)]))
 	actor["inventory"]=updated
 	actor["carried_weight_lb"]=weight(pack,actor)
+	refresh_owned_profiles(actor)
 	commands.append(SQL.stmt("UPDATE actors SET payload=? WHERE id=?",[JSON.stringify(actor),pack["owner"]]))
 	return commands
 
@@ -307,7 +308,7 @@ func equipment_action(id: String,req: Dictionary,clearance: Dictionary) -> Dicti
 		for item in pack["items"].values():
 			if item["attunement"]=="attuned":
 				n+=1
-				if kind=="attune" and item["definition_id"]==row["definition_id"]:
+				if kind=="attune" and pack["definitions"][item["id"]].get("catalog_id")==def.get("catalog_id"):
 					return fail("Cannot attune to multiple copies of the same item.")
 		if kind=="attune" and (row["attunement"]!="unattuned" or n>=3):
 			return fail("Attunement eligibility or three-item limit not established.")
@@ -392,6 +393,9 @@ func heal(actor: Dictionary,dice: Dictionary) -> int:
 func _commit(context: Dictionary,commands: Array,result_data: Dictionary,message: String,visibility: String = "player") -> Dictionary:
 	var rid = context["request"]["request_id"]
 	var cid = context["state"]["campaign_id"]
+	commands=commands.duplicate(true)
+	commands.push_front(SQL.stmt("DELETE FROM meta WHERE key='c3_quiet_guard'"))
+	commands.push_front(SQL.stmt("INSERT INTO meta(key,value) VALUES('c3_quiet_guard',(SELECT 'ok' WHERE NOT EXISTS(SELECT 1 FROM encounters WHERE status NOT IN ('resolved','completed','closed','defeated'))))"))
 	if prepared.has(cid):
 		var held = prepared[cid]
 		if held["context"]["request"]!=context["request"]:
@@ -573,7 +577,7 @@ func spell_cast(id: String,req: Dictionary,clearance: Dictionary) -> Dictionary:
 	if ability!=expected[role] or not DTO.whole(modifier,-5,10) or sp.get("attack_bonus")!=2+int(modifier) or sp.get("save_dc")!=10+int(modifier):
 		return fail("Spellcasting ability and saved modifiers disagree.")
 	var slot=sp["slots"].get("1",{})
-	if not DTO.whole(slot.get("maximum"),1,2) or not DTO.whole(slot.get("spent"),0,int(slot["maximum"])-1):
+	if slot.get("maximum")!=(1 if role=="warlock" else 2) or not DTO.whole(slot.get("spent"),0,int(slot["maximum"])-1):
 		return fail("No eligible spell slot remaining.")
 	var sides=8 if args["spell_id"]=="cure-wounds" else 4
 	var bonus=int(modifier)

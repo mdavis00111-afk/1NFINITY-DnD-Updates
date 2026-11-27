@@ -371,6 +371,7 @@ func pickup(id: String,request: Dictionary,clearance: Dictionary) -> Dictionary:
 	actor["coins"]=updated_coins
 	actor["inventory"]=items.values()
 	actor["carried_weight_lb"]=current_load
+	refresh_owned_profiles(actor)
 	commands.append(SQL.stmt("UPDATE actors SET payload=? WHERE id=?",[JSON.stringify(actor),state["actor_id"]]))
 	commands.append(SQL.stmt("UPDATE loot_containers SET status='closed' WHERE id=? AND NOT EXISTS(SELECT 1 FROM item_instances WHERE container_id=?) AND NOT EXISTS(SELECT 1 FROM loot_currency WHERE container_id=? AND quantity>0)",[cid,cid,cid]))
 	return _commit(ctx,commands,{"items":selected,"coins":coins,"container_id":cid},"Selected possessions collected.")
@@ -447,5 +448,46 @@ func drop(id: String,request: Dictionary,clearance: Dictionary) -> Dictionary:
 	actor["inventory"]=items.values()
 	# Recompute weight in the authoritative view, not from a stale saved total.
 	actor["carried_weight_lb"]=null
+	refresh_owned_profiles(actor)
 	commands.append(SQL.stmt("UPDATE actors SET payload=? WHERE id=?",[JSON.stringify(actor),state["actor_id"]]))
 	return _commit(ctx,commands,{"container_id":container_id,"instance_id":destination,"quantity":amount},"Selected possession dropped.")
+
+# Display-only owned weapon profiles, never attack resolution.
+func refresh_owned_profiles(actor: Dictionary) -> void:
+	if not actor.has("master_character_id") or not actor.get("attacks") is Array:
+		return
+	var mods=actor.get("ability_modifiers")
+	var profs=actor.get("proficiency_ids")
+	var features=actor.get("class_feature_ids",[])
+	var pb=actor.get("proficiency_bonus")
+	if not mods is Dictionary or not DTO.whole(mods.get("str"),-5,10) or not DTO.whole(mods.get("dex"),-5,10) or not profs is Array or not features is Array or not DTO.whole(pb,2,6):
+		return
+	var catalog=ITEMS.new()
+	var profiles: Array=[]
+	var gear=actor.get("equipment",{})
+	for item in actor.get("inventory",[]):
+		if not item is Dictionary or not DTO.whole(item.get("quantity"),1):
+			continue
+		var item_id=str(item.get("item_id",""))
+		var weapon=catalog.official("equipment",item_id)
+		if not weapon.has("weapon_category") or not weapon.get("damage") is Dictionary:
+			continue
+		var properties=catalog.cat.references(weapon.get("properties",[]))
+		var trained=str(weapon["weapon_category"]).to_lower()+"-weapons" in profs
+		for proficiency in profs:
+			var entry=catalog.official("proficiencies",str(proficiency))
+			if entry.get("reference",{}).get("index")==item_id:
+				trained=true
+		var ability="dex" if weapon.get("weapon_range")=="Ranged" else "str"
+		var monk_weapon=actor.get("class_id")=="monk" and gear.get("armor_id","")=="" and gear.get("shield_id","")=="" and (item_id=="shortsword" or (weapon.get("weapon_category")=="Simple" and weapon.get("weapon_range")=="Melee" and not "two-handed" in properties and not "heavy" in properties))
+		if ("finesse" in properties or monk_weapon) and int(mods["dex"])>int(mods["str"]):
+			ability="dex"
+		var attack_bonus=int(mods[ability])+(int(pb) if trained else 0)
+		if weapon.get("weapon_range")=="Ranged" and "fighter-fighting-style-archery" in features:
+			attack_bonus+=2
+		var damage=weapon["damage"]
+		if not DTO.bounded_text(damage.get("damage_dice"),32) or not DTO.bounded_text(damage.get("damage_type",{}).get("index"),32):
+			continue
+		profiles.append({"item_id":item_id,"ability":ability,"proficient":trained,"attack_bonus":attack_bonus,"damage_dice":damage["damage_dice"],"damage_modifier":mods[ability],"damage_type":damage["damage_type"]["index"],"range":weapon.get("range",{})})
+	if catalog.last_error.is_empty():
+		actor["attacks"]=profiles

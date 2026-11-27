@@ -202,7 +202,7 @@ func adopted_receipt_matches(binding: Dictionary,receipt: Dictionary,player_text
 		"conversation","observe":
 			return result["kind"]=="observe" and player_text==a.get("text")
 		"wait":
-			return result["kind"]=="wait" and receipt["effects"].back()["seconds"]==a.get("seconds")
+			return result["kind"]=="wait" and receipt["effects"].back()["seconds"]==a.get("seconds") and (not a.has("text") or a["text"]==player_text)
 		"ability_check","skill_check","object_check","saving_throw":
 			var expected="saving_throw" if kind=="saving_throw" else "ability_check"
 			if result["kind"]!=expected or (a.has("ability") and result.get("ability")!=a["ability"]) or (a.has("skill_id") and result.get("skill")!=a["skill_id"]):
@@ -213,7 +213,7 @@ func adopted_receipt_matches(binding: Dictionary,receipt: Dictionary,player_text
 				return false
 			return not a.has("text") or a["text"]==player_text
 		"move","travel":
-			return result["kind"] in ["move","travel"] and result.get("destination_id")==a.get("destination_id") and (not a.has("route_id") or a["route_id"]==result["route_id"]) and (not a.has("pace") or a["pace"]==result["pace"]) and (not a.has("fast_travel") or a["fast_travel"]==result["fast_travel"])
+			return result["kind"] in ["move","travel"] and result.get("destination_id")==a.get("destination_id") and (not a.has("route_id") or a["route_id"]==result["route_id"]) and (not a.has("pace") or a["pace"]==result["pace"]) and (not a.has("fast_travel") or a["fast_travel"]==result["fast_travel"]) and (not a.has("text") or a["text"]==player_text)
 	return false
 
 # Engine-only API; strict registered RAW unions, exact state and SQL guards.
@@ -236,6 +236,13 @@ func commit_receipt(id: String, token: Dictionary, receipt: Dictionary, player_t
 	if current["pending_turn_id"]!=null or receipt["actor_id"]!=current["actor_id"] or receipt["prior_revision"]!=current["revision"] or receipt["resulting_turn"]!=current["turn"]+1:
 		return failure("Pending narration or turn identity mismatch.")
 	var cat = CAT.new()
+	var load_commands: Array=[]
+	if receipt["results"].size()==1 and receipt["results"][0].get("kind") in ["move","travel"]:
+		var load=travel_load(current)
+		if not load.get("ok",false):
+			return load
+		current["c2_load"]=load["load"]
+		load_commands=load["commands"]
 	if not RAW.receipt_valid(receipt,current,cat):
 		return failure("Unregistered or inconsistent mechanical receipt.")
 	var binding = adoption_guard(current,receipt["turn_id"],adopted)
@@ -246,6 +253,7 @@ func commit_receipt(id: String, token: Dictionary, receipt: Dictionary, player_t
 	var commands: Array = [guard(current)]
 	commands.append_array(binding["commands"])
 	commands.append_array(inventory_guards(current))
+	commands.append_array(load_commands)
 	var action = receipt["results"][0]
 	if action["kind"] in ["move","travel"]:
 		var route = route_context(id,current,action["route_id"],action["destination_id"])
@@ -318,3 +326,46 @@ func commit_narration(id: String, turn_id: String, revision: int, text: String) 
 	var commands = [guard(state),SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(?,?,'narration',?)",[state["turn"],game_time,JSON.stringify({"turn_id":turn_id,"text":text})]),SQL.stmt("INSERT INTO turn_narrations(turn_id,event_id,revision) VALUES(?,last_insert_rowid(),?)",[turn_id,revision+1]),SQL.stmt("UPDATE world_state SET revision=?,pending_turn_id=NULL WHERE campaign_id=?",[revision+1,id]),SQL.stmt("DELETE FROM meta WHERE key='turn_write_guard'")]
 	var result = SQL.run(BASE.new().path_for(id),commands)
 	return {"ok":true,"revision":revision+1} if result.get("ok",false) else failure("Narration transaction rejected. Reload receipt before retry.")
+
+# C2 instance weights, validated against frozen actor and legacy inventory.
+func travel_load(token: Dictionary) -> Dictionary:
+	var path=BASE.new().path_for(token["campaign_id"])
+	var marker=SQL.run(path,[SQL.stmt("SELECT value FROM meta WHERE key='gameplay_schema'")],true)
+	if not marker.get("ok",false):
+		return failure("Cannot verify load authority.")
+	if marker["results"][0].is_empty():
+		return {"ok":true,"load":null,"commands":[]}
+	if marker["results"][0].size()!=1 or marker["results"][0][0]["value"]!="1":
+		return failure("Unknown gameplay schema.")
+	var data=SQL.run(path,[SQL.stmt("BEGIN"),SQL.stmt("SELECT revision FROM world_state WHERE campaign_id=?",[token["campaign_id"]]),SQL.stmt("SELECT payload FROM actors WHERE id=?",[token["actor_id"]]),SQL.stmt("SELECT i.id,i.definition_id,i.quantity,d.unit_weight_lb FROM item_instances i JOIN item_definitions d ON d.id=i.definition_id WHERE i.actor_id=? ORDER BY i.id LIMIT 513",[token["actor_id"]]),SQL.stmt("COMMIT")],true)
+	if not data.get("ok",false):
+		return failure("Instance load unavailable.")
+	var sets=data["results"]
+	if sets.size()!=5 or sets[1].size()!=1 or DTO.sql_int(sets[1][0]["revision"])!=token["revision"] or sets[2].size()!=1 or sets[2][0]["payload"]!=token["actor_payload"] or sets[3].size()>512:
+		return failure("Instance load snapshot changed or exceeds limit.")
+	var rows=sets[3]
+	var aggregate: Dictionary={}
+	var total=0.0
+	var guards: Array=[SQL.stmt("INSERT INTO meta(key,value) VALUES('c3_load_guard',(SELECT 'ok' WHERE (SELECT count(*) FROM item_instances WHERE actor_id=?)=CAST(? AS INTEGER)))",[token["actor_id"],rows.size()]),SQL.stmt("DELETE FROM meta WHERE key='c3_load_guard'")]
+	for row in rows:
+		var count=DTO.sql_int(row["quantity"])
+		var weight=DTO.sql_number(row["unit_weight_lb"])
+		if count==null or count<1 or not DTO.number(weight,0,1000000):
+			return failure("Instance weight or quantity unknown.")
+		aggregate[row["definition_id"]]=int(aggregate.get(row["definition_id"],0))+count
+		total+=float(weight)*count
+		guards.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('c3_load_guard',(SELECT 'ok' FROM item_instances i JOIN item_definitions d ON d.id=i.definition_id WHERE i.id=? AND i.actor_id=? AND i.definition_id=? AND i.quantity=CAST(? AS INTEGER) AND d.unit_weight_lb IS ?))",[row["id"],token["actor_id"],row["definition_id"],count,row["unit_weight_lb"]]))
+		guards.append(SQL.stmt("DELETE FROM meta WHERE key='c3_load_guard'"))
+	if aggregate.size()!=token["inventory"].size():
+		return failure("Instance/inventory mirror disagrees.")
+	for item in token["inventory"]:
+		if aggregate.get(item["item_id"])!=item["quantity"]:
+			return failure("Instance/inventory mirror disagrees.")
+	var coins=token["actor"].get("coins",{})
+	if not coins is Dictionary:
+		return failure("Currency weight unknown.")
+	for denom in ["cp","sp","ep","gp","pp"]:
+		if not DTO.whole(coins.get(denom)):
+			return failure("Currency weight unknown.")
+		total+=float(coins[denom])/50.0
+	return {"ok":true,"load":{"complete":true,"known_lb":total},"commands":guards}

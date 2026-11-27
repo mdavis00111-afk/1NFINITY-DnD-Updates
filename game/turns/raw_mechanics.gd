@@ -196,7 +196,7 @@ static func travel_seconds(distance: Variant, pace: String, difficult: bool) -> 
 	var seconds = ceili(float(distance)*3600.0/float(PACE[pace])*(2.0 if difficult else 1.0))
 	return seconds if DTO.whole(seconds,1,MAX_WALK_SECONDS) else null
 
-static func travel_actor(actor: Dictionary, inventory: Array, cat) -> Dictionary:
+static func travel_actor(actor: Dictionary, inventory: Array, cat, instance_load: Variant = null) -> Dictionary:
 	if not actor_ready(actor):
 		return fail("Actor is not able to undertake supported travel.")
 	var combat = actor["combat"]
@@ -208,7 +208,7 @@ static func travel_actor(actor: Dictionary, inventory: Array, cat) -> Dictionary
 	var strength = scores.get("str")
 	if not DTO.whole(combat.get("passive_perception"),0,40) or not DTO.whole(strength,1,30) or not combat.get("size") in ["Small","Medium"] or not DTO.number(actor.get("carrying_capacity_lb"),0,100000) or actor["carrying_capacity_lb"]!=int(strength)*15:
 		return fail("Passive perception, size or carrying capacity requires review.")
-	var load = DISPLAY.weight_summary(cat,inventory,actor.get("coins"))
+	var load = DISPLAY.weight_summary(cat,inventory,actor.get("coins")) if instance_load==null else instance_load
 	if not load.get("complete",false) or float(load["known_lb"])>float(actor["carrying_capacity_lb"]):
 		return fail("Travel load is incomplete or exceeds carrying capacity.")
 	return {"ok":true,"passive_perception":int(combat["passive_perception"])}
@@ -248,7 +248,7 @@ static func receipt_valid(receipt: Variant, current: Dictionary, cat) -> bool:
 			return false
 		var segment = move["segments"][0]
 		var seconds = travel_seconds(segment["distance_miles"],result["pace"],result["difficult"])
-		var actor_check = travel_actor(current["actor"],current.get("inventory",[]),cat)
+		var actor_check = travel_actor(current["actor"],current.get("inventory",[]),cat,current.get("c2_load"))
 		return actor_check.get("ok",false) and segment["from_id"]==current["location_id"] and segment["to_id"]==result["destination_id"] and segment["route_id"]==result["route_id"] and seconds!=null and segment["elapsed_seconds"]==seconds and time["seconds"]==seconds and result["passive_perception"]==actor_check["passive_perception"]-(5 if result["pace"]=="fast" else 0) and valid_refs(receipt["rule_refs"],refs_for(kind),cat)
 	return false
 
