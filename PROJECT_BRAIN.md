@@ -151,3 +151,5 @@ Audit scope: recursive live godot tree, core source and SQL definitions, supplie
 
 ## 0.0.22 release verification
 Owner authorized Windows playtest publication. Supplied Godot.exe is PE32+ Windows x64; execution in Linux failed with Exec format error, no Wine or native Godot installed, attempted GitHub download DNS failed. No import, GDScript parser, layout, actual Gemini or Windows runtime checks executed here. Existing updater stages verified files and runs import, SQLite smoke and startup handshakes before switching active pointer. Those gates are not a substitute for full GUI testing. Preserve previous version on installation failure. No changes to mechanics, SQL schema, save storage, updater, or private reference data.
+
+Owner selected ChatGPT-only workflow for 0.0.23. Consult feature/p2-campaign-manager design/V023_TASKS.md for specialist assignments. No Codex required.

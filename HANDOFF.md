@@ -10,3 +10,5 @@ Owner requested new/existing campaign menus, illustrated left roster, right syno
 
 ## v0.0.23 combined integration handoff
 Campaign implementation and preceding GUI polish pushed to feature/p2-campaign-manager; handoff checkpoint fe37c89ef57f0f9f59a91790b5916ff08b1cbd50. Owner supplied Python content controls and Storyteller brief; integration acceptance in design/V023_INTEGRATION.md on feature branch. Codex owns implementation when task starts; ChatGPT lead will not overlap writes. Remaining maturity/narrator integration, testing and review; no new release authorized. Live 0.0.22 unchanged.
+
+Superseded: owner declines Codex. Sequential ChatGPT Project specialists only. Queue on feature/p2-campaign-manager at e4b4dde864b0522179ca5512f854548167ddb4ef, design/V023_TASKS.md. Active 04 Gemini; no concurrent writes. No release authorized.
