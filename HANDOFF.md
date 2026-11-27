@@ -144,3 +144,6 @@ Base b41b6b9f72645fa9f79c28e33155977e39452570; 03 Campaign & World Engine; featu
 
 ## A2 integration
 A1 and pinned B1 reconciled; live assignment and hierarchical map direction govern. Renderer only; no publication.
+
+## A2 checkpoint 1 — player projection and art selection
+Starting d17af45672bdcea3ffbace09189463feedadd8f6; specialist 01, feature/p5-cartography-renderer, branch-local coordination per lead direction. Added game/cartography/map_model.gd and asset_catalog.gd: page-by-page MapView v1 aggregation, identity/revision checks and fail-closed read budget, visible endpoint filtering, null-position rejection, exact mile measurement with uncertainty, scoped search/annotation API, stable art/LOD choices and licence-pending vintage exclusion even if explicitly selected. No migration, private geography API or movement write. Next canvas and controls plus minimal Map navigation adapter. Runtime not executed; no publication.
