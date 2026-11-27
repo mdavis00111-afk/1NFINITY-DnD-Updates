@@ -73,7 +73,7 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	character["owned_instances"]=ext.get("inventory_instances",[]).slice(0,64)
 	character["slot_assignments"]=ext.get("known_slot_assignments",[])
 	expanded["character"]=character
-	var memory=context_builder.memory(state,registry.session)
+	var memory=context_builder.memory(state,registry.session,str(job.get("tool",{}).get("request_id","")) if stage=="narrate" else "")
 	if not memory.get("ok",false):
 		stop("retry","Revision-consistent recent moves unavailable.")
 		return
