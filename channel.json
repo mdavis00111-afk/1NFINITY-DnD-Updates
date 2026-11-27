@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.19",
-  "source_commit": "4973fc3572fbc36b83aedf8c587590f112b0d022",
-  "notes": "Compact character creation and saved-sheet layout pass; local SQLite book-page search. Private reference DB installed separately. Windows runtime and exact visual matching pending.",
+  "version": "0.0.20",
+  "source_commit": "58463c24175c814c6c985c83d178033d42e67ab5",
+  "notes": "Incremental SQLite reference imports: 18 NPCs and 8 monsters (core numerical stats only). Existing rules catalogue retained. No manual database installation for these batches. Windows testing pending.",
   "files": [
     {
       "path": "main.tscn",
@@ -242,7 +242,7 @@
     },
     {
       "path": "tests/sqlite_smoke.gd",
-      "blob": "1d57abbdc0cfc0fa2cf5eab13a34515c13542211"
+      "blob": "378c85212bd8ba5f7579c39de4b440d91b602703"
     },
     {
       "path": "themes/parts/panel_active.png",
@@ -282,11 +282,11 @@
     },
     {
       "path": "project.godot",
-      "blob": "c5b43274300f4f9ec563710413afea2fb04e0617"
+      "blob": "b78f810718ab33809168a2f7c55175366fd9cc45"
     },
     {
       "path": "rules/catalog.gd",
-      "blob": "67b8329a2e3ca351007da1163bb5ba5499ec89cd"
+      "blob": "abd5bafa1cefa0942aa83e3c6d27ff25ea31c0f7"
     },
     {
       "path": "rules/catalog_browser.gd",
@@ -310,11 +310,23 @@
     },
     {
       "path": "version.txt",
-      "blob": "44517d5188ebee12f168042bef6bc3cc6d28681e"
+      "blob": "fe04e7f676f52affb71db407908ea33471a13d24"
     },
     {
       "path": "rules/PRIVATE_REFERENCE_POLICY.md",
       "blob": "40cb5504b0a3e506e114d2f85940e6c7679d1853"
+    },
+    {
+      "path": "data/2014/creature_core_batch_001.json",
+      "blob": "9c6458d16e9b1e90d8540fe1e71843712e4bfc33"
+    },
+    {
+      "path": "rules/batch_catalog.gd",
+      "blob": "ba45a7fca47369ac043eb3ad535d41b1dd5c13ef"
+    },
+    {
+      "path": "rules/REFERENCE_BATCHES.md",
+      "blob": "7179d64500a279a78d818466687958bd82be3620"
     }
   ]
 }
