@@ -59,6 +59,14 @@ func evidence_has(evidence: String, value: String) -> bool:
 	var needle = " "+clean.sub(norm(value)," ",true).strip_edges()+" "
 	return hay.contains(needle)
 
+# Negated or hypothetical claims do not establish canon. Reported rumors
+# remain reported, not visited or surveyed.
+func uncertain_claim(evidence: String) -> bool:
+	for word in ["not","never","no longer","might","maybe","perhaps","if","could be","imaginary","dream","hypothetical"]:
+		if evidence_has(evidence,word):
+			return true
+	return false
+
 func visible(row: Dictionary) -> bool:
 	return row.get("visibility")=="player" and row.get("status","unknown")!="unknown"
 
@@ -163,7 +171,7 @@ func place_or_region(f: Dictionary, index: int) -> bool:
 	var ref: Dictionary = f["subject"]
 	var name = str(f["name"]).strip_edges()
 	var type = str(f["place_kind"] if kind=="place" else f["terrain_kind"]).to_lower()
-	if not label_valid(name) or not type in PLACE_KINDS or not evidence_has(f["evidence"],name) or (not evidence_has(f["evidence"],type.replace("_"," ")) and ref["id"]==null):
+	if uncertain_claim(f["evidence"]) or not label_valid(name) or not type in PLACE_KINDS or not evidence_has(f["evidence"],name) or (not evidence_has(f["evidence"],type.replace("_"," ")) and ref["id"]==null):
 		record(index,"deferred",null,"Name, vocabulary or evidence not established.")
 		return true
 	var parent = lookup(f["parent"],kind)
@@ -288,7 +296,7 @@ func relation_or_route(f: Dictionary,index: int) -> bool:
 	var a: Dictionary = ends[0]
 	var b: Dictionary = ends[1]
 	var evidence = str(f["evidence"])
-	if evidence_has(evidence,"not") or evidence_has(evidence,"never") or evidence_has(evidence,"instead") or evidence_has(evidence,"no longer"):
+	if uncertain_claim(evidence) or evidence_has(evidence,"instead"):
 		record(index,"deferred",null,"Negated or changed geography requires reconciliation.")
 		return true
 	var dist = f["distance_miles"]
@@ -348,7 +356,7 @@ func relation_or_route(f: Dictionary,index: int) -> bool:
 		return true
 	var name = str(f["name"]).strip_edges()
 	var kind = str(f["route_kind"]).to_lower()
-	if not label_valid(name) or not kind in ROUTE_KINDS or not evidence_has(evidence,name) or not (evidence_has(evidence,"connects") or evidence_has(evidence,"between") or evidence_has(evidence,"from")):
+	if not label_valid(name) or not kind in ROUTE_KINDS or not evidence_has(evidence,name) or not evidence_has(evidence,kind.replace("_"," ")) or not (evidence_has(evidence,"connects") or evidence_has(evidence,"between") or evidence_has(evidence,"from")):
 		record(index,"deferred",null,"Route label or vocabulary not established.")
 		return true
 	if geometry_conflict(a,b,null,dist,true):
@@ -394,7 +402,7 @@ func npc_fact(f: Dictionary,index: int) -> bool:
 	var name = str(f["name"]).strip_edges()
 	var occupation = str(f["occupation"]).strip_edges()
 	var evidence = norm(f["evidence"])
-	if location["id"]!=token["location_id"] or not label_valid(name) or not label_valid(occupation) or not (evidence.contains(norm(name)+", the "+norm(occupation)) or evidence.contains(norm(name)+" is the "+norm(occupation)) or evidence.contains(norm(name)+" — "+norm(occupation))):
+	if location["id"]!=token["location_id"] or uncertain_claim(evidence) or not (evidence_has(evidence,location["name"]) or evidence_has(evidence,"here") or evidence_has(evidence,"nearby") or evidence_has(evidence,"in the "+str(location["kind"]).replace("_"," "))) or not label_valid(name) or not label_valid(occupation) or not (evidence.contains(norm(name)+", the "+norm(occupation)) or evidence.contains(norm(name)+" is the "+norm(occupation)) or evidence.contains(norm(name)+" — "+norm(occupation))):
 		record(index,"deferred",null,"NPC introduction not explicitly local and descriptive.")
 		return true
 	var ref: Dictionary = f["subject"]
@@ -422,7 +430,7 @@ func npc_fact(f: Dictionary,index: int) -> bool:
 			for item in disclosures:
 				var event = JSON.parse_string(item["payload"])
 				var data = row["payload"]
-				if event is Dictionary and event.get("text") is String and event["text"].contains(name+" — "+occupation) and ((event.get("phase")=="opening" and data.get("descriptive_only")==true) or (event.get("b4_reconciled")==true and data.get("public")==true)):
+				if event is Dictionary and event.get("text") is String and ((event.get("phase")=="opening" and data.get("descriptive_only")==true and event["text"].contains(name+" — "+occupation)) or (event.get("b4_reconciled")==true and data.get("public")==true and event["text"].contains(name) and event["text"].contains(occupation))):
 					disclosed=true
 			if not disclosed:
 				record(index,"conflict",null,"NPC disclosure unavailable.")
@@ -452,7 +460,7 @@ func other_fact(f: Dictionary,index: int) -> bool:
 	var row = lookup(f["subject"],kind)
 	if row.is_empty():
 		return false
-	if not evidence_has(f["evidence"],row["name"]):
+	if uncertain_claim(f["evidence"]) or not evidence_has(f["evidence"],row["name"]):
 		record(index,"deferred",row["id"],"Subject not named in evidence.")
 		return true
 	if f["kind"]=="discovery":
@@ -466,7 +474,7 @@ func other_fact(f: Dictionary,index: int) -> bool:
 		lines.append(row["name"]+" is "+("visible." if status=="observed" else "reported."))
 		return true
 	var alias = str(f["alias"]).strip_edges()
-	if not label_valid(alias) or not evidence_has(f["evidence"],alias) or not (evidence_has(f["evidence"],"also called") or evidence_has(f["evidence"],"also known as")):
+	if not label_valid(alias) or not evidence_has(f["evidence"],alias) or not (norm(f["evidence"]).contains(norm(row["name"])+" is also called "+norm(alias)) or norm(f["evidence"]).contains(norm(row["name"])+" is also known as "+norm(alias)) or norm(f["evidence"]).contains(norm(row["name"])+", also called "+norm(alias))):
 		record(index,"deferred",row["id"],"Alias equivalence not established.")
 		return true
 	var candidates = identity_candidates("place",alias,row.get("parent_id"),row.get("region_id"))
@@ -540,7 +548,7 @@ func receipt_line(receipt: Dictionary) -> String:
 func sensory_lines(text: String) -> PackedStringArray:
 	var out: PackedStringArray = []
 	var re = RegEx.new()
-	re.compile("(?i)^(?:the air (?:smells of|is scented with) (?:woodsmoke|rain|pine|salt|earth|fresh bread|lavender|hay)|(?:soft|warm|pale|dim|golden) (?:light|sunlight|lantern light) (?:fills|illuminates) the (?:room|hall|inn)|(?:a|the) (?:gentle|cool|warm|soft) breeze (?:stirs|drifts) (?:the leaves|through the air)|(?:the )?(?:walls|beams|floor) (?:are|is) (?:weathered|rough|smooth|old|dark|pale))\\.$")
+	re.compile("(?i)^(?:the air (?:smells of|is scented with) (?:woodsmoke|rain|pine|salt|earth|fresh bread|lavender|hay)|(?:soft|warm|pale|dim|golden) (?:light|sunlight|lantern light) (?:fills|illuminates) the (?:room|hall|inn)|(?:a|the) (?:gentle|cool|warm|soft) breeze (?:stirs|drifts) (?:the leaves|through the air)|(?:the )?(?:walls|beams|floor) (?:are|is) (?:weathered|rough|smooth|old|dark|pale)|the air is (?:cool|warm|damp|dry|still|fresh|crisp)(?: and (?:cool|warm|damp|dry|still|fresh|crisp))?|a fire crackles in the hearth|rain patters against the windows|leaves rustle in the breeze|the scent of (?:woodsmoke|pine|salt|earth|fresh bread|lavender|hay) hangs in the air)\\.$")
 	for sentence in text.replace("\n"," ").split(".",false):
 		var line = sentence.strip_edges()+"."
 		if re.search(line)!=null and not line in out:

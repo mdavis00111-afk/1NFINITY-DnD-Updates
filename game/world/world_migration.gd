@@ -27,7 +27,7 @@ func ensure(id: String) -> Dictionary:
 		var state = SQL.run(path,[SQL.stmt("SELECT campaign_id FROM world_state")],true)
 		if not state.get("ok",false) or state["results"][0].size()!=1 or state["results"][0][0]["campaign_id"]!=id:
 			return failure("World state identity mismatch.")
-		return {"ok":true,"migrated":false}
+		return backfill_opening(id,path,previous)
 	# Consistent SQLite snapshot, not a raw file copy of a possibly open DB.
 	# VACUUM INTO requires SQLite 3.27+. Fail closed if the platform lacks it.
 	var backup = path.trim_suffix(".db")+".pre-world-"+Crypto.new().generate_random_bytes(16).hex_encode()+".bak"
@@ -64,7 +64,7 @@ func ensure(id: String) -> Dictionary:
 		var row = opening["results"][0][0]
 		var event = JSON.parse_string(row["payload"])
 		var place = JSON.parse_string(row["location_payload"])
-		if event is Dictionary and event.get("phase")=="opening" and event.get("location_id")==row["location_id"] and place is Dictionary and place.get("opening_generated")==true and place.get("description") is String:
+		if event is Dictionary and event.get("phase")=="opening" and event.get("location_id")==row["location_id"] and place is Dictionary and place.get("opening_generated")==true and place.get("description") is String and str(event.get("text","")).contains(place["description"]):
 			commands.append(SQL.stmt("UPDATE world_places SET description=?,public_description=?,source_event_id=? WHERE location_id=?",[place["description"],place["description"],row["id"],row["location_id"]]))
 			# Opening NPC names/occupations are public only when explicitly in
 			# that committed opening log. No other actor payload is disclosed.
@@ -85,3 +85,59 @@ func ensure(id: String) -> Dictionary:
 func failure(message: String) -> Dictionary:
 	last_error=message
 	return {"ok":false,"error":message}
+
+
+# B1/B2 saves that were already migrated before B4 may lack opening provenance.
+# Repair only established, player-disclosed turn-zero facts. Never rewrite
+# coordinates, alter an actor, or advance a pending receipt's revision.
+func backfill_opening(id: String,path: String,metadata: String) -> Dictionary:
+	var read = SQL.run(path,[SQL.stmt("BEGIN"),SQL.stmt("SELECT value FROM meta WHERE key='campaign'"),SQL.stmt("SELECT campaign_id,revision,pending_turn_id FROM world_state"),SQL.stmt("SELECT id,payload FROM events WHERE turn=0 AND kind='narration' ORDER BY id LIMIT 2"),SQL.stmt("COMMIT")],true)
+	if not read.get("ok",false):
+		return failure("Cannot inspect existing opening provenance.")
+	var sets: Array = read["results"]
+	if sets.size()!=5 or sets[1].size()!=1 or sets[1][0]["value"]!=metadata or sets[2].size()!=1 or sets[2][0]["campaign_id"]!=id:
+		return failure("World changed during opening inspection.")
+	var state = sets[2][0]
+	if state["pending_turn_id"]!=null:
+		return {"ok":true,"migrated":false,"opening_backfill_deferred":true}
+	var event: Dictionary = {}
+	var event_id = ""
+	for row in sets[3]:
+		var candidate = JSON.parse_string(row["payload"])
+		if candidate is Dictionary and candidate.get("phase")=="opening" and candidate.get("location_id") is String and candidate.get("text") is String:
+			event=candidate
+			event_id=str(row["id"])
+			break
+	if event.is_empty():
+		return {"ok":true,"migrated":false}
+	var at = str(event["location_id"])
+	if not BASE.new().valid_id(at):
+		return failure("Invalid opening location identity.")
+	var details = SQL.run(path,[SQL.stmt("BEGIN"),SQL.stmt("SELECT value FROM meta WHERE key='campaign'"),SQL.stmt("SELECT revision,pending_turn_id FROM world_state WHERE campaign_id=?",[id]),SQL.stmt("SELECT l.payload,w.description,w.public_description,w.source_event_id FROM locations l JOIN world_places w ON w.location_id=l.id JOIN world_discovery d ON d.location_id=l.id WHERE l.id=? AND d.visibility='player' AND d.status<>'unknown'",[at]),SQL.stmt("SELECT a.id,a.payload FROM actors a WHERE a.kind='npc' AND a.location_id=? AND NOT EXISTS(SELECT 1 FROM world_links w WHERE w.actor_id=a.id AND w.location_id=? AND w.source_event_id=?) ORDER BY a.id LIMIT 32",[at,at,event_id]),SQL.stmt("COMMIT")],true)
+	if not details.get("ok",false):
+		return failure("Cannot inspect opening links.")
+	var rows: Array = details["results"]
+	if rows.size()!=6 or rows[1].size()!=1 or rows[1][0]["value"]!=metadata or rows[2].size()!=1 or rows[2][0]["revision"]!=state["revision"] or rows[2][0]["pending_turn_id"]!=null:
+		return failure("World changed during opening inspection.")
+	if rows[3].size()!=1:
+		return {"ok":true,"migrated":false}
+	var place = JSON.parse_string(rows[3][0]["payload"])
+	if not place is Dictionary or place.get("opening_generated")!=true or not place.get("description") is String or not event["text"].contains(place["description"]):
+		return {"ok":true,"migrated":false}
+	var changes: Array = []
+	if rows[3][0]["public_description"]=="" and rows[3][0]["source_event_id"]==null:
+		changes.append(SQL.stmt("UPDATE world_places SET description=CASE WHEN description='' THEN ? ELSE description END,public_description=?,source_event_id=? WHERE location_id=? AND public_description='' AND source_event_id IS NULL",[place["description"],place["description"],event_id,at]))
+	for row in rows[4]:
+		var npc = JSON.parse_string(row["payload"])
+		if npc is Dictionary and npc.get("descriptive_only")==true and npc.get("name") is String and npc.get("occupation") is String and event["text"].contains(npc["name"]+" — "+npc["occupation"]):
+			changes.append(SQL.stmt("INSERT INTO world_links(id,location_id,actor_id,source_event_id) SELECT ?,?,?,? WHERE NOT EXISTS(SELECT 1 FROM world_links WHERE location_id=? AND actor_id=? AND source_event_id=?)",[Crypto.new().generate_random_bytes(16).hex_encode(),at,row["id"],event_id,at,row["id"],event_id]))
+	if changes.is_empty():
+		return {"ok":true,"migrated":false}
+	if not str(state["revision"]).is_valid_int() or int(state["revision"])<0 or int(state["revision"])>=2147483646:
+		return failure("Opening backfill revision invalid.")
+	var batch: Array = [SQL.stmt("INSERT INTO meta(key,value) VALUES('opening_backfill_guard',(SELECT m.value FROM meta m JOIN world_state s ON s.campaign_id=? WHERE m.key='campaign' AND m.value=? AND s.revision=? AND s.pending_turn_id IS NULL))",[id,metadata,state["revision"]])]
+	batch.append_array(changes)
+	batch.append(SQL.stmt("UPDATE world_state SET revision=revision+1 WHERE campaign_id=?",[id]))
+	batch.append(SQL.stmt("DELETE FROM meta WHERE key='opening_backfill_guard'"))
+	var saved = SQL.run(path,batch)
+	return {"ok":true,"migrated":false,"opening_backfilled":true} if saved.get("ok",false) else failure("Opening backfill was rolled back.")
