@@ -313,8 +313,22 @@ func navigate(destination: String) -> void:
 		"Inventory","Spells","Skills": show_tab(destination)
 		"Quest Log": show_quests()
 		"Map": show_map()
-		"Campaign": leave_action.call()
-		"Settings": settings_action.call()
+		"Campaign": request_leave()
+		"Settings": request_settings()
+
+func request_leave() -> void:
+	if not intents.outstanding_id.is_empty():
+		show_status("A request needs reconciliation before leaving the workspace.")
+		return
+	if leave_action.is_valid():
+		leave_action.call()
+
+func request_settings() -> void:
+	if not intents.outstanding_id.is_empty():
+		show_status("A request needs reconciliation before changing settings.")
+		return
+	if settings_action.is_valid():
+		settings_action.call()
 
 func stat(parent: Node, caption: String, value: String, icon_id: String = "", health: bool = false) -> void:
 	var tile = frame(parent,1.0,false,false,3)
@@ -414,10 +428,12 @@ func build_left(parent: VBoxContainer) -> void:
 		weapon_caption.append(title_for("equipment",id))
 	if not intents.interaction.is_empty():
 		weapon_caption.clear()
+		var shown_instances = {}
 		for hand in ["main_hand","off_hand"]:
 			var hand_item = intents.instance(str(intents.interaction["slot_assignments"].get(hand,"")))
-			if not hand_item.is_empty():
+			if not hand_item.is_empty() and not shown_instances.has(hand_item["instance_id"]):
 				weapon_caption.append(str(hand_item["name"]))
+				shown_instances[hand_item["instance_id"]] = true
 	var weapon = button(middle,"Weapon: "+(", ".join(weapon_caption) if not weapon_caption.is_empty() else "Empty"),func(): show_equipped_weapons(),14,item_icon(str(weapons[0])) if weapons.size()==1 else "")
 	weapon.tooltip_text = "Inspect or choose main/off hand equipment"
 	for slot in ["Neck","Ring","Accessory","Belt","Shield"]:
@@ -509,8 +525,11 @@ func legacy_slots(row: Dictionary) -> Array:
 	if rec.get("armor_category") in ["Light","Medium","Heavy"]:
 		return ["body"]
 	if rec.has("weapon_category"):
-		# Category-level candidates only; not an assertion of legal grip or
-		# offhand use. The actual action remains disabled in a legacy view.
+		# Read catalogue physical property only; no proficiency, attack or
+		# offhand legality decision is made by this legacy display.
+		for prop in rec.get("properties",[]):
+			if prop is Dictionary and prop.get("index")=="two-handed":
+				return ["main_hand"]
 		return ["main_hand","off_hand"]
 	return []
 
@@ -696,7 +715,7 @@ func build_center(parent: VBoxContainer) -> void:
 		opening_button = button(actions,"Generate Opening",retry_action,15,"wand")
 		opening_button.disabled = pending or not data_error.is_empty()
 	button(actions,"Turn / Retry",show_turn_controls,15)
-	var save_exit = button(actions,"Save & Exit",leave_action,15)
+	var save_exit = button(actions,"Save & Exit",request_leave,15)
 	save_exit.tooltip_text = "Committed campaign data is already saved. Pending opening generation is canceled; manual dice are not saved."
 	var status_text = str(intents.interaction.get("status_text","Turn controller pending — action submission unavailable."))
 	if not data_error.is_empty():
@@ -818,8 +837,8 @@ func request_intent(kind: String,args: Dictionary) -> Dictionary:
 func submit_chat() -> void:
 	if not is_instance_valid(composer):
 		return
-	var reply = request_intent("chat",{"text":composer.text})
-	if reply.get("ok",false):
+	request_intent("chat",{"text":composer.text})
+	if not intents.outstanding_id.is_empty():
 		last_chat_request_id = intents.outstanding_id
 	# Preserve original text until matching committed settlement.
 
@@ -891,13 +910,49 @@ func build_right(parent: VBoxContainer) -> void:
 	hp_strip.add_theme_stylebox_override("panel",red)
 	card.add_child(hp_strip)
 	one_line(hp_strip,number(c.get("hp_current"))+" / "+number(c.get("hp_max")),14,IVORY,true)
+	var members: Array = intents.interaction.get("party_members",[])
 	for i in range(3):
-		var empty = frame(cards,1.0,false,false,3)
-		var silhouette = picture(empty,EMPTY_PARTY,Vector2(0,52))
-		silhouette.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var add_slot = button(empty,"+ Add",func(): pass,14)
-		add_slot.disabled = true
-		add_slot.tooltip_text = "Party membership mechanics are not implemented."
+		var slot = frame(cards,1.0,false,false,3)
+		if i<members.size():
+			if i==2 and members.size()>3:
+				picture(slot,EMPTY_PARTY,Vector2(0,52))
+				button(slot,"+"+str(members.size()-2)+" party",show_party_roster,13)
+			else:
+				var member = members[i]
+				var portrait = picture(slot,PORTRAIT.texture_for(str(member.get("portrait",""))),Vector2(0,52),true)
+				portrait.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				one_line(slot,str(member["name"]),14,GOLD,true)
+				one_line(slot,"Lv "+number(member.get("level")),13,IVORY,true)
+				one_line(slot,number(member.get("hp_current"))+" / "+number(member.get("hp_max")),14,IVORY,true)
+		else:
+			var silhouette = picture(slot,EMPTY_PARTY,Vector2(0,52))
+			silhouette.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var add_slot = button(slot,"+ Add",show_party_picker,14)
+			var offered = false
+			for candidate in intents.interaction.get("party_candidates",[]):
+				if candidate.get("available",false):
+					offered = true
+			track_intent(add_slot,"party_add",offered,"No authoritative party candidate offered.")
+
+func show_party_roster() -> void:
+	var lines: PackedStringArray = [str(actor.get("name","Player"))]
+	for member in intents.interaction.get("party_members",[]):
+		lines.append(str(member["name"])+" · Level "+number(member.get("level"))+" · HP "+number(member.get("hp_current"))+" / "+number(member.get("hp_max")))
+	popup_text("Party roster","\n".join(lines))
+
+func show_party_picker() -> void:
+	var popup = popup_base("Known party candidates")
+	var col = vbox(popup,5)
+	col.custom_minimum_size.x = 470
+	var list = vbox(scroll(col,170),4)
+	for candidate in intents.interaction.get("party_candidates",[]):
+		var row = candidate
+		intent_button(list,str(row["name"]),"party_add",{"member_actor_id":row["actor_id"]},row["available"],str(row["warning"]))
+	if intents.interaction.get("party_candidates",[]).is_empty():
+		label(list,"No disclosed eligible party candidate recorded.")
+	label(col,"Adding a party member requires controller validation; no NPC or companion is created here.",15,GOLD)
+	popup_status(col)
+	popup.popup_centered(Vector2i(510,330))
 
 func show_tab(tab: String) -> void:
 	if not is_instance_valid(right_content):
@@ -1004,8 +1059,17 @@ func select_item(id: String) -> void:
 	var definition = item_definition(item)
 	var rec = cat.get_record("equipment",definition)
 	var text: PackedStringArray = [item_name(item)+("  ·  Equipped" if equipped(id) else ""),"Quantity: "+number(item.get("quantity"))]
-	if rec.is_empty():
-		text.append(item_description(item) if item.has("description") else "Catalogue details unavailable.")
+	if item.has("instance_id"):
+		# C2 owns custom definitions, instance modifications and actual weight.
+		text.append(item_description(item))
+		var unit = item.get("unit_weight_lb")
+		if DISPLAY.numeric(unit) and float(unit)>=0:
+			text.append("Unit weight: "+DISPLAY.weight_number(unit)+" lb")
+			text.append("Stack weight: "+DISPLAY.weight_number(float(unit)*int(item["quantity"]))+" lb")
+		else:
+			text.append("Unit weight: not recorded")
+	elif rec.is_empty():
+		text.append("Catalogue details unavailable.")
 	else:
 		for key in ["equipment_category","weapon_category","armor_category","armor_class","damage","properties","range"]:
 			if rec.has(key):
@@ -1125,12 +1189,12 @@ func build_spells() -> void:
 				var spell_id = str(id)
 				button(list,title_for("spells",spell_id),func(): show_spell(spell_id),15)
 	var additional: Array = []
-	for opt in intents.interaction.get("preparation_options",[]):
+	for opt in intents.interaction.get("preparation_options",[])+intents.interaction.get("spell_options",[]):
 		var id = str(opt["spell_id"])
 		if not intents.owns_spell(id) and not id in additional:
 			additional.append(id)
 	if not additional.is_empty():
-		label(list,"Preparation choices",17,GOLD)
+		label(list,"Additional offered spell choices",17,GOLD)
 		for id in additional:
 			var spell_id = str(id)
 			button(list,title_for("spells",spell_id),func(): show_spell(spell_id),15)

@@ -24,6 +24,7 @@ const FIELDS = {
 	"resource_use":["resource_id","quantity"],
 	"level_up":[],
 	"quest_interact":["quest_id"],
+	"party_add":["member_actor_id"],
 	"travel":["destination_id"],
 	"chat":["text"],
 	"retry":["turn_id"],
@@ -80,6 +81,7 @@ func accept_view(value: Dictionary) -> bool:
 	var campaign = value.get("campaign",{})
 	var actor = value.get("actor",{})
 	if not campaign is Dictionary or not actor is Dictionary:
+		last_error = "Invalid campaign or actor view."
 		return false
 	var cid = str(campaign.get("id",""))
 	var aid = str(actor.get("id",""))
@@ -124,7 +126,7 @@ static func valid_view(packet: Variant,cid: String,aid: String) -> bool:
 	for kind in packet["supported_intents"]:
 		if not kind is String or not FIELDS.has(kind):
 			return false
-	if not packet.get("inventory_instances") is Array or not packet.get("slot_assignments") is Dictionary:
+	if not packet.get("inventory_instances") is Array or not packet.get("slot_assignments") is Dictionary or not exact_keys(packet["slot_assignments"],SLOTS):
 		return false
 	var ids = {}
 	for row in packet["inventory_instances"]:
@@ -154,9 +156,14 @@ static func valid_view(packet: Variant,cid: String,aid: String) -> bool:
 					return false
 	if not packet.get("spell_options") is Array or not packet.get("preparation_options") is Array or not packet.get("public_quests") is Array:
 		return false
+	var casts_seen = {}
 	for opt in packet["spell_options"]:
 		if not opt is Dictionary or not identifier(opt.get("spell_id")) or not opt.get("source") in SPELL_SOURCES or not integer(opt.get("slot_level"),0,9) or not opt.get("available") is bool or not opt.get("warning") is String:
 			return false
+		var key = str(opt["spell_id"])+":"+str(opt["source"])+":"+str(int(opt["slot_level"]))
+		if casts_seen.has(key):
+			return false
+		casts_seen[key] = true
 	var preparation_seen = {}
 	for opt in packet["preparation_options"]:
 		if not opt is Dictionary or not identifier(opt.get("spell_id")) or not opt.get("kind") in ["spell_prepare","spell_unprepare"] or not opt.get("available") is bool or not opt.get("warning") is String:
@@ -170,6 +177,20 @@ static func valid_view(packet: Variant,cid: String,aid: String) -> bool:
 		if not row is Dictionary or not stable_id(row.get("id")) or quests_seen.has(row["id"]) or not row.get("title") is String or not row.get("description") is String or not row.get("status") is String or not integer(row.get("source_event_id"),1):
 			return false
 		quests_seen[row["id"]] = true
+	if not packet.get("party_members",[]) is Array or not packet.get("party_candidates",[]) is Array:
+		return false
+	var members = {aid:true}
+	for member in packet.get("party_members",[]):
+		if not member is Dictionary or not stable_id(member.get("actor_id")) or members.has(member["actor_id"]) or not member.get("name") is String or not member.get("portrait","") is String:
+			return false
+		for key in ["hp_current","hp_max","level"]:
+			if member.get(key)!=null and not integer(member[key]):
+				return false
+		members[member["actor_id"]] = true
+	for candidate in packet.get("party_candidates",[]):
+		if not candidate is Dictionary or not stable_id(candidate.get("actor_id")) or members.has(candidate["actor_id"]) or not candidate.get("name") is String or not candidate.get("available") is bool or not candidate.get("warning") is String:
+			return false
+		members[candidate["actor_id"]] = true
 	return true
 
 func available(kind: String) -> bool:
@@ -281,6 +302,13 @@ func validate_args(kind: String,args: Dictionary) -> bool:
 				return false
 			for row in interaction.get("public_quests",[]):
 				if row.get("id")==args["quest_id"]:
+					return true
+			return false
+		"party_add":
+			if not stable_id(args["member_actor_id"]):
+				return false
+			for row in interaction.get("party_candidates",[]):
+				if row.get("actor_id")==args["member_actor_id"] and row.get("available",false):
 					return true
 			return false
 		"travel":
