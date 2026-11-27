@@ -535,3 +535,5 @@ Release manifest generated from immutable source 76e869d31ce1aa2e73eded9e1999a52
 
 ## v0.0.26 diagnostic alpha
 Preserve provider failure detail and stage, remove unnecessary additionalProperties schema keyword, normalize DM display blank lines. No mechanical validation removed. Native tests not executed. Missing response root cause, synchronous SQLite, full GUI redraw and original prompt parity remain unresolved; this is a diagnostic patch, not full repair.
+
+Manifest: 396 entries, five changed game files read back from immutable source 6d52ee378f5af5fd38297201ba16bae6a2957a13.

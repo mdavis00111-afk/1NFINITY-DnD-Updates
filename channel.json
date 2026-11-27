@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.25",
-  "source_commit": "76e869d31ce1aa2e73eded9e1999a52b621e9074",
-  "notes": "Owner-authorized experimental integrated gameplay alpha. Native and live Gemini acceptance outstanding. Back up shared profile before testing. Noncombat slice; full combat not implemented.",
+  "version": "0.0.26",
+  "source_commit": "6d52ee378f5af5fd38297201ba16bae6a2957a13",
+  "notes": "Diagnostic alpha: provider errors and narration spacing. Runtime and performance fixes outstanding.",
   "files": [
     {
       "path": "art/arcane.svg",
@@ -1194,7 +1194,7 @@
     },
     {
       "path": "gameplay/complete_controller.gd",
-      "blob": "e12db82c8a55aab011b3f5683ec92a44e9c62f44"
+      "blob": "a0dc8406ddbfa0bddf5f16ba7791a058ecec4b37"
     },
     {
       "path": "gameplay/display_values.gd",
@@ -1202,7 +1202,7 @@
     },
     {
       "path": "gameplay/game_workspace.gd",
-      "blob": "c87f180a7af0cd940b25aba499553b15162f606c"
+      "blob": "ae4026bf25349a3e200cd99312572739b8244603"
     },
     {
       "path": "gameplay/independent_review.gd",
@@ -1238,7 +1238,7 @@
     },
     {
       "path": "gameplay/semantic_adapter.gd",
-      "blob": "609ce835b4948b924ee1e144bd916ef583c9b182"
+      "blob": "32f4cc3ae1452f9d61edfcf195ae43022ebc6198"
     },
     {
       "path": "gameplay/semantic_controller.gd",
@@ -1342,7 +1342,7 @@
     },
     {
       "path": "project.godot",
-      "blob": "f55d63ab91798b5028b05a777e8a09331d698adb"
+      "blob": "7aeb65d6a730c5b9f8fb8289f32009801922d73c"
     },
     {
       "path": "rules/MASTER_REFERENCE.md",
@@ -1566,7 +1566,7 @@
     },
     {
       "path": "version.txt",
-      "blob": "2678ff8d63d55793d68f02e5110f51903c462ce2"
+      "blob": "c4475d3bb7824a3420e49933d17a271009449165"
     },
     {
       "path": "world/geography_reconciler.gd",
