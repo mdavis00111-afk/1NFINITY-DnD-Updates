@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.8",
-  "source_commit": "c1b9104eeb5a6941d46c73d9be94b476e44e22fa",
-  "notes": "Actual supplied gold lettering extracted to a transparent atlas and native Godot bitmap font. Shared theme uses the image-derived font; Garamond is only a fallback for absent characters. All existing menu screens and artwork retained.",
+  "version": "0.0.9",
+  "source_commit": "51764f9bc356d23ad4ac43c41317451b69ad7334",
+  "notes": "Approved Hall of Heroes art, extracted italic font and gold sheet components. Shortened menus, separate delete screen, level-one character draft calculator and personal rules library import/search. Full RAW validation and player storage still pending. Private rules archive not bundled.",
   "files": [
     {
       "path": "main.tscn",
@@ -41,36 +41,84 @@
       "blob": "52d34b86ec20977f222ce37e8158e6b3002c0a31"
     },
     {
-      "path": "main.gd",
-      "blob": "b3397c4c1ca32965313b2939a9b9c5e30424bf7a"
-    },
-    {
-      "path": "project.godot",
-      "blob": "46916b0361d9286660b8eb45b4e604a8c466283b"
-    },
-    {
-      "path": "version.txt",
-      "blob": "d169b2f2d0a4961be2e01a31cebeffdefac24e43"
-    },
-    {
-      "path": "themes/master_theme.tres",
-      "blob": "b667aab8c437498df94e6e8a02dbee8c772c006d"
-    },
-    {
-      "path": "themes/menu_button.gd",
-      "blob": "add4fdc49ac89bd7bb412c7d7a0db33e7259f93a"
-    },
-    {
-      "path": "themes/TYPOGRAPHY.md",
-      "blob": "c1a5aa6c20cb440eaa85bacd8215f1c39a5516bf"
-    },
-    {
       "path": "themes/fonts/arcane.fnt",
       "blob": "7f6aba96ecb6966800d8ed59afeb9e20c9d7d92d"
     },
     {
       "path": "themes/fonts/arcane_atlas.png",
       "blob": "9404512d0977a189bcb5e5c61b023387894cb217"
+    },
+    {
+      "path": "main.gd",
+      "blob": "4b6906a4fb81b52cc54080d9f3a0af358e4456ce"
+    },
+    {
+      "path": "themes/master_theme.tres",
+      "blob": "e13c9b93e804183cad51fe59603ed35caaeebff2"
+    },
+    {
+      "path": "themes/menu_button.gd",
+      "blob": "44ad6da6abcb4745a82f357aec43e9d3c1363981"
+    },
+    {
+      "path": "themes/TYPOGRAPHY.md",
+      "blob": "d751acb334d0c7f8e99e47177c5794f29a2385f9"
+    },
+    {
+      "path": "project.godot",
+      "blob": "5f0f7d249880eb58d8d37c047e61bed62ab33441"
+    },
+    {
+      "path": "version.txt",
+      "blob": "c5d54ec32616aacce853f12c79602312c7ac04ec"
+    },
+    {
+      "path": "rules/library.gd",
+      "blob": "b11f96198fb71abe398ec53e417a6f7045912910"
+    },
+    {
+      "path": "rules/mechanics.gd",
+      "blob": "785266cee39294f4b61cbcc63c8f7b5c6f9361dd"
+    },
+    {
+      "path": "rules/README.md",
+      "blob": "49b8a50578b083f0a70023c8d243a9bc7e403fd1"
+    },
+    {
+      "path": "players/character_sheet.gd",
+      "blob": "d0f546992e84073db1947dacfad0a8284e4a5bba"
+    },
+    {
+      "path": "art/hall.jpg",
+      "blob": "8ef7254bbdfcddd004b848014e79aba192c8bf5f"
+    },
+    {
+      "path": "themes/fonts/italic_atlas.png",
+      "blob": "9fa87df956ef24871e4436c2dfc522da5186a3a0"
+    },
+    {
+      "path": "themes/fonts/italic.fnt",
+      "blob": "5a10c74a38ed1847fed6d0294a3e3799f22496be"
+    },
+    {
+      "path": "themes/parts/icons.png",
+      "blob": "8a2ec001c63dfaed25f18c4bfecd9f83a0ce68f3"
+    },
+    {
+      "path": "themes/parts/icons.json",
+      "blob": "28036c79de60273d941e8b253c0a831475cd9988"
+    },
+    {
+      "path": "themes/parts/frame.png",
+      "blob": "fbd9ae5f438502989da87573a9b2359095ad4f97"
+    },
+    {
+      "path": "themes/parts/corner.png",
+      "blob": "a4e0822d4872f902741514034e9869a65d22d2a6"
+    },
+    {
+      "path": "art/sheet_reference.jpg",
+      "blob": "74cbe1105d673f88659c5246d5d757cdb397e240"
     }
   ]
 }
