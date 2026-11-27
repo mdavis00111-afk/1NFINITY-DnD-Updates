@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.23",
-  "source_commit": "40bfa2ca1ba975bd5ff4cf02f214e042f24ce11d",
-  "notes": "Windows playtest: campaign manager and six starts, isolated campaign saves, optional validated Gemini opening, editable maturity and Narrator, Random character creation and final character GUI polish. Independent SQL fixtures passed; Windows/Godot runtime verification pending. Existing updater staging and rollback retained. No gameplay turn controller yet.",
+  "version": "0.0.24",
+  "source_commit": "1cc6ea48e8d25a12586a4d1668dc5e7727e0222e",
+  "notes": "Windows playtest: reference-based three-column gameplay GUI, campaign-local HUD/inventory/spells/skills, committed DM log and scenery, manual Godot dice, navigation and structured Gemini openings. Seven independent SQL checks passed twice; new PNG bytes verified. Windows runtime/visual/API acceptance pending. Existing updater staging retained; back up shared saves separately. Turn controller not implemented yet.",
   "files": [
     {
       "path": "art/arcane.svg",
@@ -38,15 +38,15 @@
     },
     {
       "path": "campaigns/campaign_manager.gd",
-      "blob": "6b9c5e19347395592709d13c2fa1c0b7179c1856"
+      "blob": "9c5596a6425adda9cf6876cdcc821f61119095b6"
     },
     {
       "path": "campaigns/campaign_starts.gd",
-      "blob": "eebeaee2d3704fde496d415f6fe97446d594fb76"
+      "blob": "055b1e35937aa55a0b558341ba2a3d059b5a8029"
     },
     {
       "path": "campaigns/campaign_store.gd",
-      "blob": "0bc6d64f66a553509518c6b1a2e15f124a525704"
+      "blob": "9ecb17819393575d90d500cff21703ac40fb6b0f"
     },
     {
       "path": "campaigns/maturity_profiles.gd",
@@ -54,11 +54,11 @@
     },
     {
       "path": "campaigns/narrator_prompt.gd",
-      "blob": "4ba228430ed9043c6b9e87aedb2837f6f55dcbff"
+      "blob": "14a7d7f51ce15a680e939f6c0fe4e62a8ecdcd13"
     },
     {
       "path": "campaigns/opening_scene.gd",
-      "blob": "23f8b4dbaf20bbf35b2e47fd41d4d358bf3360bc"
+      "blob": "96c72f47b4f64eefe733ae9a70fed53efb6b5b34"
     },
     {
       "path": "data/2014/ATTRIBUTION.txt",
@@ -157,8 +157,48 @@
       "blob": "ea6ba81a76751fc4e2e478ab7e52be7e4000fa75"
     },
     {
+      "path": "gameplay/ART_PROVENANCE.md",
+      "blob": "f40d51c203e980e7426e646e5763212c829b4034"
+    },
+    {
+      "path": "gameplay/display_values.gd",
+      "blob": "1ea0f416cd74d76b542d6ec94f9d41da0a853108"
+    },
+    {
+      "path": "gameplay/game_workspace.gd",
+      "blob": "b9aaa97cbadcc0c870848c3a00f45646f165a7e0"
+    },
+    {
+      "path": "gameplay/manual_dice.gd",
+      "blob": "325d72b59ab3d65f9f8b1115cd8a969cacfd05c2"
+    },
+    {
+      "path": "gameplay/paper_doll.svg",
+      "blob": "f299060978d4e94707bfe0ff8da570c4e030e430"
+    },
+    {
+      "path": "gameplay/reference_backpack.png",
+      "blob": "1cfbd796950e04e86e3c2c27e956c4cb7631fed8"
+    },
+    {
+      "path": "gameplay/reference_compass.png",
+      "blob": "addbea81ea0e5ccc56495b50a843a0e510d6d50a"
+    },
+    {
+      "path": "gameplay/reference_party.png",
+      "blob": "1e0fbf35f4d0ac22fd42229660afb0a2cfb15f1d"
+    },
+    {
+      "path": "gameplay/reference_shortsword.png",
+      "blob": "9125833f84ec3957a35be23b0ce16de845443350"
+    },
+    {
+      "path": "gameplay/reference_slots.png",
+      "blob": "18e20ff53b5b150496b07e52048da084f0e5fa1d"
+    },
+    {
       "path": "main.gd",
-      "blob": "8233229721b8525274067067108c0a7d25010e31"
+      "blob": "4b7fe32f512b161aa8fa595a5de16d8000872c85"
     },
     {
       "path": "main.tscn",
@@ -186,7 +226,7 @@
     },
     {
       "path": "players/full_character_sheet.gd",
-      "blob": "cd8b1c1a0576e09503822efb712329dba49421b5"
+      "blob": "9524e38914323bbc094f9cdf70910292fd7de1e5"
     },
     {
       "path": "players/portrait_art.gd",
@@ -194,7 +234,7 @@
     },
     {
       "path": "project.godot",
-      "blob": "219e00a1840e1db22fc871f0181836794f1a51a3"
+      "blob": "a1261202e6d3c2973441f917c95389a67b2c8f73"
     },
     {
       "path": "rules/MASTER_REFERENCE.md",
@@ -250,7 +290,7 @@
     },
     {
       "path": "systems/gemini.gd",
-      "blob": "72f246dbf36f0375d5802a906f6300db890b37b7"
+      "blob": "d2a8ba0f4db32d64cf28238353bae4db16bba342"
     },
     {
       "path": "systems/sqlite.gd",
@@ -266,7 +306,7 @@
     },
     {
       "path": "tests/ai_profile_smoke.gd",
-      "blob": "7034b7c31c5066c1aab7defc50d739d963867315"
+      "blob": "3147cda7918c1ac62016575393fa18a6882a15f5"
     },
     {
       "path": "tests/assets_smoke.gd",
@@ -274,11 +314,15 @@
     },
     {
       "path": "tests/campaign_smoke.gd",
-      "blob": "419461332df66719f649c54204e7f38d6e7d5c57"
+      "blob": "cdbc5ff410148204ffbde31f5537dcc84d59343a"
     },
     {
       "path": "tests/character_smoke.gd",
       "blob": "5c431040eba2aa07efad37af2709efe2f7090abb"
+    },
+    {
+      "path": "tests/gameplay_smoke.gd",
+      "blob": "41f48a82f13490f6dd425b2dd1d73755dcaf2a35"
     },
     {
       "path": "tests/layout_smoke.gd",
@@ -362,7 +406,7 @@
     },
     {
       "path": "version.txt",
-      "blob": "df5db66fed35a2fa0b4bc82c381aefe91fb2459d"
+      "blob": "b056f4120ed9bf09457f25b7a53776a97ff96807"
     }
   ]
 }
