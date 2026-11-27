@@ -11,3 +11,5 @@ Owner requested new/existing campaign menus, illustrated left roster, right syno
 P2-01 first checkpoint: new game/campaigns/campaign_starts.gd, maturity_profiles.gd, campaign_store.gd; update Brain. Next wire two-menu UI, Settings profile editor, campaign workspace and tests. No release or engine testing.
 
 P2-01 second checkpoint: game/campaigns/campaign_manager.gd and game/main.gd wire the creation/library/workspace and Settings content profile editor. No turn controller. Next static review and campaign smoke test. No release authorization.
+
+P2-01 final source checkpoint: main.gd, campaign_manager.gd, campaign_starts.gd, campaign_store.gd, maturity_profiles.gd, tests/campaign_smoke.gd, Brain and subsystem docs. Includes preceding P0-03 polish. Pending: owner-supplied maturity definitions (no shipped presets), actual Godot import and campaign/layout smoke, Windows visuals, release authorization. Resume opens persisted opening workspace, not playable turn controller. No channel or game version change.

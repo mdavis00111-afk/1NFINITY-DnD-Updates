@@ -29,6 +29,7 @@ var note: Label
 var resume_button: Button
 var delete_button: Button
 var pending_campaign = ""
+var listing_error = ""
 var roster_buttons: Array[Button] = []
 var layout: MarginContainer
 
@@ -38,7 +39,7 @@ func configure(initial_mode: String, on_exit: Callable, on_settings: Callable) -
 	settings_action = on_settings
 
 func _ready() -> void:
-	var local_theme = theme.duplicate() as Theme if theme != null else Theme.new()
+	var local_theme = load("res://themes/master_theme.tres").duplicate() as Theme
 	local_theme.default_font = FONT
 	local_theme.default_font_size = 19
 	theme = local_theme
@@ -145,7 +146,9 @@ func render() -> void:
 		layout.add_theme_constant_override("margin_"+edge,12)
 	var root = column(layout,8)
 	var title = "Existing Campaigns" if mode=="library" else ("New Campaign" if mode=="new" else str(active.get("title","Campaign")))
-	root.add_child(text_label(title,34,true))
+	var title_label = text_label(title,34,true)
+	title_label.max_lines_visible=2
+	root.add_child(title_label)
 	var body = row(root,12)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	match mode:
@@ -164,8 +167,8 @@ func render() -> void:
 		delete_button = action(nav,"Delete",confirm_delete)
 		resume_button.disabled = active.is_empty()
 		delete_button.disabled = active.is_empty()
-		if not store.last_error.is_empty():
-			show_note(store.last_error)
+		if not listing_error.is_empty():
+			show_note(listing_error)
 	elif mode=="new":
 		action(nav,"Content Rules",func(): settings_action.call())
 		var begin = action(nav,"Begin Adventure",create)
@@ -210,6 +213,7 @@ func build_library(parent: Container) -> void:
 	left.add_child(text_label("Saved Campaigns",24,true))
 	var roster = scrolled(left)
 	rows = store.list_campaigns()
+	listing_error = store.last_error
 	var previous_id = str(active.get("id",""))
 	active = {}
 	roster_buttons.clear()
@@ -256,6 +260,10 @@ func build_new(parent: Container) -> void:
 	if players.is_empty():
 		roster.add_child(text_label("No ready characters",18,true))
 	var player_group = ButtonGroup.new()
+	var valid_selected = false
+	for player in players:
+		if player["id"]==selected_player: valid_selected=true
+	if not valid_selected: selected_player=""
 	for player in players:
 		var id = str(player["id"])
 		var portrait_path = str(player.get("portrait",player.get("draft",{}).get("portrait","")))
@@ -337,7 +345,7 @@ func art_received(ok: bool, message: String) -> void:
 		var error = store.update_thumbnail(id,chosen)
 		if error.is_empty() and active.get("id")==id:
 			active["thumbnail_id"]=chosen
-		if mode=="library": render()
+		if mode=="library" and not active.is_empty(): render()
 
 func resume() -> void:
 	if active.is_empty():

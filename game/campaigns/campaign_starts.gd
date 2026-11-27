@@ -25,7 +25,13 @@ static func find_start(id: String) -> Dictionary:
 
 static func texture_for(id: String) -> Texture2D:
 	var path = str(ART.get(id,ART["road"]))
-	return load(path) as Texture2D
+	var texture = load(path) as Texture2D
+	if id=="market":
+		var crop = AtlasTexture.new()
+		crop.atlas=texture
+		crop.region=Rect2(900,14,760,570)
+		return crop
+	return texture
 
 static func valid_art(id: String) -> bool:
 	return ART.has(id)

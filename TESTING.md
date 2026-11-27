@@ -64,3 +64,6 @@ Source inspection: character_rules.gd roll_scores calls Godot randi_range(1,6) f
 
 ## P0-03 management polish
 Owner screenshot shows v0.0.22 manager opens with portrait roster and centered sheet; owner approves composition subject to polish. Source changes are limited to action labels, opacity and ability abbreviation wrapping; regression assertion added. No engine tests executed.
+
+## P2-01 campaign manager feature
+Added tests/campaign_smoke.gd; NOT RUN (Linux container has no native Godot or Wine; Windows executable cannot execute). Test requires explicit matching INFINITY_TEST_USER_ROOT and empty disposable user directory. Exercises six openings, profile validation/live edits, invalid selection, isolated campaign actor/inventory/log, SQLite foreign keys, thumbnail whitelist, soft-delete recovery and unchanged master player. Existing production bridge unchanged. User maturity definitions and Windows visual acceptance pending; no release authorized. Source review is not engine parse or runtime evidence.

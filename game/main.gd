@@ -145,7 +145,14 @@ func show_screen(name: String) -> void:
 			painted_title = name == "Main"
 			break
 	if not art_loaded:
-		backdrop.texture = load("res://art/" + ("forest" if art == "hall" else art) + ".svg")
+		if art=="valley":
+			# Painted scenery from the existing approved castle art; custom valley wallpaper still wins.
+			var scenery = AtlasTexture.new()
+			scenery.atlas = preload("res://art/castle.jpg")
+			scenery.region = Rect2(900,14,760,570)
+			backdrop.texture = scenery
+		else:
+			backdrop.texture = load("res://art/" + ("forest" if art == "hall" else art) + ".svg")
 	if name in ["Create New","Generate Character","Edit Character"]:
 		var creator = CREATOR.new()
 		creator.configure(name=="Generate Character",func(): show_screen("Player Manager"),func(): show_screen("Manage Players"),editing_record if name=="Edit Character" else {})

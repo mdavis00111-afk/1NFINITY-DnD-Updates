@@ -5,7 +5,7 @@ Baseline: v0.0.22 Windows playtest (channel authoritative), 2026-11-27. Proposed
 |---|---|---|---|
 | P0 | Windows baseline and GUI fidelity | 01 / 05 | GUI follow-up 0.0.22 playtest prepared on owner authorization. Windows visual acceptance, production SQLite and updater validation pending. |
 | P1 | Structured 2014 rules coverage | 02 | Partial: batch 001 core stats only. Add verified actions, traits, character options, encounters, treasure and traps with provenance and deduplication; distinguish licensed public data from private references. |
-| P2 | Campaign persistence | 03 | Schema only. Implement creation/load/archive, migrations, actor/location/inventory/event transactions and isolation from master characters. |
+| P2 | Campaign persistence | 03 | Feature checkpoint implements isolated DB creation/load/soft-delete, actor/location/inventory/event transaction, roster/synopsis and maturity profile settings. Owner definitions, Godot tests, Windows acceptance and publication pending. |
 | P3 | Turn resolution | 02 / 03 | Not implemented. Typed action contract, Godot deterministic checks/dice/state, reproducible tests; no AI write authority. |
 | P4 | Gemini gameplay pipeline | 04 | API prose only today. Rules-Check proposes validated action; Godot commits outcome; Narration reads committed facts. Reject invalid responses; test retries without duplicate actions. |
 | P5 | Persistent living world and gameplay | 03 / 04 | Not implemented. Populate settlements, persist NPCs, maps, travel/time, encounters and consequences; support sandbox play without forced plot escalation. |

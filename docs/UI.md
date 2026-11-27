@@ -4,3 +4,5 @@ Baseline 0.0.21. Read Brain and HANDOFF. Source: game/players/character_creator.
 P0-02 v0.0.22 playtest: owner supersedes fit-width/zoom with fixed 70% centered sheet, left portrait roster and bottom-left actions; in-field identity prompts, centered single-line fields, fewer nested dark cards, pre-roll placeholders, bounded searchable dropdowns and wrapped tips. Six editable AI prose fields validated atomically; no dice/identity/stat mutation. Default sample portrait derived from existing sheet artwork, display-only. Tests pending.
 
 P0-03: Windows v0.0.22 management composition accepted by owner; minor final changes staged (Delete, remove Rules Catalogue, translucent backing, nonwrapping ability labels, slightly darker creator). Runtime verification pending.
+
+P2-01 feature: Campaign Manager has New Campaign and Existing Campaigns, gold-trim translucent panels, illustrated roster left, large synopsis right, bottom-left actions. New campaign picks ready character, title, maturity and six start cards. Wallpaper uses existing painted castle scenery crop; thumbnail art provisional. Runtime visuals pending.
