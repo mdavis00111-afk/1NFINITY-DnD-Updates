@@ -159,13 +159,13 @@ func opening_guard(record: Dictionary, previous: String) -> Dictionary:
 	var start = STARTS.find_start(str(record.get("start_id","")))
 	return SQL.stmt("SELECT value FROM meta WHERE key='campaign' AND value=? AND EXISTS(SELECT 1 FROM locations WHERE id=? AND kind=? AND parent_id IS NULL AND x IS NULL AND y IS NULL) AND (SELECT count(*) FROM locations)=1 AND EXISTS(SELECT 1 FROM actors WHERE id=? AND kind='player' AND location_id=?) AND (SELECT count(*) FROM actors)=1 AND (SELECT count(*) FROM events)=1 AND EXISTS(SELECT 1 FROM events WHERE kind='campaign_created' AND turn=0) AND NOT EXISTS(SELECT 1 FROM quests) AND NOT EXISTS(SELECT 1 FROM encounters) AND NOT EXISTS(SELECT 1 FROM relationships)",[previous,record["location_id"],start.get("kind",""),record["actor_id"],record["location_id"]])
 
+func opening_eligible(record: Dictionary) -> bool:
+	return not record.is_empty() and record.get("status")=="active" and record.get("turn") == 0 and not record.get("opening_committed",false) and valid_id(str(record.get("actor_id",""))) and valid_id(str(record.get("location_id",""))) and not STARTS.find_start(str(record.get("start_id",""))).is_empty()
+
 func prepare_opening(id: String) -> Dictionary:
 	var record = load_campaign(id)
-	if record.is_empty() or record.get("turn")!=0 or record.get("opening_committed",false):
+	if not opening_eligible(record):
 		last_error="Campaign opening is unavailable or already committed."
-		return {}
-	if not valid_id(str(record.get("actor_id",""))) or not valid_id(str(record.get("location_id",""))) or STARTS.find_start(str(record.get("start_id",""))).is_empty():
-		last_error="Invalid opening metadata."
 		return {}
 	var previous = loaded_metadata
 	var check = SQL.run(path_for(id),[opening_guard(record,previous)],true)
@@ -261,6 +261,8 @@ func gameplay_view(id: String) -> Dictionary:
 		last_error = "Invalid campaign player identifier."
 		return {}
 	var expected_metadata = loaded_metadata
+	# Use the exact same eligibility guard as the opening write, in the read snapshot.
+	var available = opening_guard(record,expected_metadata) if opening_eligible(record) else SQL.stmt("SELECT NULL WHERE 0")
 	var result = SQL.run(path_for(id),[
 		SQL.stmt("BEGIN"),
 		SQL.stmt("SELECT value FROM meta WHERE key='campaign'"),
@@ -269,16 +271,18 @@ func gameplay_view(id: String) -> Dictionary:
 		SQL.stmt("SELECT id,turn,kind,payload FROM events WHERE kind IN ('campaign_created','narration') ORDER BY id"),
 		SQL.stmt("SELECT id,name,kind,x,y,payload FROM locations ORDER BY name COLLATE NOCASE,id"),
 		SQL.stmt("SELECT id,status,payload FROM quests ORDER BY id"),
+		available,
 		SQL.stmt("COMMIT")
 	],true)
 	if not result.get("ok",false):
 		last_error = result_error(result,"Cannot read campaign workspace.")
 		return {}
 	var sets: Array = result.get("results",[])
-	if sets.size()!=8 or sets[1].size()!=1 or str(sets[1][0]["value"])!=expected_metadata or sets[2].size()!=1:
+	if sets.size()!=9 or sets[1].size()!=1 or str(sets[1][0]["value"])!=expected_metadata or sets[2].size()!=1:
 		last_error = "Campaign changed or player data unavailable. Reopen and retry."
 		return {}
 	# One read-only transaction on the bridge connection.
+	var can_open = not sets[7].is_empty()
 	sets = sets.slice(2,7)
 	var actor = JSON.parse_string(str(sets[0][0]["payload"]))
 	if not actor is Dictionary or actor.get("id")!=actor_id:
@@ -313,4 +317,4 @@ func gameplay_view(id: String) -> Dictionary:
 	for row in sets[4]:
 		var payload = JSON.parse_string(str(row["payload"]))
 		quests.append({"id":str(row["id"]),"status":str(row["status"]),"payload":payload if payload is Dictionary else {}})
-	return {"campaign":record,"actor":actor,"inventory":items,"events":events,"locations":locations,"location":current,"quests":quests}
+	return {"campaign":record,"actor":actor,"inventory":items,"events":events,"locations":locations,"location":current,"quests":quests,"opening_available":can_open}

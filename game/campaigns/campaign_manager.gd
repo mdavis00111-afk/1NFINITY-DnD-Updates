@@ -39,6 +39,7 @@ var layout: MarginContainer
 var workspace: Control
 var workspace_settings_action: Callable
 var resume_id = ""
+var return_error = ""
 
 func configure(initial_mode: String, on_exit: Callable, on_settings: Callable, on_workspace_settings: Callable = Callable(), campaign_id: String = "") -> void:
 	mode = initial_mode
@@ -52,13 +53,39 @@ func _ready() -> void:
 	local_theme.default_font = FONT
 	local_theme.default_font_size = 19
 	theme = local_theme
-	gemini = GEMINI.new()
-	add_child(gemini)
-	gemini.completed.connect(opening_received)
+	ensure_gemini()
 	if not resume_id.is_empty():
 		active = store.load_campaign(resume_id)
 		mode = "workspace" if not active.is_empty() else "library"
+		if active.is_empty():
+			return_error = store.last_error if not store.last_error.is_empty() else "Requested campaign is no longer available."
 	render.call_deferred()
+
+func ensure_gemini() -> void:
+	if is_instance_valid(gemini):
+		return
+	gemini = GEMINI.new()
+	add_child(gemini)
+	gemini.completed.connect(opening_received.bind(gemini))
+
+# Each request belongs to its originating workspace. Retire its transport on exit
+# so an old completion cannot be mistaken for a later request.
+func cancel_opening() -> void:
+	if pending_campaign.is_empty():
+		return
+	pending_campaign=""
+	pending_metadata=""
+	var retired = gemini
+	gemini=null
+	if is_instance_valid(retired):
+		if retired.active and is_instance_valid(retired.request):
+			retired.request.cancel_request()
+		retired.queue_free()
+
+func _exit_tree() -> void:
+	# The child HTTPRequest is destroyed on screen exit; ignore any late signal.
+	pending_campaign=""
+	pending_metadata=""
 
 func surface(opacity: float = 0.58) -> StyleBoxFlat:
 	var style = StyleBoxFlat.new()
@@ -158,6 +185,9 @@ func render() -> void:
 		layout.add_theme_constant_override("margin_"+edge,6 if mode=="workspace" else 12)
 	workspace = null
 	opening_button = null
+	note = null
+	resume_button = null
+	delete_button = null
 	if mode=="workspace":
 		build_workspace(layout)
 		return
@@ -183,7 +213,10 @@ func render() -> void:
 		delete_button = action(nav,"Delete",confirm_delete)
 		resume_button.disabled = active.is_empty()
 		delete_button.disabled = active.is_empty()
-		if not listing_error.is_empty():
+		if not return_error.is_empty():
+			show_note(return_error)
+			return_error=""
+		elif not listing_error.is_empty():
 			show_note(listing_error)
 	elif mode=="new":
 		action(nav,"Content Rules",func(): settings_action.call())
@@ -206,8 +239,12 @@ func show_note(value: String) -> void:
 
 func leave() -> void:
 	if mode=="workspace":
+		var was_pending = not pending_campaign.is_empty()
+		cancel_opening()
 		mode="library"
 		render()
+		if was_pending:
+			show_note("Opening request canceled. Your saved campaign is unchanged; resume to retry.")
 	else:
 		exit_action.call()
 
@@ -253,7 +290,7 @@ func build_library(parent: Container) -> void:
 		update_library()
 
 func select_campaign(index: int) -> void:
-	if index<0 or index>=rows.size():
+	if mode!="library" or index<0 or index>=rows.size():
 		return
 	active=rows[index]
 	update_library()
@@ -332,12 +369,14 @@ func build_new(parent: Container) -> void:
 	synopsis.custom_minimum_size.y=80
 
 func select_start(id: String) -> void:
+	if mode!="new" or STARTS.find_start(id).is_empty():
+		return
 	selected_start=id
 	var start = STARTS.find_start(id)
 	synopsis.text=str(start.get("description",""))
 
 func create() -> void:
-	if not pending_campaign.is_empty():
+	if mode!="new" or not pending_campaign.is_empty():
 		return
 	if maturity_choice.selected<0:
 		show_note("Select a maturity profile.")
@@ -355,6 +394,7 @@ func create() -> void:
 	# Save first; provider failure leaves the original opening intact.
 	var config = ConfigFile.new()
 	config.load("user://settings.cfg")
+	ensure_gemini()
 	if gemini.key_valid(str(config.get_value("gemini","api_key","")).strip_edges()):
 		request_opening()
 
@@ -366,6 +406,7 @@ func request_opening() -> void:
 	if prepared.is_empty():
 		show_note(store.last_error)
 		return
+	ensure_gemini()
 	pending_campaign=id
 	pending_metadata=prepared["previous"]
 	if is_instance_valid(opening_button):
@@ -373,40 +414,40 @@ func request_opening() -> void:
 	show_note("Generating opening… Saved campaign is safe.")
 	gemini.generate(prepared["prompt"],"","",true)
 
-func opening_received(ok: bool, message: String) -> void:
+func opening_received(ok: bool, message: String, source: Node) -> void:
+	if not is_inside_tree() or source!=gemini or pending_campaign.is_empty():
+		return
 	var id = pending_campaign
 	var previous = pending_metadata
-	pending_campaign=""
-	pending_metadata=""
-	if id.is_empty():
+	cancel_opening() # Retire completed transport as well; never reuse its signal.
+	# No state change if the originating workspace has been left.
+	if mode!="workspace" or active.get("id")!=id:
 		return
 	var error = "Opening generation unavailable. Your saved opening is unchanged."
 	if ok:
 		error = store.commit_opening(id,previous,message)
-	if mode=="workspace" and active.get("id")==id:
-		if error.is_empty():
-			var refreshed = store.load_campaign(id)
-			if not refreshed.is_empty():
-				active=refreshed
-				render()
-				show_note("Opening saved. Gameplay turn resolution is not implemented yet.")
-			else:
-				show_note("Opening saved. Reopen the campaign to reload it.")
-		else:
-			if is_instance_valid(opening_button):
-				opening_button.disabled=false
-			show_note(error)
-	elif mode=="library":
+	# Refresh even on rejection: another session may have committed or deleted it.
+	var refreshed = store.load_campaign(id)
+	if refreshed.is_empty():
+		return_error = "Campaign is no longer available. Reopen it from the library."
+		active={}
+		mode="library"
 		render()
-	elif mode=="workspace" and is_instance_valid(opening_button):
-		opening_button.disabled=false
+		return
+	active=refreshed
+	render()
+	if error.is_empty():
+		show_note("Opening saved. Gameplay turn resolution is not implemented yet.")
+	else:
+		show_note(error)
 
 func resume() -> void:
-	if active.is_empty():
+	if mode!="library" or active.is_empty():
 		return
 	var record = store.load_campaign(str(active["id"]))
 	if record.is_empty():
-		show_note(store.last_error)
+		return_error = store.last_error if not store.last_error.is_empty() else "Requested campaign is no longer available."
+		render()
 		return
 	active=record
 	open_workspace()
@@ -418,6 +459,10 @@ func open_workspace() -> void:
 func build_workspace(parent: Container) -> void:
 	var snapshot = store.gameplay_view(str(active["id"]))
 	var error = store.last_error
+	if not snapshot.is_empty():
+		active = snapshot["campaign"]
+	elif error.is_empty():
+		error = "Campaign workspace unavailable. Return to Campaign and reopen."
 	workspace = WORKSPACE.new()
 	workspace.configure(snapshot,active,leave,open_workspace_settings,request_opening,not pending_campaign.is_empty(),error)
 	parent.add_child(workspace)
@@ -433,7 +478,7 @@ func open_workspace_settings() -> void:
 		show_note("Settings are available from the main menu; your campaign is already saved.")
 
 func confirm_delete() -> void:
-	if active.is_empty():
+	if mode!="library" or active.is_empty():
 		return
 	var id = str(active["id"])
 	var dialog = ConfirmationDialog.new()

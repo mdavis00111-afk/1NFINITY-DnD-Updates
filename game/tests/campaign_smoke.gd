@@ -8,6 +8,7 @@ const MATURITY = preload("res://campaigns/maturity_profiles.gd")
 const OPENING = preload("res://campaigns/opening_scene.gd")
 const STARTS = preload("res://campaigns/campaign_starts.gd")
 const MANAGER = preload("res://campaigns/campaign_manager.gd")
+const MAIN_SCENE = preload("res://main.tscn")
 var failures: Array[String] = []
 
 func _initialize() -> void:
@@ -106,6 +107,10 @@ func run() -> void:
 	expect(events.get("ok",false),"Test log insert failed")
 	expect(campaigns.synopsis(a["id"])=="Verified summary fixture.\n\nLater log fixture.","Synopsis did not prefer latest log summary")
 	expect(not campaigns.synopsis(b["id"]).contains("fixture"),"Log leaked between campaigns")
+	expect(not campaigns.gameplay_view(a["id"]).get("opening_available",true),"Committed history still offers opening")
+	# An older save with history but no opening flag must not offer a new scene.
+	var legacy_history = SQL.run(campaigns.path_for(b["id"]),[SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(0,?,'synopsis',?)",["Test",JSON.stringify({"text":"Legacy summary"})])])
+	expect(legacy_history.get("ok",false) and not campaigns.gameplay_view(b["id"]).get("opening_available",true) and campaigns.prepare_opening(b["id"]).is_empty(),"Legacy history allowed another opening")
 	expect(not campaigns.update_thumbnail(a["id"],"../../invalid").is_empty(),"Invalid artwork accepted")
 	expect(campaigns.update_thumbnail(a["id"],"woods").is_empty(),"Valid artwork save failed")
 	expect(campaigns.load_campaign(a["id"]).get("thumbnail_id")=="woods","Thumbnail was not persisted")
@@ -157,6 +162,7 @@ func settle() -> void:
 
 func exercise_ui(campaigns) -> void:
 	# The fixture settings contain no Gemini credentials. No network call.
+	var last_id = ""
 	for resolution in [Vector2i(1280,720),Vector2i(1920,1080)]:
 		root.size=resolution
 		var base = Control.new()
@@ -187,6 +193,9 @@ func exercise_ui(campaigns) -> void:
 		expect(manager.mode=="workspace","Confirmed campaign did not open workspace")
 		if manager.mode=="workspace":
 			var created_id = str(manager.active["id"])
+			last_id=created_id
+			manager.create() # Stale/double create callback must not create a second campaign.
+			expect(campaigns.list_campaigns().size()==count_before+1,"Duplicate create callback saved another campaign")
 			expect(campaigns.load_campaign(created_id).get("maturity_id")=="mature","Maturity ID not saved")
 			manager.request_opening()
 			await settle()
@@ -198,6 +207,105 @@ func exercise_ui(campaigns) -> void:
 			manager.resume()
 			await settle()
 			expect(manager.mode=="workspace" and manager.active.get("id")==created_id,"Resume failed")
+			# Stage provider completions without credentials/network; use the same bound signal.
+			var proposal = {"start_id":"road","location_name":"North Road","atmosphere":"A dry lane.","npcs":[],"world_facts":["A stone marker stands beside the road."],"thumbnail_id":"road"}
+			var original = campaigns.gameplay_view(created_id)
+			var other = campaigns.create_campaign("Other UI fixture "+str(resolution.x),manager.selected_player,"road","standard")
+			var other_id = str(other.get("id",""))
+			var other_before = campaigns.gameplay_view(other_id)
+			var old_source = stage_reply(manager,campaigns,created_id)
+			expect(is_instance_valid(old_source),"Could not stage canceled opening")
+			if is_instance_valid(old_source) and not other.is_empty():
+				manager.workspace.navigate("Campaign")
+				expect(manager.pending_campaign.is_empty() and manager.mode=="library","Campaign navigation did not cancel pending opening")
+				for i in range(manager.rows.size()):
+					if manager.rows[i]["id"]==other_id: manager.select_campaign(i)
+				manager.resume()
+				var new_source = stage_reply(manager,campaigns,other_id)
+				old_source.completed.emit(true,JSON.stringify(proposal))
+				expect(manager.pending_campaign==other_id and campaigns.gameplay_view(created_id)==original and campaigns.gameplay_view(other_id)==other_before,"Canceled response leaked across campaigns")
+				if is_instance_valid(new_source):
+					new_source.completed.emit(false,"Stub failure")
+				expect(manager.pending_campaign.is_empty() and campaigns.gameplay_view(other_id)==other_before,"Failed reply changed second campaign")
+				manager.leave()
+				for i in range(manager.rows.size()):
+					if manager.rows[i]["id"]==created_id: manager.select_campaign(i)
+				manager.resume()
+			var invalid_source = stage_reply(manager,campaigns,created_id)
+			if is_instance_valid(invalid_source):
+				invalid_source.completed.emit(true,"not JSON")
+			expect(campaigns.gameplay_view(created_id)==original and is_instance_valid(manager.opening_button) and not manager.opening_button.disabled,"Malformed reply changed opening or disabled retry")
+			var valid_source = stage_reply(manager,campaigns,created_id)
+			if is_instance_valid(valid_source):
+				valid_source.completed.emit(true,JSON.stringify(proposal))
+				valid_source.completed.emit(true,JSON.stringify(proposal))
+			var committed = campaigns.gameplay_view(created_id)
+			expect(committed.get("events",[]).size()==2 and committed.get("location",{}).get("name")=="North Road" and not committed.get("opening_available",true),"Opening failed to reload or remained eligible")
+			expect(not is_instance_valid(manager.opening_button) and manager.workspace.view==committed,"Workspace did not refresh committed log")
+			var save = find_button(manager.workspace,"Save & Exit")
+			expect(is_instance_valid(save),"Save & Exit missing")
+			if is_instance_valid(save): save.pressed.emit()
+			expect(manager.mode=="library" and manager.active.get("id")==created_id and manager.synopsis.text.contains("North Road"),"Save & Exit lost selection or synopsis")
+			manager.resume()
+			expect(manager.workspace.view==committed and not is_instance_valid(manager.opening_button),"Resume duplicated or lost opening")
+			expect(campaigns.gameplay_view(other_id)==other_before,"Opening changed another campaign")
 		root.remove_child(base)
 		base.queue_free()
 		await settle()
+	# Exercise actual main-menu Settings route, not just mock navigation callbacks.
+	if last_id.is_empty():
+		return
+	var main = MAIN_SCENE.instantiate()
+	root.add_child(main)
+	await settle()
+	main.show_screen("Existing Campaigns")
+	await settle()
+	var library = main.screen.get_child(0)
+	for i in range(library.rows.size()):
+		if library.rows[i]["id"]==last_id: library.select_campaign(i)
+	library.resume()
+	await settle()
+	var committed_view = campaigns.gameplay_view(last_id)
+	library.workspace.navigate("Settings")
+	await settle()
+	expect(main.active_screen=="Settings" and main.settings_campaign_id==last_id,"Main settings route lost campaign ID")
+	main.show_screen("Edit Content Rules")
+	await settle()
+	var return_button = find_button(main.screen,"Return to Campaign")
+	expect(is_instance_valid(return_button),"Content rules return route missing")
+	if is_instance_valid(return_button): return_button.pressed.emit()
+	await settle()
+	expect(main.active_screen=="Game Workspace","Content rules did not return to gameplay")
+	if main.active_screen=="Game Workspace":
+		var returned = main.screen.get_child(0)
+		expect(returned.mode=="workspace" and returned.active.get("id")==last_id and returned.workspace.view==committed_view,"Settings returned to wrong campaign or lost log")
+		returned.workspace.navigate("Settings")
+		await settle()
+		main.navigate("Return to Main")
+		await settle()
+		var again = main.screen.get_child(0)
+		expect(again.mode=="workspace" and again.active.get("id")==last_id and again.workspace.view==committed_view,"Settings menu return did not preserve exact campaign")
+	root.remove_child(main)
+	main.queue_free()
+	await settle()
+
+func stage_reply(manager, campaigns, id: String):
+	var prepared = campaigns.prepare_opening(id)
+	expect(not prepared.is_empty(),"Could not stage opening for "+id)
+	if prepared.is_empty():
+		return null
+	manager.ensure_gemini()
+	manager.pending_campaign=id
+	manager.pending_metadata=prepared["previous"]
+	if is_instance_valid(manager.opening_button):
+		manager.opening_button.disabled=true
+	return manager.gemini
+
+func find_button(node: Node, caption: String) -> Button:
+	if node is Button and node.text==caption:
+		return node
+	for child in node.get_children():
+		var found = find_button(child,caption)
+		if found!=null:
+			return found
+	return null

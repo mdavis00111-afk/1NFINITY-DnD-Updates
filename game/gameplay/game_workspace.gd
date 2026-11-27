@@ -435,11 +435,17 @@ func build_center(parent: VBoxContainer) -> void:
 		label(log_list,data_error,16,GOLD)
 	log_scroll.set_deferred("scroll_vertical",2147483647)
 	var actions = hbox(parent,4)
-	if not campaign.get("opening_committed",false) and int(campaign.get("turn",0))==0:
+	if view.get("opening_available",false):
 		opening_button = button(actions,"Generate Opening",retry_action,15,"wand")
 		opening_button.disabled = pending or not data_error.is_empty()
-	button(actions,"Save & Exit",leave_action,15)
-	status = label(parent,"Generating opening… Saved campaign is safe." if pending else "Turn controller pending — action submission unavailable.",14,GOLD)
+	var save_exit = button(actions,"Save & Exit",leave_action,15)
+	save_exit.tooltip_text = "Committed campaign data is already saved. Pending opening generation is canceled; manual dice are not saved."
+	var status_text = "Turn controller pending — action submission unavailable."
+	if not data_error.is_empty():
+		status_text = "Campaign data unavailable. Return to Campaign and reopen."
+	elif pending:
+		status_text = "Generating opening… Saved campaign is safe."
+	status = label(parent,status_text,14,GOLD)
 	status.max_lines_visible = 2
 	status.custom_minimum_size.y = 20
 	var compose = hbox(parent,4)
