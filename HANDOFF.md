@@ -1,28 +1,19 @@
 # Current development handoff
-Updated 2026-11-27. Coordination record on godot; read PROJECT_BRAIN.md and AGENTS.md first.
-
-## Current state
-- Primary coordinator: ChatGPT Project 00 Lead Developer. Codex optional; no active Codex assignment confirmed. Do not assume it has stopped if an external task resumes; check status before overlapping edits.
-- Live release: 0.0.21; release branch checkpoint before this documentation change: f31ada67209cafa86e36ce3c24dd7cf3bcf7cbf6; immutable game source 871746df1760f7b5b502688e6b327141682be1e2; 81 manifest entries. All manifest Git blob hashes matched pinned source tree in this setup check; version files matched.
-- Last completed implementation: GUI candidate 5282facc58abee649ce941effa5ae56eaf564e14, published as 0.0.21. Reported Linux import/startup and test-only SQL transport tests in TESTING.md. Windows runtime and fidelity acceptance pending.
-- Reference designs: design/approved/, design/baseline-v0.0.20/, design/GUI_SPEC.md, design/GUI_FIDELITY_AUDIT.txt and design/SHA256SUMS. Private reference access: see design/REFERENCE_SETUP.md. No private data in public release.
-- Active code assignment: none. Next task: owner installs/tests 0.0.21, reports screenshots and issues; lead scopes next correction. P1 structured rules is queued after GUI acceptance or explicit owner reprioritization.
-- Setup change: documentation only; no game, version, channel, updater or specialist profile changes. No runtime tests executed for this change.
-
-## Task ownership and recovery
-Before code work, replace active assignment fields below with actual values; update godot coordination record and branch-local handoff at checkpoints. No overlapping writes without coordination. Release authorization is separate from implementation.
+Updated 2026-11-27. Read PROJECT_BRAIN.md and AGENTS.md first.
+Live release 0.0.21; immutable source 871746df1760f7b5b502688e6b327141682be1e2. Owner supplied Windows screenshots and GUI feedback (v0.0.21); creator opens and AI description generation reported visually; full production smoke/rollback not independently run.
 
 | Field | Value |
 |---|---|
-| Task | Awaiting 0.0.21 feedback |
-| Status | Waiting for owner test |
+| Task | P0-02 Windows GUI refinement |
+| Status | In progress |
 | Owner/environment | ChatGPT Project lead |
-| Base | Latest godot at next task start |
-| Feature branch | None |
-| Write scope | None |
-| Last remote implementation checkpoint | 871746df1760f7b5b502688e6b327141682be1e2 |
-| Tests | See TESTING.md |
-| Blockers | Windows validation; exact artwork fidelity |
-| Next action | Collect feedback and scope change |
+| Base | 5dbb2285190bbd27e7edf9611519dc52da15bcd5 (coordination commit follows) |
+| Feature branch | feature/p0-windows-gui-feedback |
+| Write scope | creator, manager, full sheet, relevant presentation assets/helpers, layout tests, GUI docs, Brain |
+| Last remote implementation checkpoint | None yet |
+| Release authorization | Not granted |
+| Tests | Pending; Godot executable unavailable in current container |
+| Next action | Implement and review scoped changes; preserve 0.0.21 channel |
 
-For each handoff record: task ID, plain-English requirement, acceptance criteria, owner, base SHA, remote branch/checkpoint SHA, changed files, completed/incomplete work, actual test commands and results, blockers, next action, release authorization status. Keep historical details in Git history/TESTING.md rather than relying on chat. Record unpushed work explicitly if known; it is not recoverable through Git. A new task must compare remote heads and resolve stale ownership before writing.
+Owner requests: fixed 70% sheet size (no zoom controls), left saved character portrait list, manager controls bottom-left; centered identity fields with in-field prompts rather than duplicate labels, fewer heavy black nested boxes, sample portrait default, Generate with AI fills description/personality/ideal/bond/flaw/backstory only, all ability score cards visible before choosing method, verify Godot random dice, compact in-bounds selection dropdowns and bounded wrapped tooltips. Compare approved images and supplied menu font exemplar; preserve data and mechanics. No unrelated changes.
+Previous handoff history is retained in Git. Coordinate one writer, push checkpoints, recheck branch heads; do not publish without authorization.
