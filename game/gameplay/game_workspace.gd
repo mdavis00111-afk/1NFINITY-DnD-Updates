@@ -9,6 +9,7 @@ const PORTRAIT = preload("res://players/portrait_art.gd")
 const SHEET = preload("res://players/full_character_sheet.gd")
 const DICE = preload("res://gameplay/manual_dice.gd")
 const DISPLAY = preload("res://gameplay/display_values.gd")
+const INTENTS = preload("res://gameplay/ui_intents.gd")
 const FRAME = preload("res://themes/parts/panel_gold.png")
 const ACTIVE = preload("res://themes/parts/panel_active.png")
 const CORNER = preload("res://themes/parts/corner.png")
@@ -27,6 +28,11 @@ const IVORY = Color("#fff0cf")
 const ABILITIES = ["str","dex","con","int","wis","cha"]
 const TABS = ["Inventory","Spells","Skills","Features","Notes"]
 var cat = CAT.new()
+var intents = INTENTS.new()
+var intent_buttons: Array = []
+var popup_status_labels: Array = []
+var inventory_actions: HBoxContainer
+var last_chat_request_id = ""
 var view: Dictionary = {}
 var actor: Dictionary = {}
 var campaign: Dictionary = {}
@@ -59,7 +65,8 @@ var right_panel: PanelContainer
 var nav_bar: HBoxContainer
 var icon_rects: Dictionary = {}
 
-func configure(snapshot: Dictionary, metadata: Dictionary, on_leave: Callable, on_settings: Callable, on_retry: Callable, is_pending: bool, error: String = "") -> void:
+func configure(snapshot: Dictionary, metadata: Dictionary, on_leave: Callable, on_settings: Callable, on_retry: Callable, is_pending: bool, error: String = "", intent_handler: Callable = Callable()) -> void:
+	intents.configure(snapshot,intent_handler)
 	view = snapshot
 	campaign = view.get("campaign",metadata)
 	actor = view.get("actor",{})
@@ -80,6 +87,9 @@ func _ready() -> void:
 		icon_rects = parsed
 	cat.initialize()
 	add_theme_constant_override("separation",5)
+	build_workspace()
+
+func build_workspace() -> void:
 	build_header()
 	var body = hbox(self,5)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -95,6 +105,47 @@ func _ready() -> void:
 	build_left(left)
 	build_center(center)
 	build_right(right)
+	refresh_intent_controls()
+
+# Called only by the trusted future controller with a fresh, committed full view.
+# Do not reconstruct the adapter or clear a request lock on ordinary redraws.
+func apply_authoritative_view(snapshot: Dictionary) -> bool:
+	if not intents.accept_view(snapshot):
+		show_status(intents.last_error)
+		refresh_intent_controls()
+		return false
+	var draft = composer.text if is_instance_valid(composer) else ""
+	var previous_dice = last_roll.duplicate(true)
+	var previous_dice_text = dice_result.text if is_instance_valid(dice_result) else "Result: —"
+	var previous_dice_tip = dice_result.tooltip_text if is_instance_valid(dice_result) else ""
+	var previous_die = dice_type.selected if is_instance_valid(dice_type) else DICE.SIDES.find(20)
+	var previous_count = dice_count.value if is_instance_valid(dice_count) else 1.0
+	if not last_chat_request_id.is_empty() and intents.interaction.get("settled_request_id")==last_chat_request_id:
+		if intents.interaction.get("settled_status")=="committed":
+			draft = ""
+		last_chat_request_id = ""
+	view = intents.snapshot
+	campaign = view["campaign"]
+	actor = view["actor"]
+	items = view.get("inventory",[])
+	pending = false
+	data_error = ""
+	for child in get_children():
+		remove_child(child)
+		child.queue_free()
+	right_tabs.clear()
+	inventory_cells.clear()
+	intent_buttons.clear()
+	popup_status_labels.clear()
+	build_workspace()
+	composer.text = draft
+	last_roll = previous_dice
+	dice_type.select(previous_die)
+	dice_count.value = previous_count
+	dice_result.text = previous_dice_text
+	dice_result.tooltip_text = previous_dice_tip
+	show_status(str(intents.interaction.get("status_text","Campaign view refreshed.")))
+	return true
 
 func box_style(lit: bool = false, margin: int = 6, opacity: float = 0.94) -> StyleBoxTexture:
 	var style = StyleBoxTexture.new()
@@ -358,9 +409,14 @@ func build_left(parent: VBoxContainer) -> void:
 	var weapon_caption: PackedStringArray = []
 	for id in weapons:
 		weapon_caption.append(title_for("equipment",id))
+	if not intents.interaction.is_empty():
+		weapon_caption.clear()
+		for hand in ["main_hand","off_hand"]:
+			var hand_item = intents.instance(str(intents.interaction["slot_assignments"].get(hand,"")))
+			if not hand_item.is_empty():
+				weapon_caption.append(str(hand_item["name"]))
 	var weapon = button(middle,"Weapon: "+(", ".join(weapon_caption) if not weapon_caption.is_empty() else "Empty"),func(): show_equipped_weapons(),14,item_icon(str(weapons[0])) if weapons.size()==1 else "")
-	weapon.disabled = weapons.is_empty()
-	weapon.tooltip_text = ", ".join(weapon_caption) if not weapons.is_empty() else "No equipped weapon"
+	weapon.tooltip_text = "Inspect or choose main/off hand equipment"
 	for slot in ["Neck","Ring","Accessory","Belt","Shield"]:
 		slot_card(right,slot,str(gear.get("shield_id","")) if slot=="Shield" else "")
 	var money = frame(parent,1.0,false,false,4)
@@ -379,25 +435,216 @@ func build_left(parent: VBoxContainer) -> void:
 		weapon.tooltip_text += "\n"+"\n".join(warnings)
 
 func slot_card(parent: Node, slot: String, id: String) -> void:
+	var slot_id = slot.to_lower()
 	var caption = title_for("equipment",id) if not id.is_empty() else "Empty"
-	var b = button(parent,caption,func(): inspect("equipment",id),12,"armor" if slot=="Body" and not id.is_empty() else ("shield" if slot=="Shield" and not id.is_empty() else ""))
+	var occupied = not id.is_empty()
+	if not intents.interaction.is_empty():
+		var assigned = intents.instance(str(intents.interaction["slot_assignments"].get(slot_id,"")))
+		occupied = not assigned.is_empty()
+		caption = str(assigned["name"]) if occupied else "Empty"
+	var b = button(parent,caption,func(): show_slot(slot_id),12,"armor" if slot=="Body" and occupied else ("shield" if slot=="Shield" and occupied else ""))
 	b.custom_minimum_size.y = 40
-	b.disabled = id.is_empty()
-	b.tooltip_text = slot+" — "+caption
-	if id.is_empty():
+	b.tooltip_text = slot+" — "+caption+" · Inspect / choose owned equipment"
+	if not occupied:
 		var atlas = AtlasTexture.new()
 		atlas.atlas = SLOT_ATLAS
 		atlas.region = Rect2(SLOT_NAMES.find(slot)*28,0,28,28)
 		b.icon = atlas
-	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-	b.add_theme_constant_override("icon_max_width",20)
+		b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+		b.add_theme_constant_override("icon_max_width",20)
 
 func show_equipped_weapons() -> void:
-	var lines: PackedStringArray = []
-	for id in actor.get("equipment",{}).get("weapon_ids",[]):
-		lines.append(cat.describe("equipment",str(id)))
-	popup_text("Equipped weapons","\n\n".join(lines))
+	var popup = popup_base("Hands & equipped weapons")
+	var col = vbox(popup,6)
+	col.custom_minimum_size = Vector2(560,0)
+	if intents.interaction.is_empty():
+		var lines: PackedStringArray = []
+		for id in actor.get("equipment",{}).get("weapon_ids",[]):
+			lines.append(title_for("equipment",id))
+		label(col,"Recorded weapons: "+(", ".join(lines) if not lines.is_empty() else "None recorded"))
+		label(col,"Legacy equipment has no hand assignment. Inspect compatible owned weapons; changing hands needs the authoritative equipment handler.",15,GOLD)
+	else:
+		for hand in ["main_hand","off_hand","shield"]:
+			var assigned = intents.instance(str(intents.interaction["slot_assignments"].get(hand,"")))
+			label(col,hand.replace("_"," ").capitalize()+": "+str(assigned.get("name","Empty")))
+	for hand in ["main_hand","off_hand","shield"]:
+		var key = hand
+		button(col,key.replace("_"," ").capitalize(),func(): popup.queue_free(); show_slot(key))
+	popup.popup_centered(Vector2i(600,260))
+
+func display_items() -> Array:
+	# Legacy stacks are for inspection only. C2 supplies actual stable IDs.
+	return intents.interaction["inventory_instances"] if not intents.interaction.is_empty() else items
+
+func item_key(row: Dictionary) -> String:
+	return str(row.get("instance_id",row.get("item_id","")))
+
+func item_definition(row: Dictionary) -> String:
+	return str(row.get("definition_id",row.get("item_id","")))
+
+func item_name(row: Dictionary) -> String:
+	return str(row.get("name",title_for("equipment",item_definition(row))))
+
+func display_item(key: String) -> Dictionary:
+	for row in display_items():
+		if item_key(row)==key:
+			return row
+	return {}
+
+func item_description(row: Dictionary) -> String:
+	if row.is_empty():
+		return "No item selected."
+	if row.has("description"):
+		return str(row["description"])
+	return cat.describe("equipment",item_definition(row))
+
+func legacy_slots(row: Dictionary) -> Array:
+	var rec = cat.get_record("equipment",item_definition(row))
+	if rec.get("armor_category")=="Shield":
+		return ["shield"]
+	if rec.get("armor_category") in ["Light","Medium","Heavy"]:
+		return ["body"]
+	if rec.has("weapon_category"):
+		# Category-level candidates only; not an assertion of legal grip or
+		# offhand use. The actual action remains disabled in a legacy view.
+		return ["main_hand","off_hand"]
+	return []
+
+func slot_options(slot: String) -> Array:
+	var options: Array = []
+	for row in display_items():
+		if intents.interaction.is_empty():
+			if slot in legacy_slots(row):
+				options.append({"row":row,"option":{},"kind":""})
+			continue
+		for opt in row.get("equip_options",[]):
+			if opt.get("slot")==slot:
+				options.append({"row":row,"option":opt,"kind":"equip" if opt["replace_instance_ids"].is_empty() else "swap"})
+	return options
+
+func current_slot_text(slot: String) -> String:
+	if not intents.interaction.is_empty():
+		var row = intents.instance(str(intents.interaction["slot_assignments"].get(slot,"")))
+		return str(row.get("name","Empty"))
+	var gear = actor.get("equipment",{})
+	if slot in ["main_hand","off_hand"]:
+		var labels: PackedStringArray = []
+		for id in gear.get("weapon_ids",[]):
+			labels.append(title_for("equipment",id))
+		return "Hand not recorded; weapons: "+(", ".join(labels) if not labels.is_empty() else "None")
+	var key = "armor_id" if slot=="body" else ("shield_id" if slot=="shield" else "")
+	if key.is_empty():
+		return "No slot assignment recorded"
+	var id = str(gear.get(key,""))
+	return title_for("equipment",id) if not id.is_empty() else "Empty"
+
+func show_slot(slot: String, preferred_id: String = "") -> void:
+	if not slot in INTENTS.SLOTS:
+		return
+	var popup = popup_base(slot.replace("_"," ").capitalize()+" equipment")
+	var col = vbox(popup,5)
+	col.custom_minimum_size = Vector2(650,0)
+	label(col,"Current: "+current_slot_text(slot),19,GOLD)
+	label(col,"Owned compatible items · select an item or grip",15,GOLD)
+	var row_box = hbox(col,6)
+	row_box.custom_minimum_size.y = 270
+	var list = ItemList.new()
+	list.custom_minimum_size.x = 245
+	list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	row_box.add_child(list)
+	var detail = TextEdit.new()
+	detail.editable = false
+	detail.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row_box.add_child(detail)
+	var options = slot_options(slot)
+	var selected = {"index":-1}
+	var actions = hbox(col,5)
+	var equip_button = button(actions,"Equip / Swap",func():
+		var index = int(selected["index"])
+		if index<0 or index>=options.size():
+			return
+		var candidate = options[index]
+		var opt = candidate["option"]
+		if opt.is_empty():
+			return
+		var args = {"instance_id":candidate["row"]["instance_id"],"slot":slot,"grip":opt["grip"]}
+		if candidate["kind"]=="swap":
+			args["replace_instance_ids"] = opt["replace_instance_ids"].duplicate()
+		request_intent(candidate["kind"],args)
+		if not intents.outstanding_id.is_empty():
+			popup.queue_free()
+	,16)
+	equip_button.disabled = true
+	var current_id = intents.interaction.get("slot_assignments",{}).get(slot)
+	var unequip = intent_button(actions,"Unequip","unequip",{"instance_id":current_id,"slot":slot},current_id!=null,"Current instance assignment required.")
+	unequip.tooltip_text = "Unequip the current item via the controller. "+unequip.tooltip_text
+	var show_option = func(index: int):
+		selected["index"] = index
+		var candidate = options[index]
+		var item = candidate["row"]
+		var opt = candidate["option"]
+		var lines: PackedStringArray = [item_name(item),"Owned quantity: "+number(item.get("quantity")),item_description(item)]
+		if opt.is_empty():
+			lines.append("Legacy stack: grip, proficiency, attunement, hand conflicts and action timing require C2/C3. Inspection only.")
+			equip_button.disabled = true
+			equip_button.text = "Equip / Swap"
+		else:
+			lines.append("Grip: "+str(opt["grip"]).replace("_"," "))
+			var displaced: PackedStringArray = []
+			for other in opt["replace_instance_ids"]:
+				displaced.append(str(intents.instance(other).get("name","Owned item")))
+			if not displaced.is_empty():
+				lines.append("Atomic swap displaces: "+", ".join(displaced))
+			if not str(opt["warning"]).is_empty():
+				lines.append(str(opt["warning"]))
+			equip_button.text = "Swap" if candidate["kind"]=="swap" else "Equip"
+			equip_button.disabled = not opt["available"] or not can_intent(candidate["kind"])
+			equip_button.tooltip_text = str(opt["warning"]) if not opt["available"] else intent_reason(candidate["kind"])
+		detail.text = "\n\n".join(lines)
+	for candidate in options:
+		var item = candidate["row"]
+		var opt = candidate["option"]
+		var caption = item_name(item)+" ×"+number(item.get("quantity"))
+		if not opt.is_empty():
+			caption += " · "+str(opt["grip"]).replace("_"," ")
+		list.add_item(caption)
+	list.item_selected.connect(show_option)
+	if options.is_empty():
+		detail.text = "No compatible owned items are recorded for this slot. No item or assignment will be invented."
+	else:
+		var index = 0
+		for i in range(options.size()):
+			if item_key(options[i]["row"])==preferred_id:
+				index = i
+				break
+		list.select(index)
+		show_option.call(index)
+	popup_status(col)
+	popup.popup_centered(Vector2i(690,440))
+
+func equip_from_inventory(id: String) -> void:
+	var item = display_item(id)
+	if item.is_empty():
+		return
+	var popup = popup_base("Equip "+item_name(item))
+	var col = vbox(popup,5)
+	col.custom_minimum_size.x = 410
+	var slots: Array = []
+	if intents.interaction.is_empty():
+		slots = legacy_slots(item)
+	else:
+		for opt in item.get("equip_options",[]):
+			if not opt["slot"] in slots:
+				slots.append(opt["slot"])
+	if slots.is_empty():
+		label(col,"No compatible slot is recorded. Equipment compatibility requires an authoritative item definition.")
+	for slot in slots:
+		var key = str(slot)
+		button(col,key.replace("_"," ").capitalize(),func(): popup.queue_free(); show_slot(key,id))
+	label(col,"No equipment changes occur until the controller resolves and commits the selected intent.",14,GOLD)
+	popup.popup_centered(Vector2i(450,260))
 
 func build_center(parent: VBoxContainer) -> void:
 	var scene = frame(parent,1.0,true,false,3)
@@ -509,6 +756,57 @@ func show_status(message: String) -> void:
 	if is_instance_valid(status):
 		status.text = message
 
+func can_intent(kind: String) -> bool:
+	return not pending and data_error.is_empty() and intents.available(kind)
+
+func intent_reason(kind: String) -> String:
+	if pending or not data_error.is_empty():
+		return "Campaign busy or unavailable."
+	return intents.reason(kind)
+
+func track_intent(control: Button,kind: String,local_allowed: bool = true,local_reason: String = "") -> void:
+	intent_buttons.append({"button":control,"kind":kind,"allowed":local_allowed,"reason":local_reason})
+	control.disabled = not local_allowed or not can_intent(kind)
+	control.tooltip_text = local_reason if not local_allowed else intent_reason(kind)
+
+func intent_button(parent: Node,caption: String,kind: String,args: Dictionary,local_allowed: bool = true,local_reason: String = "") -> Button:
+	var b = button(parent,caption,func(): request_intent(kind,args),15)
+	track_intent(b,kind,local_allowed,local_reason)
+	return b
+
+func popup_status(parent: Node) -> void:
+	var note = label(parent,"Controller not connected — inspection only." if not intents.handler.is_valid() else "Intents are resolved by the controller; no optimistic updates.",14,GOLD)
+	popup_status_labels.append(note)
+
+func refresh_intent_controls() -> void:
+	var live: Array = []
+	for binding in intent_buttons:
+		var control = binding["button"]
+		if is_instance_valid(control) and not control.is_queued_for_deletion():
+			control.disabled = not binding["allowed"] or not can_intent(binding["kind"])
+			control.tooltip_text = binding["reason"] if not binding["allowed"] else intent_reason(binding["kind"])
+			live.append(binding)
+	intent_buttons = live
+	if is_instance_valid(composer):
+		composer.editable = can_intent("chat")
+		composer.placeholder_text = "Type your action here…" if composer.editable else "Type your action here… (controller unavailable)"
+	if is_instance_valid(send_button):
+		send_button.disabled = not can_intent("chat")
+		send_button.tooltip_text = intent_reason("chat")
+
+func request_intent(kind: String,args: Dictionary) -> Dictionary:
+	var reply = intents.request(kind,args) if can_intent(kind) else {"ok":false,"message":intent_reason(kind)}
+	var message = str(reply.get("message","Request unavailable."))
+	show_status(message)
+	var live: Array = []
+	for note in popup_status_labels:
+		if is_instance_valid(note) and not note.is_queued_for_deletion():
+			note.text = message
+			live.append(note)
+	popup_status_labels = live
+	refresh_intent_controls()
+	return reply
+
 func roll_dice() -> void:
 	last_roll = DICE.roll(int(dice_type.get_item_metadata(dice_type.selected)),int(dice_count.value))
 	if last_roll.is_empty():
@@ -535,7 +833,7 @@ func build_right(parent: VBoxContainer) -> void:
 	section.get_parent().size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right_content = vbox(section,3)
 	right_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	show_tab("Inventory")
+	show_tab(current_tab if current_tab in TABS else "Inventory")
 	var references = frame(parent,1.0,true,false,4)
 	one_line(references,"✧  Quick References (5e)",19,GOLD)
 	var grid = GridContainer.new()
@@ -590,6 +888,8 @@ func show_tab(tab: String) -> void:
 		"Notes": build_notes()
 
 func equipped(id: String) -> bool:
+	if not intents.interaction.is_empty():
+		return id in intents.interaction["slot_assignments"].values()
 	for item in items:
 		if str(item.get("item_id",""))==id:
 			return item.get("equipped")==true
@@ -627,14 +927,14 @@ func build_inventory() -> void:
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.add_child(grid)
 	var shown: Array = []
-	for item in items:
-		var id = str(item["item_id"])
+	for item in display_items():
+		var id = item_key(item)
 		if equipped_only and not equipped(id):
 			continue
 		shown.append(item)
-		var name_value = title_for("equipment",id)
+		var name_value = item_name(item)
 		var caption = name_value+"\n×"+number(item.get("quantity"))+(" • E" if equipped(id) else "")
-		var art_id = item_icon(id)
+		var art_id = item_icon(item_definition(item))
 		var visible_caption = ("×"+number(item.get("quantity"))+(" E" if equipped(id) else "")) if not art_id.is_empty() else caption
 		var cell = button(grid,visible_caption,func(): select_item(id),13,art_id)
 		cell.custom_minimum_size = Vector2(43,44)
@@ -657,39 +957,100 @@ func build_inventory() -> void:
 	inventory_detail.add_theme_font_size_override("normal_font_size",15)
 	detail.add_child(inventory_detail)
 	if not inventory_cells.has(selected_item):
-		selected_item = str(shown[0]["item_id"]) if not shown.is_empty() else ""
+		selected_item = item_key(shown[0]) if not shown.is_empty() else ""
+	inventory_actions = hbox(detail,3)
 	select_item(selected_item)
 
 func select_item(id: String) -> void:
 	selected_item = id
 	for key in inventory_cells:
 		inventory_cells[key].add_theme_stylebox_override("normal",box_style(key==id,3))
-	if id.is_empty():
+	if is_instance_valid(inventory_actions):
+		for child in inventory_actions.get_children():
+			inventory_actions.remove_child(child)
+			child.queue_free()
+	var item = display_item(id)
+	if item.is_empty():
 		inventory_detail.text = "No items in this view."
 		return
-	var rec = cat.get_record("equipment",id)
-	var text: PackedStringArray = [title_for("equipment",id)+("  ·  Equipped" if equipped(id) else "")]
-	for item in items:
-		if str(item.get("item_id"))==id:
-			text.append("Quantity: "+number(item.get("quantity")))
-			break
+	var definition = item_definition(item)
+	var rec = cat.get_record("equipment",definition)
+	var text: PackedStringArray = [item_name(item)+("  ·  Equipped" if equipped(id) else ""),"Quantity: "+number(item.get("quantity"))]
 	if rec.is_empty():
-		text.append("Catalogue details unavailable.")
+		text.append(item_description(item) if item.has("description") else "Catalogue details unavailable.")
 	else:
 		for key in ["equipment_category","weapon_category","armor_category","armor_class","damage","properties","range"]:
 			if rec.has(key):
 				text.append(str(key).replace("_"," ").capitalize()+": "+readable(rec[key]))
-		var unit = DISPLAY.unit_weight(cat,id)
+		var unit = DISPLAY.unit_weight(cat,definition)
 		text.append("Unit weight: "+DISPLAY.weight_number(unit)+" lb" if unit!=null else "Unit weight: not recorded")
 		if unit!=null:
-			for item in items:
-				if item.get("item_id")==id:
-					text.append("Stack weight: "+DISPLAY.weight_number(float(unit)*int(item["quantity"]))+" lb")
-					break
+			text.append("Stack weight: "+DISPLAY.weight_number(float(unit)*int(item["quantity"]))+" lb")
 		if rec.has("cost") and rec["cost"]!=null:
-			var lot = int(DISPLAY.AMMO_LOTS.get(id,1))
+			var lot = int(DISPLAY.AMMO_LOTS.get(definition,1))
 			text.append("Catalogue cost: "+readable(rec["cost"])+(" per "+str(lot) if lot>1 else ""))
+	for key in ["charges","attunement_status","public_warning"]:
+		if item.has(key):
+			text.append(key.replace("_"," ").capitalize()+": "+readable(item[key]))
 	inventory_detail.text = "\n".join(text)
+	if is_instance_valid(inventory_actions):
+		button(inventory_actions,"Equip",func(): equip_from_inventory(id),14)
+		var use = button(inventory_actions,"Use",func(): item_quantity_popup(id,"item_use"),14)
+		var drop = button(inventory_actions,"Drop",func(): item_quantity_popup(id,"item_drop"),14)
+		# Open inspection even when unbound. The confirm button carries the gate.
+		use.tooltip_text = "Inspect use intention · "+intent_reason("item_use")
+		drop.tooltip_text = "Inspect drop intention · "+intent_reason("item_drop")
+		button(inventory_actions,"More",func(): show_item_more(id),14)
+
+func item_quantity_popup(id: String,kind: String) -> void:
+	var item = display_item(id)
+	if item.is_empty():
+		return
+	var popup = popup_base(("Use " if kind=="item_use" else "Drop ")+item_name(item))
+	var col = vbox(popup,5)
+	col.custom_minimum_size.x = 450
+	label(col,item_description(item),15)
+	var row = hbox(col,5)
+	label(row,"Quantity (owned "+number(item.get("quantity"))+")")
+	var quantity = SpinBox.new()
+	quantity.min_value = 1
+	quantity.max_value = maxi(1,int(item.get("quantity",1)))
+	quantity.step = 1
+	quantity.value = 1
+	row.add_child(quantity)
+	if kind=="item_use":
+		label(col,"Target not selected. The controller may request an explicit target or other decision.",14,GOLD)
+	var confirm = button(col,"Submit "+("use" if kind=="item_use" else "drop")+" intention",func():
+		var args = {"instance_id":item.get("instance_id"),"quantity":int(quantity.value)}
+		if kind=="item_use":
+			args["target_id"] = null
+		request_intent(kind,args)
+	,16)
+	track_intent(confirm,kind,item.has("instance_id"),"Stable owned instance required.")
+	popup_status(col)
+	popup.popup_centered(Vector2i(490,320))
+
+func show_item_more(id: String) -> void:
+	var item = display_item(id)
+	if item.is_empty():
+		return
+	var popup = popup_base(item_name(item))
+	var col = vbox(popup,5)
+	col.custom_minimum_size.x = 530
+	var detail = TextEdit.new()
+	detail.editable = false
+	detail.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	detail.custom_minimum_size.y = 200
+	detail.text = item_description(item)
+	col.add_child(detail)
+	var assignment = str(item.get("attunement_status","unknown"))
+	label(col,"Attunement: "+assignment.replace("_"," ").capitalize(),16,GOLD)
+	var row = hbox(col,4)
+	intent_button(row,"Attune","attune",{"instance_id":item.get("instance_id")},assignment=="unattuned","Attunement eligibility not recorded.")
+	intent_button(row,"End attunement","unattune",{"instance_id":item.get("instance_id")},assignment=="attuned","No recorded attunement.")
+	button(col,"Choose equipment slot",func(): popup.queue_free(); equip_from_inventory(id))
+	popup_status(col)
+	popup.popup_centered(Vector2i(570,370))
 
 func readable(value: Variant) -> String:
 	if value is Dictionary:
