@@ -143,7 +143,7 @@ func prepare(token: Dictionary, turn_id: String, action: Dictionary, approval: V
 
 # Lookup first, even after a network or commit error. A found receipt is
 # returned untouched. An unconfirmed in-memory receipt is retried as-is.
-func resolve(id: String, token: Dictionary, request_id: String, turn_id: String, proposal: Variant, offered_refs: Array, approval: Variant, player_text: String = "") -> Dictionary:
+func resolve(id: String, token: Dictionary, request_id: String, turn_id: String, proposal: Variant, offered_refs: Array, approval: Variant, player_text: String = "", adopted: Dictionary = {}) -> Dictionary:
 	if not player_text.is_empty() and not DTO.bounded_text(player_text,2000):
 		return RAW.fail("Invalid local player action text.","invalid")
 	if not DTO.id_valid(id) or id!=token.get("campaign_id") or not DTO.id_valid(turn_id):
@@ -159,28 +159,31 @@ func resolve(id: String, token: Dictionary, request_id: String, turn_id: String,
 		return {"ok":true,"replayed":true,"receipt":prior["receipt"],"narration_event_id":prior["narration_event_id"]}
 	if unresolved.has(id):
 		var pending = unresolved[id]
-		if pending["receipt"]["turn_id"]!=turn_id:
+		if pending["receipt"]["turn_id"]!=turn_id or pending.get("adopted",{})!=adopted:
 			return RAW.fail("An unconfirmed receipt must be reconciled before another turn.")
 		var latest = store.snapshot(id)
 		if not latest.get("ok",false):
 			return latest
 		if not store.matching_token(pending["token"],latest):
 			return RAW.fail("Uncommitted receipt is stale; explicitly abandon it before replanning.")
-		var retry = store.commit_receipt(id,pending["token"],pending["receipt"],str(pending.get("player_text","")))
+		var retry = store.commit_receipt(id,pending["token"],pending["receipt"],str(pending.get("player_text","")),pending.get("adopted",{}))
 		if retry.get("ok",false):
 			unresolved.erase(id)
 		return retry
 	var current = store.snapshot(id)
 	if not current.get("ok",false) or not store.matching_token(token,current):
 		return RAW.fail("Frozen turn context changed; request clarification/replan.","invalid")
+	var binding = store.adoption_guard(current,turn_id,adopted)
+	if not binding.get("ok",false):
+		return binding
 	var verified = validate_proposal(current,request_id,turn_id,proposal,offered_refs)
 	if not verified.get("ok",false):
 		return verified
 	var planned = prepare(current,turn_id,verified["action"],approval)
 	if not planned.get("ok",false):
 		return planned
-	unresolved[id]={"token":current,"receipt":planned["receipt"],"player_text":player_text}
-	var committed = store.commit_receipt(id,current,planned["receipt"],player_text)
+	unresolved[id]={"token":current,"receipt":planned["receipt"],"player_text":player_text,"adopted":adopted.duplicate(true)}
+	var committed = store.commit_receipt(id,current,planned["receipt"],player_text,adopted)
 	if committed.get("ok",false):
 		unresolved.erase(id)
 	return committed

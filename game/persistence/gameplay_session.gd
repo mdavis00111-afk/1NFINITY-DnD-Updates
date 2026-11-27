@@ -121,8 +121,20 @@ func _commit(context: Dictionary,commands: Array,result_data: Dictionary,message
 # C3/C4 durable adoption only. A local controller must first validate the exact
 # v1 intent and assign a logical turn. This does not run mechanics or narrate.
 func adopt(id: String,request: Dictionary,turn_id: String) -> Dictionary:
-	if not request_valid(request,"1") or request["campaign_id"]!=id or not UI.FIELDS.has(request["kind"]) or not DTO.exact_keys(request["args"],UI.FIELDS[request["kind"]]) or not DTO.id_valid(turn_id) or request["kind"] in ["retry","cancel"]:
+	if not request_valid(request,"1") or not UI.FIELDS.has(request["kind"]) or not DTO.exact_keys(request["args"],UI.FIELDS[request["kind"]]) or request["kind"] in ["retry","cancel"]:
 		return fail("Invalid local adoption.")
+	return _adopt(id,request,turn_id)
+
+# C3 registry calls this only after exact semantic tool validation. This is
+# not a generic provider endpoint or proof of player intent.
+func adopt_tool(id: String,request: Dictionary,turn_id: String) -> Dictionary:
+	if not request_valid(request) or not request["kind"] in ["ability_check","skill_check","saving_throw","observe","conversation","wait","move","travel","object_check"]:
+		return fail("Not a registered adopted mechanical action.")
+	return _adopt(id,request,turn_id)
+
+func _adopt(id: String,request: Dictionary,turn_id: String) -> Dictionary:
+	if request["campaign_id"]!=id or not DTO.id_valid(turn_id):
+		return fail("Invalid adoption identity.")
 	var state = token(id)
 	if not state.get("ok",false) or request["actor_id"]!=state.get("actor_id"):
 		return fail("Campaign or actor unavailable.")
@@ -139,6 +151,18 @@ func adopt(id: String,request: Dictionary,turn_id: String) -> Dictionary:
 	if confirmed.get("found",false) and confirmed["request"]==request and confirmed["logical_turn_id"]==turn_id:
 		return confirmed
 	return fail("Adoption not confirmed; reconcile request before resolving.") if not saved.get("ok",false) else fail("Adoption readback unavailable.")
+
+func adoption_binding(id: String,request_id: String,turn_id: String) -> Dictionary:
+	var prior = settlement(id,request_id)
+	if not prior.get("found",false) or prior["status"]!="accepted_pending" or prior["logical_turn_id"]!=turn_id:
+		return fail("Exact pending adoption unavailable.")
+	var state = token(id)
+	if not state.get("ok",false):
+		return state
+	var result = read(state,[SQL.stmt("SELECT request_payload FROM gameplay_requests WHERE request_id=? AND status='accepted_pending' AND logical_turn_id=?",[request_id,turn_id])])
+	if not result.get("ok",false) or result["sets"][0].size()!=1:
+		return fail("Adoption readback changed.")
+	return {"ok":true,"binding":{"request_id":request_id,"request_payload":result["sets"][0][0]["request_payload"]}}
 
 # Receipt-backed final settlement; no second outcome or revision increment.
 # Cancellation/rejection is only permitted after the trusted controller proves

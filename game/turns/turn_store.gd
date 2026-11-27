@@ -164,9 +164,31 @@ func route_guards(token: Dictionary, route: Dictionary) -> Array:
 		commands.append(SQL.stmt("DELETE FROM meta WHERE key='turn_route_guard'"))
 	return commands
 
+# C3: a migrated campaign can only resolve a logical mechanical turn if
+# its exact local durable request has been adopted. Legacy B2 fixtures retain
+# the old path; the write guard also checks the migration marker under lock.
+func adoption_guard(token: Dictionary, turn_id: String, adopted: Dictionary = {}) -> Dictionary:
+	var path = BASE.new().path_for(token["campaign_id"])
+	var marker = SQL.run(path,[SQL.stmt("SELECT value FROM meta WHERE key='gameplay_schema'")],true)
+	if not marker.get("ok",false):
+		return failure("Cannot verify gameplay request authority.")
+	if marker["results"][0].is_empty():
+		if not adopted.is_empty():
+			return failure("Adoption requires gameplay migration.")
+		return {"ok":true,"commands":[SQL.stmt("INSERT INTO meta(key,value) VALUES('c3_adoption_guard',(SELECT 'ok' WHERE NOT EXISTS(SELECT 1 FROM meta WHERE key='gameplay_schema')))"),SQL.stmt("DELETE FROM meta WHERE key='c3_adoption_guard'")]}
+	if marker["results"][0].size()!=1 or marker["results"][0][0]["value"]!="1" or not DTO.exact_keys(adopted,["request_id","request_payload"]) or not DTO.id_valid(adopted["request_id"]) or not adopted["request_payload"] is String:
+		return failure("A migrated campaign requires an exact adopted request.")
+	var payload = JSON.parse_string(adopted["request_payload"])
+	if not payload is Dictionary or payload.get("request_id")!=adopted["request_id"] or payload.get("campaign_id")!=token["campaign_id"] or payload.get("actor_id")!=token["actor_id"] or payload.get("expected_revision")!=token["revision"]:
+		return failure("Adopted request identity mismatch.")
+	var check = SQL.run(path,[SQL.stmt("SELECT request_id FROM gameplay_requests WHERE request_id=? AND actor_id=? AND logical_turn_id=? AND expected_revision=CAST(? AS INTEGER) AND status='accepted_pending' AND request_payload=?",[adopted["request_id"],token["actor_id"],turn_id,token["revision"],adopted["request_payload"]]),SQL.stmt("SELECT count(*) AS n FROM gameplay_requests WHERE status='accepted_pending'")],true)
+	if not check.get("ok",false) or check["results"][0].size()!=1 or DTO.sql_int(check["results"][1][0]["n"])!=1:
+		return failure("Adoption missing, conflicting or no longer pending.")
+	return {"ok":true,"commands":[SQL.stmt("INSERT INTO meta(key,value) VALUES('c3_adoption_guard',(SELECT 'ok' FROM gameplay_requests WHERE request_id=? AND actor_id=? AND logical_turn_id=? AND expected_revision=CAST(? AS INTEGER) AND status='accepted_pending' AND request_payload=? AND (SELECT count(*) FROM gameplay_requests WHERE status='accepted_pending')=1 AND EXISTS(SELECT 1 FROM meta WHERE key='gameplay_schema' AND value='1')))",[adopted["request_id"],token["actor_id"],turn_id,token["revision"],adopted["request_payload"]]),SQL.stmt("DELETE FROM meta WHERE key='c3_adoption_guard'")]}
+
 # Engine-only API; strict registered RAW unions, exact state and SQL guards.
 # No generic patch or caller-supplied SQL.
-func commit_receipt(id: String, token: Dictionary, receipt: Dictionary, player_text: String = "") -> Dictionary:
+func commit_receipt(id: String, token: Dictionary, receipt: Dictionary, player_text: String = "", adopted: Dictionary = {}) -> Dictionary:
 	if not player_text.is_empty() and not DTO.bounded_text(player_text,2000):
 		return failure("Invalid local player action text.")
 	if not DTO.receipt_valid(receipt) or receipt["campaign_id"]!=id:
@@ -186,7 +208,11 @@ func commit_receipt(id: String, token: Dictionary, receipt: Dictionary, player_t
 	var cat = CAT.new()
 	if not RAW.receipt_valid(receipt,current,cat):
 		return failure("Unregistered or inconsistent mechanical receipt.")
+	var binding = adoption_guard(current,receipt["turn_id"],adopted)
+	if not binding.get("ok",false):
+		return binding
 	var commands: Array = [guard(current)]
+	commands.append_array(binding["commands"])
 	commands.append_array(inventory_guards(current))
 	var action = receipt["results"][0]
 	if action["kind"] in ["move","travel"]:
