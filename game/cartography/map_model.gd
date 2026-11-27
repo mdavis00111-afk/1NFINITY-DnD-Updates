@@ -12,6 +12,7 @@ var campaign_id = ""
 var pending: Dictionary = {}
 var next_page = 0
 var revision = -1
+var annotation_count = -1
 var seen: Dictionary = {}
 
 func start(id: String) -> void:
@@ -22,6 +23,7 @@ func start(id: String) -> void:
 	seen = {}
 	next_page = 0
 	revision = -1
+	annotation_count = -1
 	for key in LISTS:
 		pending[key] = []
 		seen[key] = {}
@@ -53,10 +55,13 @@ func accept_page(page: Dictionary) -> String:
 		return fail("Map projection identity or coordinate contract mismatch.")
 	if not page.get("revision") is int or int(page["revision"])<0:
 		return fail("Invalid map revision.")
+	if not page.get("annotation_count") is int or page["annotation_count"]<0:
+		return fail("Invalid map annotation snapshot.")
 	if next_page==0:
 		revision = page["revision"]
-	elif page["revision"]!=revision:
-		return fail("World changed while reading map. Refresh to retry.")
+		annotation_count = page["annotation_count"]
+	elif page["revision"]!=revision or page["annotation_count"]!=annotation_count:
+		return fail("World or annotations changed while reading map. Refresh to retry.")
 	var empty = true
 	for key in LISTS:
 		var rows = page.get(key)
@@ -75,6 +80,8 @@ func accept_page(page: Dictionary) -> String:
 	next_page += 1
 	if not empty:
 		return "more"
+	if pending["annotations"].size()!=annotation_count:
+		return fail("Incomplete map annotations. Refresh to retry.")
 	pending["revision"] = revision
 	pending["campaign_id"] = campaign_id
 	pending["party_location"] = page.get("party_location")

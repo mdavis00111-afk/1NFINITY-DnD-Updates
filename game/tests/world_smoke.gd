@@ -242,6 +242,25 @@ func run() -> void:
 	expect(roll["mode"]=="disadvantage" and roll["values"].size()==2 and roll["selected"]==mini(int(roll["values"][0]),int(roll["values"][1])) and roll["total"]==roll["selected"]+4,"Save receipt wrong")
 	expect(engine.commit_narration(id,turn_id,7,"The saving throw is resolved.").get("ok",false),"Save narration failed")
 	expect(engine.snapshot(id).get("elapsed_seconds")==7266,"Saving throw time not committed")
+	# A syntactically valid receipt can disagree with its relational identity.
+	var prior = engine.receipt_by_id(id,turn_id)
+	expect(prior.get("ok",false) and prior.get("found",false),"Committed receipt lookup failed")
+	if prior.get("found",false):
+		var stored = prior["receipt"]
+		var forged = stored.duplicate(true)
+		forged["prior_revision"]=20
+		forged["next_revision"]=21
+		forged["resulting_turn"]=10
+		expect(SQL.run(path,[SQL.stmt("UPDATE turn_receipts SET payload=? WHERE turn_id=?",[JSON.stringify(forged),turn_id])]).get("ok",false),"Receipt corruption fixture failed")
+		expect(not engine.receipt_by_id(id,turn_id).get("ok",false),"Receipt with mismatched relational revisions accepted")
+		expect(SQL.run(path,[SQL.stmt("UPDATE turn_receipts SET payload=? WHERE turn_id=?",[JSON.stringify(stored),turn_id])]).get("ok",false),"Receipt restoration failed")
+		var narration_row = SQL.run(path,[SQL.stmt("SELECT event_id FROM turn_narrations WHERE turn_id=?",[turn_id])],true)
+		if narration_row.get("ok",false) and narration_row["results"][0].size()==1:
+			var event_id = narration_row["results"][0][0]["event_id"]
+			expect(SQL.run(path,[SQL.stmt("UPDATE events SET turn=99 WHERE id=?",[event_id])]).get("ok",false),"Narration corruption fixture failed")
+			expect(not engine.receipt_by_id(id,turn_id).get("ok",false),"Wrong narration event turn accepted")
+			expect(SQL.run(path,[SQL.stmt("UPDATE events SET turn=? WHERE id=?",[stored["resulting_turn"],event_id])]).get("ok",false),"Narration restoration failed")
+		expect(engine.receipt_by_id(id,turn_id).get("ok",false),"Restored receipt lookup failed")
 	expect(BASE.new().actor_record(id).get("combat")==original_actor.get("combat"),"Resolution changed HP")
 	expect(BASE.new().gameplay_view(b["id"])==sibling and players.load_record(master_id)==original_master,"Sibling or master changed")
 	var integrity = SQL.run(path,[SQL.stmt("PRAGMA integrity_check"),SQL.stmt("PRAGMA foreign_key_check"),SQL.stmt("SELECT quantity FROM inventory WHERE actor_id=?",[actor_id])],true)

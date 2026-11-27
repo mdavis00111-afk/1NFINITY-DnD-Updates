@@ -77,14 +77,20 @@ func map_view(id: String, page: int = 0, limit: int = LIMIT) -> Dictionary:
 		SQL.stmt(travel_page,[token["actor_id"],limit,offset]),
 		SQL.stmt("SELECT p.turn_id,p.segment_seq,p.seq,p.x,p.y FROM movement_points p JOIN ("+travel_page+") m ON m.turn_id=p.turn_id AND m.seq=p.segment_seq WHERE m.precision IN ('approximate','surveyed') ORDER BY m.turn_number,m.seq,p.seq",[token["actor_id"],limit,offset]),
 		SQL.stmt("SELECT n.id,n.location_id,n.text,n.created_at FROM world_annotations n JOIN world_discovery d ON d.location_id=n.location_id WHERE n.actor_id=? AND "+VISIBLE+" ORDER BY n.id LIMIT ? OFFSET ?",[token["actor_id"],limit,offset]),
-		SQL.stmt(MAP_LOCATIONS+" AND l.id=?",[token["location_id"]])
+		SQL.stmt(MAP_LOCATIONS+" AND l.id=?",[token["location_id"]]),
+		# Notes are append-only and deliberately do not advance mechanical revision.
+		# A count from the SAME snapshot detects offset changes between map pages.
+		SQL.stmt("SELECT count(*) AS n FROM world_annotations n JOIN world_discovery d ON d.location_id=n.location_id WHERE n.actor_id=? AND "+VISIBLE,[token["actor_id"]])
 	])
 	if not result.get("ok",false):
 		return result
 	var sets: Array = result["sets"]
+	var annotation_count = DTO.sql_int(sets[11][0]["n"]) if sets[11].size()==1 else null
+	if annotation_count==null:
+		return failure("Map annotation snapshot unavailable.")
 	var party = typed_rows(sets[10])
 	# No manufactured point: party location can be known by name only.
-	return {"ok":true,"schema_version":DTO.VERSION,"campaign_id":id,"world_id":id,"revision":token["revision"],"page":page,"limit":limit,"distance_unit":"mile","x_axis":"east","y_axis":"north","locations":typed_rows(sets[0]),"aliases":sets[1],"relationships":typed_rows(sets[2]),"routes":typed_rows(sets[3]),"route_points":typed_rows(sets[4]),"terrain_regions":sets[5],"terrain_points":typed_rows(sets[6]),"travel":typed_rows(sets[7]),"travel_points":typed_rows(sets[8]),"annotations":sets[9],"party_location":party[0] if not party.is_empty() else null}
+	return {"ok":true,"schema_version":DTO.VERSION,"campaign_id":id,"world_id":id,"revision":token["revision"],"annotation_count":annotation_count,"page":page,"limit":limit,"distance_unit":"mile","x_axis":"east","y_axis":"north","locations":typed_rows(sets[0]),"aliases":sets[1],"relationships":typed_rows(sets[2]),"routes":typed_rows(sets[3]),"route_points":typed_rows(sets[4]),"terrain_regions":sets[5],"terrain_points":typed_rows(sets[6]),"travel":typed_rows(sets[7]),"travel_points":typed_rows(sets[8]),"annotations":sets[9],"party_location":party[0] if not party.is_empty() else null}
 
 # B3 bounded player-safe subset for a current DM query. Do not use the first
 # alphabetically sorted map page as the relevant-world query.

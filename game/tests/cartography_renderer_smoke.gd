@@ -42,7 +42,7 @@ func read_all(model,id: String) -> bool:
 	return false
 
 func fake_page(id: String,number: int,revision: int) -> Dictionary:
-	var page = {"ok":true,"schema_version":"1","campaign_id":id,"world_id":id,"revision":revision,"page":number,"limit":128,"distance_unit":"mile","x_axis":"east","y_axis":"north","party_location":null}
+	var page = {"ok":true,"schema_version":"1","campaign_id":id,"world_id":id,"revision":revision,"annotation_count":0,"page":number,"limit":128,"distance_unit":"mile","x_axis":"east","y_axis":"north","party_location":null}
 	for key in MODEL.LISTS:
 		page[key] = []
 	return page
@@ -67,6 +67,16 @@ func test_page_contract() -> void:
 	expect(model.accept_page(first)=="more","Duplicate test first page rejected")
 	second["locations"] = first["locations"]
 	expect(model.accept_page(second)=="error","Duplicate stable ID accepted")
+	model.start("fixture")
+	first["annotation_count"]=1
+	first["annotations"]=[{"id":"note-one","location_id":"known","text":"First"}]
+	expect(model.accept_page(first)=="more","Annotation first page rejected")
+	var changed = fake_page("fixture",1,2)
+	changed["annotation_count"]=2
+	expect(model.accept_page(changed)=="error" and model.data.is_empty(),"Changed annotation count accepted at unchanged world revision")
+	model.start("fixture")
+	first["annotation_count"]=2
+	expect(model.accept_page(first)=="more" and model.accept_page(changed)=="error","Incomplete annotation page accepted")
 
 func run() -> void:
 	test_page_contract()
@@ -145,6 +155,13 @@ func run() -> void:
 	expect(not model.annotate(hidden,"Hidden").get("ok",false),"Hidden annotation accepted")
 	expect(model.annotate(bridge,"Remember the bridge.").get("ok",false),"B1 annotation save failed")
 	expect(read_all(model,id) and model.data["annotations"].size()==1 and model.data["revision"]==0,"Annotation did not reload or changed canon revision")
+	# Actual annotation append between pages cannot advance mechanical revision.
+	var concurrent = MODEL.new()
+	concurrent.start(id)
+	expect(concurrent.accept_page(WORLD.new().map_view(id,0,1))=="more","Concurrent note fixture first page failed")
+	expect(WORLD.new().add_annotation(id,bridge,"Second annotation during paging").get("ok",false),"Concurrent annotation save failed")
+	expect(concurrent.accept_page(WORLD.new().map_view(id,1,1))=="error" and concurrent.data.is_empty(),"Concurrent annotation mixed map pages")
+	expect(read_all(model,id) and model.data["annotations"].size()==2 and model.data["revision"]==0,"Annotation refresh changed mechanics or lost note")
 	var engine = TURN.new()
 	var token = engine.snapshot(id)
 	var turn_id = players.make_id()

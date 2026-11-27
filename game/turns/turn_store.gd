@@ -62,7 +62,7 @@ func receipt_by_id(id: String, turn_id: String) -> Dictionary:
 	var record = base.load_campaign(id)
 	if record.is_empty():
 		return failure("Campaign unavailable.")
-	var result = SQL.run(base.path_for(id),[SQL.stmt("BEGIN"),SQL.stmt("SELECT value FROM meta WHERE key='campaign'"),SQL.stmt("SELECT campaign_id FROM world_state"),SQL.stmt("SELECT r.payload,e.payload AS event_payload,n.event_id AS narration_event_id FROM turn_receipts r JOIN events e ON e.id=r.event_id LEFT JOIN turn_narrations n ON n.turn_id=r.turn_id WHERE r.turn_id=? AND r.actor_id=?",[turn_id,record["actor_id"]]),SQL.stmt("COMMIT")],true)
+	var result = SQL.run(base.path_for(id),[SQL.stmt("BEGIN"),SQL.stmt("SELECT value FROM meta WHERE key='campaign'"),SQL.stmt("SELECT campaign_id FROM world_state"),SQL.stmt("SELECT r.payload,r.prior_revision,r.next_revision,r.turn_number,e.payload AS event_payload,e.kind AS event_kind,e.turn AS event_turn,n.event_id AS narration_event_id,n.revision AS narration_revision,ne.kind AS narration_kind,ne.turn AS narration_turn,ne.payload AS narration_payload FROM turn_receipts r JOIN events e ON e.id=r.event_id LEFT JOIN turn_narrations n ON n.turn_id=r.turn_id LEFT JOIN events ne ON ne.id=n.event_id WHERE r.turn_id=? AND r.actor_id=?",[turn_id,record["actor_id"]]),SQL.stmt("COMMIT")],true)
 	if not result.get("ok",false):
 		return failure("Receipt lookup failed.")
 	var sets: Array = result["results"]
@@ -74,11 +74,23 @@ func receipt_by_id(id: String, turn_id: String) -> Dictionary:
 	var receipt = JSON.parse_string(row["payload"])
 	if not DTO.receipt_valid(receipt) or receipt["campaign_id"]!=id or receipt["actor_id"]!=record["actor_id"] or receipt["turn_id"]!=turn_id:
 		return failure("Stored receipt invalid.")
+	# JSON and relational receipt provenance must agree. Never treat a corrupt
+	# record as a successful acknowledgement or permit a new roll on lookup failure.
+	if DTO.sql_int(row["prior_revision"])!=receipt["prior_revision"] or DTO.sql_int(row["next_revision"])!=receipt["next_revision"] or DTO.sql_int(row["turn_number"])!=receipt["resulting_turn"] or row["event_kind"]!="mechanical_receipt" or DTO.sql_int(row["event_turn"])!=receipt["resulting_turn"]:
+		return failure("Stored receipt revision or event provenance mismatch.")
 	var event = JSON.parse_string(row["event_payload"])
+	var modern = not receipt["effects"].is_empty() and receipt["effects"].back().get("kind")=="time"
+	if not event is Dictionary or (event.has("turn_id") and event["turn_id"]!=turn_id) or (modern and event.get("turn_id")!=turn_id):
+		return failure("Stored receipt event identity mismatch.")
+	var narration_id = DTO.sql_int(row["narration_event_id"])
+	if row["narration_event_id"]!=null:
+		var narrated = JSON.parse_string(str(row["narration_payload"]))
+		if narration_id==null or DTO.sql_int(row["narration_revision"])!=receipt["next_revision"]+1 or row["narration_kind"]!="narration" or DTO.sql_int(row["narration_turn"])!=receipt["resulting_turn"] or not narrated is Dictionary or (narrated.has("turn_id") and narrated["turn_id"]!=turn_id) or (modern and narrated.get("turn_id")!=turn_id):
+			return failure("Stored narration provenance mismatch.")
 	var player_text = ""
-	if event is Dictionary and event.get("turn_id")==turn_id and DTO.bounded_text(event.get("player_text"),2000):
+	if event.get("turn_id")==turn_id and DTO.bounded_text(event.get("player_text"),2000):
 		player_text=event["player_text"]
-	return {"ok":true,"found":true,"receipt":receipt,"narration_event_id":DTO.sql_int(row["narration_event_id"]),"player_text":player_text}
+	return {"ok":true,"found":true,"receipt":receipt,"narration_event_id":narration_id,"player_text":player_text}
 
 # Guard inserts NULL on mismatch, violating meta.value NOT NULL. The entire
 # transaction rolls back, including receipts, movement, metadata and events.
