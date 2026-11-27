@@ -54,7 +54,7 @@ func insert_definition(definition: Dictionary) -> Dictionary:
 	return SQL.stmt("INSERT INTO item_definitions(id,origin,catalog_category,catalog_id,catalog_revision,name,unit_weight_lb,attributes,source_event_id) VALUES(?,?,?,?,?,?,?,?,?)",[definition["id"],definition["origin"],definition.get("catalog_category"),definition.get("catalog_id"),definition.get("catalog_revision"),definition["name"],definition.get("unit_weight_lb"),JSON.stringify(definition["attributes"]),definition.get("source_event_id")])
 
 func legacy_definition(id: String) -> Dictionary:
-	var known = official_definition(id)
+	var known = official_definition(id.trim_prefix("magic:"),"magic-items" if id.begins_with("magic:") else "equipment")
 	if not known.is_empty():
 		return known
 	known=official_definition(id,"magic-items")
@@ -67,7 +67,10 @@ func legacy_definition(id: String) -> Dictionary:
 # Novel attributes are descriptive or typed numeric proposals, NOT executable
 # effects. A custom weapon/magic object's mechanics remain unsupported until C3.
 func custom_valid(proposal: Variant) -> bool:
-	if not DTO.exact_keys(proposal,["name","category","description","unit_weight_lb","cost_cp","properties","charges_max","attunement_required"]) or not DTO.bounded_text(proposal["name"],100) or not DTO.bounded_text(proposal["description"],2000):
+	var keys = ["name","category","description","unit_weight_lb","cost_cp","properties","charges_max","attunement_required"]
+	if proposal is Dictionary and proposal.has("mechanical_attributes"):
+		keys.append("mechanical_attributes")
+	if not DTO.exact_keys(proposal,keys) or not DTO.bounded_text(proposal["name"],100) or not DTO.bounded_text(proposal["description"],2000):
 		return false
 	if not proposal["category"] in ["gear","tool","weapon","armor","consumable","magic","container","object"] or (proposal["unit_weight_lb"]!=null and not DTO.number(proposal["unit_weight_lb"],0,1000000)) or (proposal["cost_cp"]!=null and not DTO.whole(proposal["cost_cp"])) or (proposal["charges_max"]!=null and not DTO.whole(proposal["charges_max"])) or (proposal["attunement_required"]!=null and not proposal["attunement_required"] is bool):
 		return false
@@ -78,6 +81,28 @@ func custom_valid(proposal: Variant) -> bool:
 		if not DTO.bounded_text(property,100) or property in seen:
 			return false
 		seen.append(property)
+	var attrs = proposal.get("mechanical_attributes")
+	if attrs!=null:
+		if not DTO.exact_keys(attrs,["damage","armor_class_base","range_feet","physical_options"]):
+			return false
+		var damage = attrs["damage"]
+		if damage!=null and (not DTO.exact_keys(damage,["count","sides","type"]) or not DTO.whole(damage["count"],1,100) or not damage["sides"] in [4,6,8,10,12,20,100] or not damage["type"] in ["acid","bludgeoning","cold","fire","force","lightning","necrotic","piercing","poison","psychic","radiant","slashing","thunder"]):
+			return false
+		if attrs["armor_class_base"]!=null and not DTO.whole(attrs["armor_class_base"],0,30):
+			return false
+		var reach = attrs["range_feet"]
+		if reach!=null and (not DTO.exact_keys(reach,["normal","long"]) or not DTO.whole(reach["normal"],1,100000) or not DTO.whole(reach["long"],int(reach["normal"]),100000)):
+			return false
+		if not attrs["physical_options"] is Array or attrs["physical_options"].size()>12:
+			return false
+		var option_keys: Array = []
+		for option in attrs["physical_options"]:
+			if not DTO.exact_keys(option,["slot","grip"]) or not option["slot"] in UI.SLOTS or not option["grip"] in UI.GRIPS:
+				return false
+			var key = str(option["slot"])+":"+str(option["grip"])
+			if key in option_keys:
+				return false
+			option_keys.append(key)
 	return true
 
 func from_row(row: Dictionary) -> Dictionary:
@@ -89,6 +114,11 @@ func from_row(row: Dictionary) -> Dictionary:
 # Physical candidate categories only. C3 independently validates actual
 # proficiency, hand conflicts, use, time and effects; no available offer yet.
 func physical_options(definition: Dictionary) -> Array:
+	if definition.get("origin")=="custom":
+		var data = definition.get("attributes",{})
+		if custom_valid(data) and data.get("mechanical_attributes") is Dictionary:
+			return data["mechanical_attributes"]["physical_options"].duplicate(true)
+		return []
 	if definition.get("origin")!="official" or definition.get("catalog_category")!="equipment":
 		return []
 	var attrs: Dictionary = definition["attributes"]
@@ -105,3 +135,13 @@ func physical_options(definition: Dictionary) -> Array:
 			options.append({"slot":"main_hand","grip":"two_handed"})
 		return options
 	return []
+
+
+func exact_official_name(name: String) -> Dictionary:
+	if not DTO.bounded_text(name,100):
+		return {"ok":false,"error":"Invalid official name."}
+	var path = cat.database_path()
+	if path.is_empty():
+		return {"ok":false,"error":"Pinned catalogue unavailable."}
+	var result = SQL.run(path,[SQL.stmt("SELECT category,id FROM catalog WHERE category IN ('equipment','magic-items') AND lower(trim(name))=lower(trim(?)) ORDER BY category,id LIMIT 3",[name])],true)
+	return {"ok":true,"records":result["results"][0]} if result.get("ok",false) else {"ok":false,"error":"Pinned definition search failed."}

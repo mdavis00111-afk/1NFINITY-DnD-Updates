@@ -23,7 +23,12 @@ func ensure(id: String) -> Dictionary:
 	if not marker.get("ok",false):
 		return fail("Cannot inspect gameplay schema.")
 	if not marker["results"][0].is_empty():
-		return {"ok":true,"migrated":false} if marker["results"][0][0]["value"]==VERSION else fail("Unsupported gameplay schema.")
+		if marker["results"][0][0]["value"]!=VERSION:
+			return fail("Unsupported gameplay schema.")
+		var verified = SQL.run(path,[SQL.stmt("SELECT campaign_id FROM world_state"),SQL.stmt("SELECT count(*) AS n FROM sqlite_master WHERE type='table' AND name IN ('item_definitions','item_instances','equipment_assignments','equipment_review','actor_templates','actor_instances','loot_containers','loot_currency','gameplay_requests','item_transfers','party_members','story_records','story_participants','story_history')")],true)
+		if not verified.get("ok",false) or verified["results"][0].size()!=1 or verified["results"][0][0]["campaign_id"]!=id or DTO.sql_int(verified["results"][1][0]["n"])!=14:
+			return fail("Gameplay extension is incomplete or belongs to another campaign.")
+		return {"ok":true,"migrated":false}
 	# World migration has its own verified backup. C2 never proceeds on failure.
 	var world = WORLD.new().ensure(id)
 	if not world.get("ok",false):
@@ -32,12 +37,14 @@ func ensure(id: String) -> Dictionary:
 	if record.is_empty():
 		return fail("Campaign changed during migration.")
 	var metadata = base.loaded_metadata
-	var read = SQL.run(path,[SQL.stmt("BEGIN"),SQL.stmt("SELECT value FROM meta WHERE key='campaign'"),SQL.stmt("SELECT campaign_id,revision,pending_turn_id FROM world_state"),SQL.stmt("SELECT id,kind,payload FROM actors ORDER BY id"),SQL.stmt("SELECT actor_id,item_id,quantity,payload,typeof(quantity) AS storage_type FROM inventory ORDER BY actor_id,item_id"),SQL.stmt("SELECT id,kind,payload FROM events WHERE kind='campaign_created' ORDER BY id LIMIT 1"),SQL.stmt("COMMIT")],true)
+	var read = SQL.run(path,[SQL.stmt("BEGIN"),SQL.stmt("SELECT value FROM meta WHERE key='campaign'"),SQL.stmt("SELECT campaign_id,revision,pending_turn_id FROM world_state"),SQL.stmt("SELECT id,kind,payload FROM actors ORDER BY id"),SQL.stmt("SELECT actor_id,item_id,quantity,payload,typeof(quantity) AS storage_type FROM inventory ORDER BY actor_id,item_id"),SQL.stmt("SELECT id,kind,payload FROM events WHERE kind='campaign_created' ORDER BY id LIMIT 1"),SQL.stmt("SELECT id,payload FROM events WHERE kind='narration' ORDER BY id DESC LIMIT 64"),SQL.stmt("SELECT q.id,q.status,q.payload,w.location_id,e.id AS event_id,e.payload AS evidence,e.kind AS event_kind FROM quests q JOIN world_links w ON w.quest_id=q.id JOIN events e ON e.id=w.source_event_id ORDER BY q.id,e.id DESC LIMIT 513"),SQL.stmt("COMMIT")],true)
 	if not read.get("ok",false):
 		return fail("Cannot inspect legacy campaign.")
 	var sets: Array = read["results"]
-	if sets.size()!=7 or sets[1].size()!=1 or sets[1][0]["value"]!=metadata or sets[2].size()!=1 or sets[2][0]["campaign_id"]!=id or sets[2][0]["pending_turn_id"]!=null:
+	if sets.size()!=9 or sets[1].size()!=1 or sets[1][0]["value"]!=metadata or sets[2].size()!=1 or sets[2][0]["campaign_id"]!=id or sets[2][0]["pending_turn_id"]!=null:
 		return fail("Campaign must be idle to migrate gameplay.")
+	if sets[7].size()>512:
+		return fail("Legacy quest provenance exceeds migration bound; review before migration.")
 	var revision = DTO.sql_int(sets[2][0]["revision"])
 	if revision==null or revision>=DTO.MAX_INT-1:
 		return fail("Unsupported migration revision.")
@@ -120,11 +127,59 @@ func ensure(id: String) -> Dictionary:
 		for item in gear.get("weapon_ids",[]):
 			if not owned.has(item):
 				return fail("Legacy weapon not owned. Backup retained.")
-			# The legacy ordered weapon list did not establish specific hands.
-			commands.append(SQL.stmt("INSERT OR IGNORE INTO equipment_review(actor_id,instance_id,reason) VALUES(?,?,?)",[actor_id,owned[item]["id"],"Legacy equipped weapon has no established hand assignment."]))
+			var options = catalog.physical_options(definitions[item])
+			# A lone explicitly equipped two-handed weapon occupies BOTH hands
+			# by rule, so no arbitrary primary-hand choice is required.
+			if gear["weapon_ids"].size()==1 and str(gear.get("shield_id","")).is_empty() and options.size()==1 and options[0]["grip"]=="two_handed" and owned[item]["payload"].get("equipped",true)==true:
+				for hand in ["main_hand","off_hand"]:
+					commands.append(SQL.stmt("INSERT INTO equipment_assignments(actor_id,slot,instance_id,grip) VALUES(?,?,?,'two_handed')",[actor_id,hand,owned[item]["id"]]))
+			else:
+				# The legacy ordered weapon list did not establish specific hands.
+				commands.append(SQL.stmt("INSERT OR IGNORE INTO equipment_review(actor_id,instance_id,reason) VALUES(?,?,?)",[actor_id,owned[item]["id"],"Legacy equipped weapon has no established hand assignment."]))
 		for item in owned:
 			if owned[item]["payload"].get("equipped",false)==true and not item in claimed:
 				commands.append(SQL.stmt("INSERT OR IGNORE INTO equipment_review(actor_id,instance_id,reason) VALUES(?,?,?)",[actor_id,owned[item]["id"],"Legacy equipped flag has no established slot."]))
+	# Seed persistent, source-backed overview and situation from committed
+	# history; no synthesized plot or history. Legacy quest rows remain intact.
+	if sets[5].size()==1:
+		var creation = JSON.parse_string(sets[5][0]["payload"])
+		var created_id = DTO.sql_int(sets[5][0]["id"])
+		if creation is Dictionary and created_id!=null and DTO.bounded_text(creation.get("text"),4000):
+			var overview_id = Crypto.new().generate_random_bytes(16).hex_encode()
+			commands.append(SQL.stmt("INSERT INTO story_records(id,kind,identity_key,title,description,status,visibility,certainty,source_event_id,updated_event_id) VALUES(?,'overview','campaign-overview',?,?,'open','player','fact',?,?)",[overview_id,str(record.get("title","Campaign")),creation["text"],created_id,created_id]))
+			# Use the latest committed local narration if it actually describes
+			# the saved location; otherwise keep only the known starting scene.
+			var situation = ""
+			var situation_event: Variant = null
+			for row in sets[6]:
+				var e = JSON.parse_string(row["payload"])
+				if e is Dictionary and e.get("visibility","player")=="player" and e.get("location_id")==record.get("location_id") and DTO.bounded_text(e.get("text"),4000):
+					situation=e["text"]
+					situation_event=DTO.sql_int(row["id"])
+					break
+			if situation_event==null and record.get("turn",0)==0:
+				situation=creation["text"]
+				situation_event=created_id
+			if situation_event!=null:
+				commands.append(SQL.stmt("INSERT INTO story_records(id,kind,identity_key,title,description,status,visibility,certainty,location_id,source_event_id,updated_event_id) VALUES(?,'situation','campaign-situation','Current situation',?,'open','player','fact',?,?,?)",[Crypto.new().generate_random_bytes(16).hex_encode(),situation,record["location_id"],situation_event,situation_event]))
+	var imported: Array = []
+	for row in sets[7]:
+		if row["id"] in imported or not DTO.id_valid(row["id"]) or not row["status"] in ["offered","active","completed","failed","abandoned","resolved","open","closed"]:
+			continue
+		var quest = JSON.parse_string(row["payload"])
+		var evidence = JSON.parse_string(row["evidence"])
+		if not quest is Dictionary or not evidence is Dictionary:
+			continue
+		var title = quest.get("title",quest.get("name"))
+		var desc = quest.get("public_description","")
+		# Only migrate verifiably disclosed legacy quests to structured public
+		# records. Private/unknown legacy quests remain stored, not guessed.
+		if quest.get("public")!=true or not DTO.bounded_text(title,120) or not evidence.get("text") is String or not evidence["text"].contains(title) or evidence.get("visibility","player")!="player" or not row["event_kind"] in ["narration","gameplay_change"]:
+			continue
+		if not desc is String or desc.length()>4000 or not evidence["text"].contains(desc):
+			desc=""
+		commands.append(SQL.stmt("INSERT INTO story_records(id,kind,identity_key,title,description,status,visibility,certainty,location_id,source_event_id,updated_event_id) SELECT ?,'quest',?,?,?,?,'player','fact',?,?,? WHERE EXISTS(SELECT 1 FROM world_discovery WHERE location_id=? AND visibility='player' AND status<>'unknown')",[row["id"],"legacy-quest:"+row["id"],title,desc,row["status"],row["location_id"],row["event_id"],row["event_id"],row["location_id"]]))
+		imported.append(row["id"])
 	commands.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('gameplay_schema',?)",[VERSION]))
 	commands.append(SQL.stmt("UPDATE world_state SET revision=revision+1 WHERE campaign_id=?",[id]))
 	commands.append(SQL.stmt("DELETE FROM meta WHERE key='c2_migration_guard'"))

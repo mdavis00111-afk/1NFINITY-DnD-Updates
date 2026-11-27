@@ -37,14 +37,10 @@ func define_custom(id: String,request: Dictionary,clearance: Dictionary) -> Dict
 	if event.is_empty():
 		return fail("Definition provenance unavailable.")
 	# A verified equivalent always reuses the immutable official definition.
-	var matches: Array = []
-	for category in ["equipment","magic-items"]:
-		var search = cat.search(category,proposed["name"],64)
-		if not search.get("ok",false):
-			return search
-		for row in search["records"]:
-			if str(row["name"]).strip_edges().to_lower()==proposed["name"].strip_edges().to_lower():
-				matches.append({"category":category,"id":row["id"]})
+	var search = cat.exact_official_name(proposed["name"])
+	if not search.get("ok",false):
+		return search
+	var matches: Array = search["records"]
 	if args["official_equivalent_id"]!=null:
 		if not DTO.bounded_text(args["official_equivalent_id"],100):
 			return fail("Invalid official equivalent.")
@@ -69,7 +65,7 @@ func define_custom(id: String,request: Dictionary,clearance: Dictionary) -> Dict
 			return fail("Definition identity ambiguous.")
 		var old = cat.from_row(existing["sets"][0][0])
 		if old.get("origin")=="custom" and old.get("attributes")==proposed:
-			return {"ok":true,"replayed":true,"result":{"definition_id":old["id"]}}
+			return _reuse(ctx,{"definition_id":old["id"]},args["source_event_id"])
 		return fail("Existing definition preserved. Use its ID or an explicitly distinct name.")
 	var key = "custom-"+make_id()
 	var definition = {"id":key,"origin":"custom","name":proposed["name"].strip_edges(),"unit_weight_lb":proposed["unit_weight_lb"],"attributes":proposed,"source_event_id":args["source_event_id"]}
@@ -83,7 +79,7 @@ func register_official(ctx: Dictionary,definition: Dictionary) -> Dictionary:
 	if not existing.get("ok",false):
 		return existing
 	if not existing["sets"][0].is_empty():
-		return {"ok":true,"replayed":true,"result":{"definition_id":existing["sets"][0][0]["id"]}}
+		return _reuse(ctx,{"definition_id":existing["sets"][0][0]["id"]},ctx["request"]["args"]["source_event_id"])
 	return _commit(ctx,[ITEMS.new().insert_definition(definition)],{"definition_id":definition["id"]},"An official item definition was registered.","private")
 
 # Discovered items outside combat: a verified local discovery/ownership ruling
@@ -106,7 +102,7 @@ func reveal_discovery(id: String,request: Dictionary,clearance: Dictionary) -> D
 	if not existing.get("ok",false):
 		return existing
 	if not existing["sets"][0].is_empty():
-		return {"ok":true,"replayed":true,"result":{"container_id":existing["sets"][0][0]["id"]}}
+		return _reuse(ctx,{"container_id":existing["sets"][0][0]["id"]},args["source_event_id"])
 	var container_id = make_id()
 	var commands: Array = [SQL.stmt("INSERT INTO loot_containers(id,location_id,source_kind,source_key,source_event_id,name,visibility,status) VALUES(?,?,'discovery',?,?,?,'player','available')",[container_id,state["location_id"],str(int(args["source_event_id"])),int(args["source_event_id"]),args["name"].strip_edges()])]
 	var cat = ITEMS.new()
@@ -157,7 +153,7 @@ func reveal_outcome(id: String,request: Dictionary,clearance: Dictionary) -> Dic
 		return prior
 	var sets: Array = prior["sets"]
 	if not sets[0].is_empty():
-		return {"ok":true,"replayed":true,"result":{"container_id":sets[0][0]["id"]}}
+		return _reuse(ctx,{"container_id":sets[0][0]["id"]},request["args"]["source_event_id"])
 	if sets[1].size()!=1 or sets[2].size()!=1 or not sets[6].is_empty():
 		return fail("Outcome source is not a resolved local encounter actor or equipment requires review.")
 	var payload = JSON.parse_string(sets[2][0]["payload"])
@@ -378,3 +374,78 @@ func pickup(id: String,request: Dictionary,clearance: Dictionary) -> Dictionary:
 	commands.append(SQL.stmt("UPDATE actors SET payload=? WHERE id=?",[JSON.stringify(actor),state["actor_id"]]))
 	commands.append(SQL.stmt("UPDATE loot_containers SET status='closed' WHERE id=? AND NOT EXISTS(SELECT 1 FROM item_instances WHERE container_id=?) AND NOT EXISTS(SELECT 1 FROM loot_currency WHERE container_id=? AND quantity>0)",[cid,cid,cid]))
 	return _commit(ctx,commands,{"items":selected,"coins":coins,"container_id":cid},"Selected possessions collected.")
+
+
+# Immutable official definition registration, no invented custom proposal.
+func define_official(id: String,request: Dictionary) -> Dictionary:
+	var ctx = begin(id,request,"define_official",["category","catalog_id","source_event_id"])
+	if not ctx.get("ok",false) or ctx.get("replayed",false):
+		return ctx
+	var args: Dictionary = request["args"]
+	if not args["category"] in ["equipment","magic-items"] or not DTO.bounded_text(args["catalog_id"],100) or source(ctx["state"],args["source_event_id"]).is_empty():
+		return fail("Invalid official definition reference.")
+	var definition = ITEMS.new().official_definition(args["catalog_id"],args["category"])
+	if definition.is_empty():
+		return fail("Pinned official definition unavailable.")
+	return register_official(ctx,definition)
+
+# Underlying C3 drop persistence. A resolved local action may transfer an
+# unequipped, non-attuned possession to a visible recoverable container.
+func drop(id: String,request: Dictionary,clearance: Dictionary) -> Dictionary:
+	var ctx = begin(id,request,"item_drop",["instance_id","quantity"])
+	if not ctx.get("ok",false) or ctx.get("replayed",false):
+		return ctx
+	if not local_clearance(request,clearance,"drop_transfer"):
+		return fail("Trusted local drop ruling required.")
+	var state: Dictionary = ctx["state"]
+	var args: Dictionary = request["args"]
+	if not DTO.id_valid(args["instance_id"]) or not DTO.whole(args["quantity"],1):
+		return fail("Invalid drop selection.")
+	var data = read(state,[SQL.stmt(INSTANCE_ROWS+" WHERE i.id=? AND i.actor_id=?",[args["instance_id"],state["actor_id"]]),SQL.stmt("SELECT instance_id FROM equipment_assignments WHERE instance_id=? UNION ALL SELECT instance_id FROM equipment_review WHERE instance_id=?",[args["instance_id"],args["instance_id"]]),SQL.stmt("SELECT definition_id,sum(quantity) AS quantity FROM item_instances WHERE actor_id=? GROUP BY definition_id",[state["actor_id"]]),SQL.stmt("SELECT 1 FROM world_discovery WHERE location_id=? AND visibility='player' AND status<>'unknown'",[state["location_id"]])])
+	if not data.get("ok",false):
+		return data
+	var sets: Array = data["sets"]
+	if sets[0].size()!=1 or not sets[1].is_empty() or sets[3].size()!=1:
+		return fail("Possession unavailable, equipped, or location undisclosed.")
+	var row: Dictionary = sets[0][0]
+	var total = DTO.sql_int(row["quantity"])
+	var amount = int(args["quantity"])
+	if total==null or amount>total or row["attunement"]=="attuned" or (amount<total and (row["charges"]!=null or row["origin"]!="official" or not row["attunement"] in ["unknown","not_required"])):
+		return fail("Quantity or charge/attunement state requires adjudication.")
+	var aggregate: Dictionary = {}
+	for entry in sets[2]:
+		aggregate[entry["definition_id"]]=DTO.sql_int(entry["quantity"])
+	var items: Dictionary = {}
+	for item in state["inventory"]:
+		if aggregate.get(item["item_id"])!=item["quantity"]:
+			return fail("Inventory ownership mirror disagrees.")
+		items[item["item_id"]]=item.duplicate(true)
+	if items.size()!=aggregate.size() or not items.has(row["definition_id"]):
+		return fail("Inventory ownership mirror disagrees.")
+	var rid = request["request_id"]
+	var container_id = make_id()
+	var destination = row["id"] if amount==total else make_id()
+	var commands: Array = [SQL.stmt("INSERT INTO loot_containers(id,location_id,source_kind,source_key,source_actor_id,source_event_id,name,visibility,status) VALUES(?,?,'drop',?,?,"+EVENT+",'Dropped possessions','player','available')",[container_id,state["location_id"],rid,state["actor_id"],rid])]
+	commands.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('c2_drop_guard',(SELECT 'ok' FROM item_instances WHERE id=? AND actor_id=? AND quantity=CAST(? AS INTEGER) AND NOT EXISTS(SELECT 1 FROM equipment_assignments WHERE instance_id=?) AND NOT EXISTS(SELECT 1 FROM equipment_review WHERE instance_id=?)))",[row["id"],state["actor_id"],total,row["id"],row["id"]]))
+	if amount==total:
+		commands.append(SQL.stmt("UPDATE item_instances SET actor_id=NULL,container_id=? WHERE id=?",[container_id,row["id"]]))
+	else:
+		commands.append(SQL.stmt("UPDATE item_instances SET quantity=quantity-CAST(? AS INTEGER) WHERE id=?",[amount,row["id"]]))
+		commands.append(SQL.stmt("INSERT INTO item_instances(id,definition_id,container_id,quantity,charges,condition,attunement,provenance,source_event_id) SELECT ?,definition_id,?,CAST(? AS INTEGER),NULL,condition,attunement,provenance,source_event_id FROM item_instances WHERE id=?",[destination,container_id,amount,row["id"]]))
+	commands.append(SQL.stmt("DELETE FROM meta WHERE key='c2_drop_guard'"))
+	for denom in DENOMS:
+		commands.append(SQL.stmt("INSERT INTO loot_currency(container_id,denomination,quantity) VALUES(?,?,0)",[container_id,denom]))
+	commands.append(SQL.stmt("INSERT INTO item_transfers(id,request_id,source_instance_id,destination_instance_id,definition_id,quantity,source_container_id,destination_actor_id,source_event_id) VALUES(?,?,?,?,?,?,NULL,NULL,"+EVENT+")",[make_id(),rid,row["id"],destination,row["definition_id"],amount,rid]))
+	var mirror: Dictionary = items[row["definition_id"]]
+	mirror["quantity"]=int(mirror["quantity"])-amount
+	if mirror["quantity"]==0:
+		items.erase(row["definition_id"])
+		commands.append(SQL.stmt("DELETE FROM inventory WHERE actor_id=? AND item_id=?",[state["actor_id"],row["definition_id"]]))
+	else:
+		commands.append(SQL.stmt("UPDATE inventory SET quantity=?,payload=? WHERE actor_id=? AND item_id=?",[mirror["quantity"],JSON.stringify(mirror),state["actor_id"],row["definition_id"]]))
+	var actor: Dictionary = state["actor"].duplicate(true)
+	actor["inventory"]=items.values()
+	# Recompute weight in the authoritative view, not from a stale saved total.
+	actor["carried_weight_lb"]=null
+	commands.append(SQL.stmt("UPDATE actors SET payload=? WHERE id=?",[JSON.stringify(actor),state["actor_id"]]))
+	return _commit(ctx,commands,{"container_id":container_id,"instance_id":destination,"quantity":amount},"Selected possession dropped.")

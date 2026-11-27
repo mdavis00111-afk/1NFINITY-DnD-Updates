@@ -178,3 +178,18 @@ func settle_adopted(id: String,request_id: String,status: String,local_no_prepar
 	SQL.run(path(id),batch)
 	var confirmed = settlement(id,request_id)
 	return confirmed if confirmed.get("found",false) and confirmed["status"]==status else fail("Settlement not confirmed; retry lookup.")
+
+
+# Successful idempotent identity reuse with a NEW request ID still gets a
+# durable settlement, but does not create a false narrative event or revision.
+func _reuse(ctx: Dictionary,result_data: Dictionary,event_id: Variant) -> Dictionary:
+	var state: Dictionary = ctx["state"]
+	var request: Dictionary = ctx["request"]
+	if not DTO.whole(event_id,1) or source(state,event_id).is_empty():
+		return fail("Reuse provenance unavailable.")
+	var batch = [TURN.new().guard(state),SQL.stmt("INSERT INTO meta(key,value) VALUES('c2_reuse_guard',(SELECT 'ok' WHERE NOT EXISTS(SELECT 1 FROM gameplay_requests WHERE status='accepted_pending' OR request_id=?)))",[request["request_id"]]),SQL.stmt("INSERT INTO gameplay_requests(request_id,actor_id,kind,expected_revision,status,request_payload,result_payload,settled_revision,event_id) VALUES(?,?,?,?,'committed',?,?,?,?)",[request["request_id"],state["actor_id"],request["kind"],state["revision"],JSON.stringify(request),JSON.stringify(result_data),state["revision"],int(event_id)]),SQL.stmt("DELETE FROM meta WHERE key='c2_reuse_guard'"),SQL.stmt("DELETE FROM meta WHERE key='turn_write_guard'")]
+	SQL.run(path(state["campaign_id"]),batch)
+	var prior = settlement(state["campaign_id"],request["request_id"])
+	if prior.get("found",false) and prior["request"]==request and prior["status"]=="committed":
+		return {"ok":true,"replayed":true,"result":prior["result"],"revision":prior["revision"]}
+	return fail("Reuse settlement not confirmed.")

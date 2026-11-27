@@ -14,6 +14,8 @@ func update_story(id: String,request: Dictionary,local_review: bool = false) -> 
 	var state: Dictionary = ctx["state"]
 	if (a["record_id"]!=null and not DTO.id_valid(a["record_id"])) or not DTO.bounded_text(a["identity_key"],128) or not a["kind"] in KINDS or not DTO.bounded_text(a["title"],120) or not DTO.bounded_text(a["description"],4000) or not a["visibility"] in ["player","private"] or not a["certainty"] in ["fact","rumour","attitude"] or not a["status"] in ["offered","active","completed","failed","abandoned","resolved","open","closed"] or (a["location_id"]!=null and not DTO.id_valid(a["location_id"])) or (a["parent_id"]!=null and not DTO.id_valid(a["parent_id"])) or not a["participants"] is Array or a["participants"].size()>32:
 		return fail("Invalid story record.")
+	if (a["kind"]=="overview" and a["identity_key"]!="campaign-overview") or (a["kind"]=="situation" and a["identity_key"]!="campaign-situation"):
+		return fail("Overview and situation have fixed campaign identities.")
 	if (a["progress_current"]==null)!=(a["progress_max"]==null) or (a["progress_current"]!=null and (not DTO.whole(a["progress_current"]) or not DTO.whole(a["progress_max"],1) or a["progress_current"]>a["progress_max"])):
 		return fail("Invalid objective progress.")
 	var event = source(state,a["source_event_id"])
@@ -40,7 +42,7 @@ func update_story(id: String,request: Dictionary,local_review: bool = false) -> 
 		record_id=old["id"]
 		if old["identity_key"]!=a["identity_key"] or old["kind"]!=a["kind"] or old["parent_id"]!=a["parent_id"] or old["visibility"]!=a["visibility"] or old["certainty"]!=a["certainty"]:
 			return fail("Established identity, disclosure and certainty preserved. Add a separately evidenced record.")
-		if old["status"] in TERMINAL and old["status"]!=a["status"]:
+		if a["kind"] in ["quest","objective"] and old["status"] in TERMINAL and old["status"]!=a["status"]:
 			return fail("Terminal history cannot be silently reopened.")
 		if old["status"]=="active" and a["status"]=="offered":
 			return fail("Quest cannot regress to offered.")

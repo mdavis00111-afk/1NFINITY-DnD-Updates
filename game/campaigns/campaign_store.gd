@@ -7,6 +7,7 @@ const MATURITY = preload("res://campaigns/maturity_profiles.gd")
 const OPENING = preload("res://campaigns/opening_scene.gd")
 const DISPLAY = preload("res://gameplay/display_values.gd")
 const CATALOG = preload("res://rules/catalog.gd")
+const C2_VIEW = preload("res://persistence/interaction_projection.gd")
 const ROOT = "user://campaigns/v1"
 const SCHEMA = "1"
 var last_error = ""
@@ -204,18 +205,23 @@ func commit_opening(id: String, previous: String, raw: String) -> String:
 	commands.append(SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(0,?,'narration',?)",["Unstarted",JSON.stringify({"text":OPENING.log_text(scene),"phase":"opening","location_id":location_id})]))
 	# If the world extension is present, synchronize the opening in this same
 	# transaction. A concurrent migration/turn cannot leave split provenance.
-	var marker = SQL.run(path_for(id),[SQL.stmt("SELECT value FROM meta WHERE key='world_schema'")],true)
+	var marker = SQL.run(path_for(id),[SQL.stmt("SELECT value FROM meta WHERE key='world_schema'"),SQL.stmt("SELECT value FROM meta WHERE key='gameplay_schema'")],true)
 	if not marker.get("ok",false):
 		return "Cannot inspect world schema. No opening saved."
+	var c2 = null if marker["results"][1].is_empty() else marker["results"][1][0]["value"]
+	if c2!=null and c2!="1":
+		return "Unsupported gameplay schema. No opening saved."
 	if marker["results"][0].is_empty():
-		commands.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('opening_world_guard',(SELECT 'ok' WHERE NOT EXISTS(SELECT 1 FROM meta WHERE key='world_schema')))"))
+		commands.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('opening_world_guard',(SELECT 'ok' WHERE NOT EXISTS(SELECT 1 FROM meta WHERE key IN ('world_schema','gameplay_schema'))))"))
 	else:
 		if marker["results"][0][0]["value"]!="1":
 			return "Unsupported world schema. No opening saved."
-		commands.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('opening_world_guard',(SELECT 'ok' FROM world_state WHERE campaign_id=? AND revision=0 AND turn_number=0 AND pending_turn_id IS NULL AND EXISTS(SELECT 1 FROM world_places WHERE location_id=?)))",[id,location_id]))
+		commands.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('opening_world_guard',(SELECT 'ok' FROM world_state WHERE campaign_id=? AND revision=CAST(? AS INTEGER) AND turn_number=0 AND pending_turn_id IS NULL AND EXISTS(SELECT 1 FROM world_places WHERE location_id=?) AND ((? IS NULL AND NOT EXISTS(SELECT 1 FROM meta WHERE key='gameplay_schema')) OR EXISTS(SELECT 1 FROM meta WHERE key='gameplay_schema' AND value=?))))",[id,1 if c2=="1" else 0,location_id,c2,c2]))
 		commands.append(SQL.stmt("UPDATE world_places SET description=?,public_description=?,source_event_id=(SELECT max(id) FROM events WHERE turn=0 AND kind='narration') WHERE location_id=?",[scene["atmosphere"],scene["atmosphere"],location_id]))
 		for npc_id in opening_npc_ids:
 			commands.append(SQL.stmt("INSERT INTO world_links(id,location_id,actor_id,source_event_id) VALUES(?,?,?,(SELECT max(id) FROM events WHERE turn=0 AND kind='narration'))",[maker.make_id(),location_id,npc_id]))
+		if c2=="1":
+			commands.append(SQL.stmt("UPDATE story_records SET description=?,location_id=?,updated_event_id=(SELECT max(id) FROM events WHERE turn=0 AND kind='narration') WHERE identity_key='campaign-situation' AND kind='situation'",[OPENING.log_text(scene),location_id]))
 		commands.append(SQL.stmt("UPDATE world_state SET revision=revision+1 WHERE campaign_id=?",[id]))
 	commands.append(SQL.stmt("DELETE FROM meta WHERE key='opening_world_guard'"))
 	commands.append(SQL.stmt("DELETE FROM meta WHERE key='opening_commit_guard'"))
@@ -281,11 +287,15 @@ func gameplay_view(id: String) -> Dictionary:
 	var expected_metadata = loaded_metadata
 	# Legacy saves work without migrating. Once the extension exists, the old
 	# location-list popup must not bypass player discovery or precision.
-	var marker = SQL.run(path_for(id),[SQL.stmt("SELECT value FROM meta WHERE key='world_schema'")],true)
+	var marker = SQL.run(path_for(id),[SQL.stmt("SELECT value FROM meta WHERE key='world_schema'"),SQL.stmt("SELECT value FROM meta WHERE key='gameplay_schema'")],true)
 	if not marker.get("ok",false):
 		last_error = "Cannot inspect world schema."
 		return {}
 	var world_version = null if marker["results"][0].is_empty() else marker["results"][0][0]["value"]
+	var gameplay_version = null if marker["results"][1].is_empty() else marker["results"][1][0]["value"]
+	if gameplay_version!=null and (gameplay_version!="1" or world_version!="1"):
+		last_error = "Unsupported gameplay schema."
+		return {}
 	if world_version!=null and world_version!="1":
 		last_error = "Unsupported world schema version."
 		return {}
@@ -295,7 +305,7 @@ func gameplay_view(id: String) -> Dictionary:
 	var location_command = SQL.stmt(location_sql,[record.get("location_id","")] if world_version=="1" else [])
 	# Use the exact same eligibility guard as the opening write, in the read snapshot.
 	var available = opening_guard(record,expected_metadata) if opening_eligible(record) else SQL.stmt("SELECT NULL WHERE 0")
-	var result = SQL.run(path_for(id),[
+	var commands: Array = [
 		SQL.stmt("BEGIN"),
 		SQL.stmt("SELECT value FROM meta WHERE key='campaign'"),
 		SQL.stmt("SELECT payload,location_id,master_character_id FROM actors WHERE id=? AND kind='player'",[actor_id]),
@@ -305,19 +315,25 @@ func gameplay_view(id: String) -> Dictionary:
 		SQL.stmt("SELECT id,status,payload FROM quests ORDER BY id"),
 		available,
 		SQL.stmt("SELECT value FROM meta WHERE key='world_schema'"),
-		SQL.stmt("COMMIT")
-	],true)
+		SQL.stmt("SELECT value FROM meta WHERE key='gameplay_schema'")
+	]
+	if gameplay_version=="1":
+		commands.append_array(C2_VIEW.new().commands(id,actor_id,str(record.get("location_id",""))))
+	commands.append(SQL.stmt("COMMIT"))
+	var result = SQL.run(path_for(id),commands,true)
 	if not result.get("ok",false):
 		last_error = result_error(result,"Cannot read campaign workspace.")
 		return {}
 	var sets: Array = result.get("results",[])
-	if sets.size()!=10 or sets[1].size()!=1 or str(sets[1][0]["value"])!=expected_metadata or sets[2].size()!=1:
+	if sets.size()!=commands.size() or sets[1].size()!=1 or str(sets[1][0]["value"])!=expected_metadata or sets[2].size()!=1:
 		last_error = "Campaign changed or player data unavailable. Reopen and retry."
 		return {}
 	var snapshot_version = null if sets[8].is_empty() else sets[8][0]["value"]
-	if snapshot_version!=world_version:
-		last_error = "World schema changed. Reopen and retry."
+	var snapshot_gameplay = null if sets[9].is_empty() else sets[9][0]["value"]
+	if snapshot_version!=world_version or snapshot_gameplay!=gameplay_version:
+		last_error = "World or gameplay schema changed. Reopen and retry."
 		return {}
+	var c2_sets: Array = sets.slice(10,sets.size()-1) if gameplay_version=="1" else []
 	# One read-only transaction on the bridge connection.
 	var can_open = not sets[7].is_empty()
 	sets = sets.slice(2,7)
@@ -371,7 +387,24 @@ func gameplay_view(id: String) -> Dictionary:
 	for row in sets[4]:
 		var payload = JSON.parse_string(str(row["payload"]))
 		quests.append({"id":str(row["id"]),"status":str(row["status"]),"payload":payload if payload is Dictionary else {}})
-	return {"campaign":record,"actor":actor,"inventory":items,"events":events,"locations":locations,"location":current,"quests":quests,"opening_available":can_open}
+	var snapshot = {"campaign":record,"actor":actor,"inventory":items,"events":events,"locations":locations,"location":current,"quests":quests,"opening_available":can_open}
+	if gameplay_version=="1":
+		var extension = C2_VIEW.new().project(snapshot,c2_sets)
+		if extension.is_empty():
+			last_error = "Authoritative gameplay state unavailable or inconsistent. No saved data changed."
+			return {}
+		if extension["interaction"]!=null:
+			snapshot["interaction"]=extension["interaction"]
+		snapshot["interaction_extension"]=extension["interaction_extension"]
+		snapshot["events"]=extension["events"]
+		snapshot["actor"]["weight_projection"]=extension["weight_projection"]
+		snapshot["actor"]["carried_weight_lb"]=extension["weight_projection"]["known_lb"] if extension["weight_projection"]["complete"] else null
+		# Do not expose raw private legacy quest payloads after C2 migration.
+		var disclosed: Array = []
+		for quest in extension["interaction_extension"]["public_quests"]:
+			disclosed.append({"id":quest["id"],"status":quest["status"],"payload":{"title":quest["title"],"public_description":quest["description"],"public":true}})
+		snapshot["quests"]=disclosed
+	return snapshot
 
 # Reject malformed present containers before display code dereferences them. Missing
 # optional fields remain supported for older snapshots; never rewrite saved data.

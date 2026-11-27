@@ -98,7 +98,7 @@ func generate(id: String,request: Dictionary,local_review: bool = false) -> Dict
 	var event = source(state,args["source_event_id"])
 	if event.is_empty() or (args["visibility"]=="player" and not public_source(event)):
 		return fail("Actor generation needs established source/disclosure.")
-	var lookup = read(state,[SQL.stmt("SELECT i.actor_id,a.kind,a.location_id,t.catalog_id FROM actor_instances i JOIN actors a ON a.id=i.actor_id LEFT JOIN actor_templates t ON t.id=i.template_id WHERE i.generation_key=?",[args["generation_key"]]),SQL.stmt("SELECT l.id,d.visibility,d.status FROM locations l LEFT JOIN world_discovery d ON d.location_id=l.id WHERE l.id=?",[args["location_id"]]),SQL.stmt("SELECT id,kind,location_id,payload,catalog_id FROM actors WHERE id=?",[args["existing_actor_id"]])])
+	var lookup = read(state,[SQL.stmt("SELECT i.actor_id,a.kind,a.location_id,t.catalog_id,i.source_event_id FROM actor_instances i JOIN actors a ON a.id=i.actor_id LEFT JOIN actor_templates t ON t.id=i.template_id WHERE i.generation_key=?",[args["generation_key"]]),SQL.stmt("SELECT l.id,d.visibility,d.status FROM locations l LEFT JOIN world_discovery d ON d.location_id=l.id WHERE l.id=?",[args["location_id"]]),SQL.stmt("SELECT id,kind,location_id,payload,catalog_id FROM actors WHERE id=?",[args["existing_actor_id"]])])
 	if not lookup.get("ok",false):
 		return lookup
 	var sets: Array = lookup["sets"]
@@ -106,7 +106,7 @@ func generate(id: String,request: Dictionary,local_review: bool = false) -> Dict
 		var old = sets[0][0]
 		if old["kind"]!=args["kind"] or not old["catalog_id"] in args["template_ids"] or (args["existing_actor_id"]!=null and old["actor_id"]!=args["existing_actor_id"]):
 			return fail("Generation key already belongs to a different individual.")
-		return {"ok":true,"replayed":true,"result":{"actor_id":old["actor_id"]}}
+		return _reuse(ctx,{"actor_id":old["actor_id"]},DTO.sql_int(old["source_event_id"]))
 	if sets[1].size()!=1 or (args["visibility"]=="player" and (sets[1][0]["visibility"]!="player" or sets[1][0]["status"]=="unknown")):
 		return fail("Location not established or disclosed.")
 	var templates: Array = []
@@ -121,20 +121,35 @@ func generate(id: String,request: Dictionary,local_review: bool = false) -> Dict
 		templates.append(candidate)
 	# Godot selects among explicitly approved canonical variants and names;
 	# fixed ability/AC/HP/stat blocks are never randomized.
-	var selected: Dictionary = templates.pick_random()
+	var template_roll = randi_range(0,templates.size()-1)
+	var selected: Dictionary = templates[template_roll]
 	var actor_id = make_id()
 	var name = str(args["name"]) if args["name"]!=null else FIRST_NAMES.pick_random()+" "+LAST_NAMES.pick_random()
+	if args["name"]==null and str(selected["block"].get("type","")).to_lower()!="humanoid":
+		name=selected["block"]["name"]+" "+actor_id.left(6)
 	var legacy: Dictionary = {}
-	if args["existing_actor_id"]==null and args["name"]!=null:
+	if args["existing_actor_id"]==null:
 		# Named local NPCs must be reused explicitly rather than generating a
 		# second individual with the same contextual identity.
 		var named = read(state,[SQL.stmt("SELECT id,payload FROM actors WHERE kind IN ('npc','enemy') AND location_id=? ORDER BY id LIMIT 257",[args["location_id"]])])
 		if not named.get("ok",false) or named["sets"][0].size()>256:
 			return fail("Local actor identity search incomplete.")
+		var names: Array = []
 		for row in named["sets"][0]:
 			var data = JSON.parse_string(row["payload"])
-			if data is Dictionary and str(data.get("name","")).strip_edges().to_lower()==name.strip_edges().to_lower():
+			if data is Dictionary:
+				names.append(str(data.get("name","")).strip_edges().to_lower())
+		if name.strip_edges().to_lower() in names:
+			if args["name"]!=null:
 				return fail("Named local individual already exists. Reuse or explicitly upgrade its ID.")
+			var found = false
+			for attempt in range(16):
+				name=FIRST_NAMES.pick_random()+" "+LAST_NAMES.pick_random()
+				if not name.to_lower() in names:
+					found=true
+					break
+			if not found:
+				return fail("Unique generated identity unavailable.")
 	if args["existing_actor_id"]!=null:
 		if args["kind"]!="npc" or sets[2].size()!=1 or sets[2][0]["kind"]!="npc" or sets[2][0]["location_id"]!=args["location_id"] or sets[2][0]["catalog_id"]!=null:
 			return fail("Only an existing local descriptive NPC may receive a template.")
@@ -190,7 +205,7 @@ func generate(id: String,request: Dictionary,local_review: bool = false) -> Dict
 	var modifiers: Dictionary = {}
 	for key in selected["ability_scores"]:
 		modifiers[key]=floori((selected["ability_scores"][key]-10)/2.0)
-	var sheet = {"template_id":selected["id"],"template_revision":selected["revision"],"stat_block":block,"ability_scores":selected["ability_scores"],"ability_modifiers":modifiers,"combat":{"hp_current":selected["hp"],"hp_max":selected["hp"],"armor_class":selected["armor_class"],"size":block.get("size"),"conditions":[]},"speed":block.get("speed"),"proficiencies":block.get("proficiencies"),"actions":block.get("actions"),"traits":block.get("special_abilities"),"alignment":block.get("alignment"),"coverage_gaps":selected["coverage_gaps"],"mechanical_combat_supported":false}
+	var sheet = {"template_id":selected["id"],"template_revision":selected["revision"],"stat_block":block,"ability_scores":selected["ability_scores"],"ability_modifiers":modifiers,"combat":{"hp_current":selected["hp"],"hp_max":selected["hp"],"armor_class":selected["armor_class"],"size":block.get("size"),"conditions":[]},"speed":block.get("speed"),"proficiencies":block.get("proficiencies"),"actions":block.get("actions"),"traits":block.get("special_abilities"),"alignment":block.get("alignment"),"coverage_gaps":selected["coverage_gaps"],"mechanical_combat_supported":false,"generation":{"template_options":args["template_ids"],"selected_index":template_roll,"name_generated":args["name"]==null}}
 	var payload = legacy.duplicate(true)
 	payload.merge({"id":actor_id,"name":name,"occupation":args["occupation"],"location_id":args["location_id"],"descriptive_only":false,"public":args["visibility"]=="player","ruleset":CAT.RULESET,"catalog_revision":selected["revision"],"ability_scores":selected["ability_scores"],"ability_modifiers":modifiers,"combat":sheet["combat"],"coins":args["coins"],"carrying_capacity_lb":capacity,"attitude":legacy.get("attitude",args["attitude"]),"alignment":block.get("alignment"),"equipment":{"armor_id":"","shield_id":"","weapon_ids":[]}},true)
 	var commands: Array = []
