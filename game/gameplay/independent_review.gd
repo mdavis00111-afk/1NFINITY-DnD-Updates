@@ -71,7 +71,7 @@ func parse_report(report: Variant,text: String,original: String,outcome: Diction
 				return {"ok":false,"error":"Narrative outcome contradicts the verified result."}
 		elif claim["kind"]=="required_effect":
 			var proposal=claim["proposal"]
-			if not DTO.exact_keys(proposal,["kind","args","consent"]) or not proposal["kind"] in TRANSFERS or not controller.registry.arguments_valid(proposal["args"],REG.TOOLS[proposal["kind"]][0]) or not evidence_valid(proposal["consent"],original):
+			if not DTO.exact_keys(proposal,["kind","args","consent"]) or not proposal["kind"] in TRANSFERS or not transfer_args_valid(proposal["kind"],proposal["args"]) or not evidence_valid(proposal["consent"],original):
 				return {"ok":false,"error":"New effect is unsupported or lacks original player consent."}
 			var args=proposal["args"]
 			if args["from_actor_id"]==args["to_actor_id"] or not controller.actor_id in [args["from_actor_id"],args["to_actor_id"]] or not args["from_actor_id"] in known or not args["to_actor_id"] in known:
@@ -107,3 +107,31 @@ func reconcile(first: Dictionary,second: Dictionary,text: String,original: Strin
 	if effects.size()>1:
 		return {"ok":false,"error":"Multiple new transfers require a separate ordered action."}
 	return {"ok":true,"effects":effects}
+
+# For an NPC possession not publicly enumerated, a reviewer may identify
+# its definition rather than invent a private instance ID. Resolve only
+# that specific possession locally after the original narrative settles.
+func transfer_args_valid(kind: String,args: Variant) -> bool:
+	if controller.registry.arguments_valid(args,REG.TOOLS[kind][0]):
+		return true
+	return kind=="item_transfer" and DTO.exact_keys(args,["from_actor_id","to_actor_id","definition_id","quantity"]) and DTO.id_valid(args["from_actor_id"]) and DTO.id_valid(args["to_actor_id"]) and DTO.bounded_text(args["definition_id"],100) and DTO.whole(args["quantity"],1,DTO.MAX_INT)
+
+func resolve_transfer(proposal: Dictionary,state: Dictionary) -> Dictionary:
+	var kind=proposal["kind"]
+	var args=proposal["args"].duplicate(true)
+	if not transfer_args_valid(kind,args):
+		return {}
+	if kind=="item_transfer" and args.has("definition_id"):
+		var pack=controller.registry.noncombat.read_owned(state,args["from_actor_id"])
+		if not pack.get("ok",false):
+			return {}
+		var matches_found: Array=[]
+		for iid in pack["items"]:
+			var item=pack["items"][iid]
+			if item["definition_id"]==args["definition_id"] and item["quantity"]>=args["quantity"] and not controller.registry.noncombat.assigned(pack,iid) and item["attunement"]!="attuned":
+				matches_found.append(iid)
+		if matches_found.size()!=1:
+			return {}
+		args.erase("definition_id")
+		args["instance_id"]=matches_found[0]
+	return args if controller.registry.arguments_valid(args,REG.TOOLS[kind][0]) else {}

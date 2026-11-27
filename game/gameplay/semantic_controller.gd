@@ -62,6 +62,9 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	expanded["remaining_intents"]=job.get("remaining",[])
 	expanded["original_intent"]=job["intent"]
 	expanded["correction"]=job.get("correction","")
+	expanded["prior_outcome"]=job.get("prior_outcome",{})
+	if job.has("pending_consequence") and stage=="narrate":
+		expanded["pending_for_narrator"]={"proposal":job["pending_consequence"]["proposal"],"status":"pending, not committed"}
 	if stage=="critical":
 		expanded["candidate_hash"]=job["candidate"]["text"].sha256_text()
 		expanded["candidate_length"]=job["candidate"]["text"].length()
@@ -267,6 +270,7 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 		if not merged.get("ok",false):
 			return correction(job,merged["error"])
 		if not merged["effects"].is_empty():
+			job["second_review"]=result.duplicate(true)
 			return prepare_consequence(job,merged["effects"][0])
 		job["critical_verified"]=true
 		job["critical_claims"]=result["claims"].duplicate(true)
@@ -356,6 +360,9 @@ func process_story() -> void:
 	var index=int(job.get("discovery_index",0))
 	var discoveries=job.get("discoveries",[])
 	if index>=discoveries.size():
+		if job.has("pending_consequence"):
+			process_consequence()
+			return
 		finish("committed","Narration and deferred processing complete.")
 		return
 	var entry=discoveries[index]
@@ -424,6 +431,9 @@ func finish(status_code: String,message: String) -> void:
 	if not reload() or active().is_empty():
 		return
 	var job=active().duplicate(true)
+	if status_code=="committed" and job.has("pending_consequence") and job.get("narration_event_id")!=null:
+		process_consequence()
+		return
 	if status_code=="committed" and standalone(job) and job.get("narration_event_id")==null:
 		recover_active()
 		return
@@ -521,6 +531,8 @@ func settle_verified_only() -> Dictionary:
 	job["story_index"]=0
 	job["discovery_index"]=0
 	job["remaining"]=[]
+	job.erase("pending_consequence")
+	job.erase("consequence_request")
 	job["stage"]="reconcile"
 	job["attempt"]={}
 	if not update_active(job):
@@ -528,9 +540,115 @@ func settle_verified_only() -> Dictionary:
 	advance.call_deferred()
 	return {"ok":true}
 
-# C5b continuation staging is implemented in the next checkpoint.
+# Store the unshown original, reviewed proposal, consent and both reports.
+# Settle a corrected pending-offer narration under the original receipt
+# before attempting a fresh C3 transfer. Never mutate while B2 is pending.
 func prepare_consequence(job: Dictionary,claim: Dictionary) -> Dictionary:
-	return correction(job,"New effect needs a committed continuation before it can be narrated: "+claim["evidence"].left(240))
+	if job.has("pending_consequence") or job.get("is_consequence",false) or int(job.get("correction_count",0))>=1:
+		return correction(job,"New transfer must await a separate player intention; no completed claim is verified.")
+	var proposal=claim["proposal"]
+	var original=str(job["intent"]["args"].get("text",""))
+	if not DTO.bounded_text(proposal.get("consent"),2000) or not original.contains(proposal["consent"]):
+		return correction(job,"No explicit original player consent for the proposed transfer.")
+	job["pending_consequence"]={"proposal":proposal.duplicate(true),"evidence":claim["evidence"],"candidate":job["candidate"].duplicate(true),"candidate_hash":job["candidate"]["text"].sha256_text(),"first_review":job["first_review"].duplicate(true),"second_review":job["second_review"].duplicate(true),"original_request":job["tool"].duplicate(true),"revision":data["state"]["revision"]}
+	return correction(job,"Keep the creative scene and dialogue, but show the specific proposed transfer as offered or pending, not completed. Do not claim inventory or gold changed yet.")
+
+func process_consequence() -> void:
+	if not reload():
+		return
+	var job=active().duplicate(true)
+	var pending=job.get("pending_consequence",{})
+	var state=data["state"]
+	if pending.is_empty() or not DTO.whole(job.get("narration_event_id"),1):
+		stop("retry","Continuation source unavailable.")
+		return
+	var root=registry.session.settlement(campaign_id,job["tool"]["request_id"])
+	if not root.get("found",false) or root["status"]!="committed" or root["request"]!=pending["original_request"] or state["pending_turn_id"]!=null or not idle_database():
+		stop("retry","Original action and narration must settle before continuation.")
+		return
+	var source=registry.session.source(state,job["narration_event_id"])
+	if source.get("kind")!="narration" or not registry.session.public_source(source) or not policy.source_text(source)==job["candidate"]["text"]:
+		stop("retry","Committed continuation source differs from reviewed pending narrative.")
+		return
+	var req=job.get("consequence_request",{})
+	if req.is_empty():
+		var proposal=pending["proposal"]
+		var args=independent.resolve_transfer(proposal,state)
+		if args.is_empty():
+			stop("clarification","Proposed transfer has no unique eligible owned possession. No acquisition occurred.")
+			return
+		req=tool_for(job["intent"],state,proposal["kind"],args)
+		req["request_id"]=registry.session.make_id()
+		job["consequence_request"]=req
+		if not update_active(job):
+			return
+	var prior=registry.session.settlement(campaign_id,req["request_id"])
+	if not prior.get("ok",false):
+		stop("retry","Continuation settlement unavailable.")
+		return
+	if not prior.get("found",false):
+		if req["expected_revision"]!=data["state"]["revision"]:
+			stop("clarification","Continuation state changed; no transfer automatically rebased.")
+			return
+		if not prepare_review(req,"post_story"):
+			return
+		running=true
+		registry.execute(campaign_id,req,review_tool)
+		running=false
+		prior=registry.session.settlement(campaign_id,req["request_id"])
+	if not prior.get("found",false) or prior["request"]!=req or prior["status"]!="committed" or not reload():
+		stop("retry","Transfer not committed; recover or cancel without asserting acquisition.")
+		return
+	# Save the exact C3 settlement identity before narrating it. If interrupted
+	# before this journal write, lookup above restores it without another move.
+	var previous={"request_id":root["request"]["request_id"],"kind":root["request"]["kind"],"args":root["request"]["args"],"event_id":root["event_id"],"revision":root["revision"]}
+	var done=job.get("completed_steps",[])
+	done.append(previous)
+	var next={"intent":job["intent"],"tool":req,"stage":"narrate","attempt":{},"turn_id":req["request_id"],"is_consequence":true,"remaining":job.get("remaining",[]),"completed_steps":done,"prior_outcome":{"original_request_id":previous["request_id"],"original_event_id":previous["event_id"],"pending_narration_event_id":job["narration_event_id"],"pending_text":job["candidate"]["text"],"proposal":pending["proposal"]},"selected_context":job.get("selected_context",[])}
+	if update_active(next):
+		refresh()
+		advance.call_deferred()
+
+# Do not silently skip a required transfer as if it were descriptive memory.
+func skip_deferred() -> Dictionary:
+	if not reload():
+		return failure("Work recovery unavailable.")
+	if active().has("pending_consequence"):
+		return failure("A transfer is pending. Recover or explicitly cancel the transfer first.")
+	return super.skip_deferred()
+
+func cancel() -> Dictionary:
+	if closed or running or notifying or not reload():
+		return failure("Controller unavailable.")
+	var job=active().duplicate(true)
+	if not job.has("pending_consequence"):
+		return super.cancel()
+	if job.get("narration_event_id")==null:
+		return failure("Original receipt still needs narration settlement; use verified-only recovery to omit the pending transfer.")
+	var req=job.get("consequence_request",{})
+	if not req.is_empty():
+		var prior=registry.session.settlement(campaign_id,req["request_id"])
+		if not prior.get("ok",false):
+			return failure("Transfer settlement unavailable.")
+		if prior.get("found",false) or registry.noncombat.prepared.has(campaign_id):
+			return failure("Transfer may already be committed or prepared; recover it before cancellation.")
+	if not job.get("story_request",{}).is_empty() and registry.noncombat.prepared.has(campaign_id):
+		return failure("Deferred write must be recovered before cancellation.")
+	retire_attempt()
+	job.erase("pending_consequence")
+	job.erase("consequence_request")
+	job.erase("review_request")
+	job.erase("review_resume")
+	job.erase("context_review")
+	job["remaining"]=[]
+	job["stage"]="post_story"
+	job["attempt"]={}
+	if not update_active(job):
+		return failure("Cancellation not confirmed.")
+	status="Pending transfer canceled; previous committed narrative retained."
+	refresh()
+	advance.call_deferred()
+	return {"ok":true}
 
 func prepare_review(req: Dictionary,resume_stage: String) -> bool:
 	if not reload():
