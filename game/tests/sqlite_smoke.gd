@@ -1,5 +1,6 @@
 extends SceneTree
 const SQL = preload("res://systems/sqlite.gd")
+const REF = preload("res://rules/reference_store.gd")
 const CAT = preload("res://rules/catalog.gd")
 const RULES = preload("res://rules/character_rules.gd")
 func _initialize() -> void:
@@ -12,6 +13,17 @@ func _initialize() -> void:
 		push_error("Catalogue counts or spell lookup failed.")
 		quit(1)
 		return
+	if FileAccess.file_exists(REF.PACK):
+		var refs = REF.new()
+		if not refs.verify_pack():
+			push_error("Expanded reference database: "+refs.last_error)
+			quit(1)
+			return
+		var found = refs.search_pages("advantage")
+		if not found.get("ok",false) or found.get("results",[]).is_empty() or found["results"][0].is_empty():
+			push_error("Expanded reference database search failed.")
+			quit(1)
+			return
 	var path = "user://sqlite-smoke-"+Crypto.new().generate_random_bytes(8).hex_encode()+".db"
 	var result = SQL.run(path,[SQL.stmt("CREATE TABLE test(id TEXT PRIMARY KEY,value TEXT)"),SQL.stmt("INSERT INTO test VALUES(?,?)",["id","O'Brien — café"]),SQL.stmt("SELECT value FROM test WHERE id=?",["id"])])
 	var ok = result.get("ok",false)

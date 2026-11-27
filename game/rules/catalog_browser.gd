@@ -1,5 +1,5 @@
 extends Control
-const SQL=preload("res://systems/sqlite.gd")
+const REF=preload("res://rules/reference_store.gd")
 const CAT=preload("res://rules/catalog.gd")
 const ASSETS=preload("res://systems/asset_library.gd")
 const FRAME=preload("res://themes/parts/panel_gold.png")
@@ -166,15 +166,11 @@ func open_selected_sheet() -> void:
 
 
 func search_books(q: String) -> void:
-	var db_path = OS.get_executable_path().get_base_dir().path_join("reference/private_rules.db")
-	if not FileAccess.file_exists(db_path):
-		detail.text = "Install the local reference database at reference/private_rules.db next to the Godot executable."
-		return
 	if q.is_empty():
-		detail.text = "Enter a word or phrase and press Enter to search the installed rulebooks."
+		detail.text = "Enter a word or phrase and press Enter to search the rulebook library."
 		return
-	var query = "SELECT d.title,p.pdf_page,p.body FROM reference_pages p JOIN reference_documents d ON p.document_id=d.id WHERE instr(lower(p.body),lower(?))>0 ORDER BY d.title,p.pdf_page LIMIT 100"
-	var response = SQL.run(db_path,[SQL.stmt(query,[q])],true)
+	var store = REF.new()
+	var response = store.search_pages(q)
 	if not response.get("ok",false):
 		detail.text = "Book index unavailable: "+str(response.get("error","unknown error"))
 		return
