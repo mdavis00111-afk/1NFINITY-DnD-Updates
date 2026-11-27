@@ -69,7 +69,8 @@ func base(d: Dictionary) -> Dictionary:
 	var duplicates: Array = []
 	for id in p:
 		if id in profs:
-			if id.begins_with("skill-"):
+			var proficiency = cat.get_record("proficiencies",id)
+			if id.begins_with("skill-") or proficiency.get("type","") in ["Artisan's Tools","Gaming Sets","Musical Instruments","Other","Vehicles"]:
 				duplicates.append(id)
 		else:
 			profs.append(id)
@@ -234,8 +235,13 @@ func groups(d: Dictionary,step: int) -> Array:
 		var all_skills: Array = []
 		for skill in cat.rows("skills"):
 			all_skills.append(option("proficiencies","skill-"+str(skill["index"])))
+		var all_tools: Array = []
+		for proficiency in cat.rows("proficiencies"):
+			if proficiency.get("type","") in ["Artisan's Tools","Gaming Sets","Musical Instruments","Other","Vehicles"]:
+				all_tools.append(option("proficiencies",str(proficiency["index"])))
 		for i in range(b["duplicates"].size()):
-			add_group(result,d,"replacement-"+str(i),"Replace overlapping skill proficiency","profs",1,all_skills,p)
+			var skill_duplicate = str(b["duplicates"][i]).begins_with("skill-")
+			add_group(result,d,"replacement-"+str(i),"Replace overlapping skill proficiency" if skill_duplicate else "Replace overlapping tool proficiency","profs",1,all_skills if skill_duplicate else all_tools,p)
 			p.append_array(selected_ids(d,result.back()))
 		var i = 0
 		for raw in role.get("proficiency_choices",[])+bg.get("proficiency_choices",[]):
@@ -326,7 +332,7 @@ func validate_step(d: Dictionary,step: int) -> String:
 		var b = base(d)
 		if b["race"].is_empty() or b["role"].is_empty() or b["bg"].is_empty():
 			return "Choose a race, class and background."
-		if not b["race"].get("subraces",[]).is_empty() and not d.get("subrace_id") in cat.references(b["race"]["subraces"]):
+		if (not b["race"].get("subraces",[]).is_empty() or not str(d.get("subrace_id","")).is_empty()) and not d.get("subrace_id") in cat.references(b["race"].get("subraces",[])):
 			return "Choose an eligible subrace."
 		if int(SUBCLASS_AT.get(d.get("class_id"),99)) == 1 and not d.get("subclass_id") in cat.references(b["role"].get("subclasses",[])):
 			return "Choose a level-one subclass."

@@ -32,7 +32,7 @@ func run() -> void:
 	for start in STARTS.STARTS:
 		expect(STARTS.valid_art(start["id"]) and STARTS.texture_for(start["id"])!=null,"Missing opening artwork")
 	expect(not MATURITY.validate([{"id":"test"}]).is_empty(),"Incomplete maturity profile accepted")
-	var profile = [{"id":"fixture","name":"Test only","instructions":"Test policy, not a shipped default."}]
+	var profile = [{"id":"standard","name":"Standard","instructions":"Test policy for isolated settings."}]
 	expect(MATURITY.save_profiles(profile).is_empty(),"Could not save isolated test profile")
 	var master = PLAYER.new()
 	var id = master.make_id()
@@ -45,9 +45,9 @@ func run() -> void:
 	var saved_master = master.load_record(id)
 	var campaigns = STORE.new()
 	expect(campaigns.create_campaign("Bad profile",id,"tavern","missing").is_empty(),"Missing maturity accepted")
-	expect(campaigns.create_campaign("Bad opening",id,"invalid","fixture").is_empty(),"Unknown start accepted")
-	var a = campaigns.create_campaign("First adventure",id,"tavern","fixture")
-	var b = campaigns.create_campaign("Second adventure",id,"sea","fixture")
+	expect(campaigns.create_campaign("Bad opening",id,"invalid","standard").is_empty(),"Unknown start accepted")
+	var a = campaigns.create_campaign("First adventure",id,"tavern","standard")
+	var b = campaigns.create_campaign("Second adventure",id,"sea","standard")
 	expect(not a.is_empty() and not b.is_empty(),"Campaign creation failed: "+campaigns.last_error)
 	if a.is_empty() or b.is_empty():
 		finish()
@@ -70,9 +70,23 @@ func run() -> void:
 	expect(campaigns.update_thumbnail(a["id"],"woods").is_empty(),"Valid artwork save failed")
 	expect(campaigns.load_campaign(a["id"]).get("thumbnail_id")=="woods","Thumbnail was not persisted")
 	profile[0]["instructions"]="Updated test policy."
-	expect(MATURITY.save_profiles(profile).is_empty() and MATURITY.resolve("fixture").get("instructions")=="Updated test policy.","Live profile update not resolved")
+	expect(MATURITY.save_profiles(profile).is_empty() and MATURITY.resolve("standard").get("instructions")=="Updated test policy.","Live profile update not resolved")
+	var stale = campaigns.load_campaign(a["id"])
+	var stale_raw = campaigns.loaded_metadata
+	var before_delete = SQL.run(campaigns.path_for(a["id"]),[SQL.stmt("SELECT count(*) AS n FROM events WHERE kind='campaign_deleted'")],true)
+	expect(before_delete.get("ok",false),"Deletion baseline query failed")
 	expect(campaigns.delete_campaign(a["id"]).is_empty(),"Campaign delete failed")
+	stale["thumbnail_id"]="sea"
+	expect(not campaigns.write_metadata(a["id"],stale_raw,stale).is_empty(),"Stale metadata resurrected deleted campaign")
+	var deletion_count = SQL.run(campaigns.path_for(a["id"]),[SQL.stmt("SELECT count(*) AS n FROM events WHERE kind='campaign_deleted'")],true)
+	expect(deletion_count.get("ok",false) and int(deletion_count["results"][0][0]["n"])==1,"Deletion event not committed exactly once")
 	expect(campaigns.list_campaigns().size()==1 and campaigns.load_campaign(a["id"]).is_empty(),"Deleted campaign still visible")
 	expect(campaigns.load_campaign(a["id"],true).get("status")=="deleted" and campaigns.db_exists(a["id"]),"Recovery database was lost")
+	var failed_batch = SQL.run(campaigns.path_for(b["id"]),[SQL.stmt("UPDATE inventory SET quantity=7 WHERE actor_id=?",[b["actor_id"]]),SQL.stmt("UPDATE inventory SET quantity=0 WHERE actor_id=?",[b["actor_id"]])])
+	expect(not failed_batch.get("ok",false),"Invalid inventory transaction succeeded")
+	var after_rollback = SQL.run(campaigns.path_for(b["id"]),[SQL.stmt("SELECT quantity FROM inventory WHERE actor_id=?",[b["actor_id"]])],true)
+	expect(after_rollback.get("ok",false) and int(after_rollback["results"][0][0]["quantity"])==2,"Failed transaction did not roll back")
+	var actor_a = campaigns.load_campaign(a["id"],true)
+	expect(actor_a.get("actor_id")==a["actor_id"],"Deleted actor metadata lost")
 	expect(master.load_record(id)==saved_master,"Campaign operation modified master character")
 	finish()

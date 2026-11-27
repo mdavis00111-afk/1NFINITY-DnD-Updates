@@ -7,7 +7,7 @@ func _initialize() -> void:
 		push_error(rules.cat.last_error)
 		quit(1)
 		return
-	var cases: Array=[]
+	var cases: Array=[["human","","rogue","criminal"]]
 	for role in rules.cat.rows("classes"):
 		cases.append(["human","",role["index"],"acolyte"])
 	for race in rules.cat.rows("races"):
@@ -58,6 +58,14 @@ func _initialize() -> void:
 			if not err.is_empty():
 				failures.append(str(c)+" stage "+str(stage)+": "+err)
 		var result=rules.full_record(d)
+		if c[2]=="rogue" and c[3]=="criminal":
+			var replacements = rules.collect(rules.groups(d,3),d,"profs")
+			var tool_replaced = false
+			for proficiency in replacements:
+				if rules.cat.get_record("proficiencies",proficiency).get("type","") in ["Artisan's Tools","Gaming Sets","Musical Instruments","Other","Vehicles"] and proficiency!="thieves-tools":
+					tool_replaced = true
+			if not tool_replaced:
+				failures.append("Rogue/criminal overlapping tool proficiency not replaced")
 		if result["combat"]["hp_max"]<=0 or result["inventory"].is_empty() or result["skills"].size()!=18:
 			failures.append(str(c)+": bad derived record")
 	if rules.mod_for(8)!=-1 or rules.mod_for(9)!=-1 or rules.mod_for(18)!=4:

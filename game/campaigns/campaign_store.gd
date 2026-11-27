@@ -7,6 +7,7 @@ const MATURITY = preload("res://campaigns/maturity_profiles.gd")
 const ROOT = "user://campaigns/v1"
 const SCHEMA = "1"
 var last_error = ""
+var loaded_metadata = ""
 
 func valid_id(id: String) -> bool:
 	return PLAYER.new().valid_id(id)
@@ -34,7 +35,7 @@ func create_campaign(title: String, player_id: String, start_id: String, maturit
 	var clean_title = title.strip_edges()
 	var start = STARTS.find_start(start_id)
 	var profile = MATURITY.resolve(maturity_id)
-	if clean_title.is_empty() or clean_title.length()>100 or start.is_empty() or profile.is_empty():
+	if clean_title.is_empty() or clean_title.length()>100 or start.is_empty() or profile.is_empty() or not maturity_id in MATURITY.IDS:
 		last_error = "Enter a campaign name and choose a valid opening and maturity profile."
 		return {}
 	var master = PLAYER.new()
@@ -74,6 +75,7 @@ func create_campaign(title: String, player_id: String, start_id: String, maturit
 
 func load_campaign(id: String, include_deleted: bool = false) -> Dictionary:
 	last_error = ""
+	loaded_metadata = ""
 	if not db_exists(id):
 		last_error = "Campaign not found."
 		return {}
@@ -85,12 +87,14 @@ func load_campaign(id: String, include_deleted: bool = false) -> Dictionary:
 	if rows.size()!=2 or rows[0].is_empty() or rows[1].is_empty() or str(rows[0][0]["value"])!=SCHEMA:
 		last_error = "Unsupported or incomplete campaign schema."
 		return {}
-	var record = JSON.parse_string(str(rows[1][0]["value"]))
+	var raw_metadata = str(rows[1][0]["value"])
+	var record = JSON.parse_string(raw_metadata)
 	if not record is Dictionary or record.get("id")!=id or record.get("status") not in ["active","deleted"]:
 		last_error = "Invalid campaign metadata."
 		return {}
 	if record["status"]=="deleted" and not include_deleted:
 		return {}
+	loaded_metadata = raw_metadata
 	return record
 
 func list_campaigns() -> Array:
@@ -122,8 +126,7 @@ func update_thumbnail(id: String, thumbnail_id: String) -> String:
 	if record.is_empty():
 		return last_error if not last_error.is_empty() else "Campaign is unavailable."
 	record["thumbnail_id"]=thumbnail_id
-	var result = SQL.run(path_for(id),[SQL.stmt("UPDATE meta SET value=? WHERE key='campaign'",[JSON.stringify(record)])])
-	return "" if result.get("ok",false) else result_error(result,"Artwork save failed.")
+	return write_metadata(id,loaded_metadata,record)
 
 func delete_campaign(id: String) -> String:
 	var record = load_campaign(id)
@@ -131,8 +134,22 @@ func delete_campaign(id: String) -> String:
 		return last_error if not last_error.is_empty() else "Campaign is unavailable."
 	record["status"]="deleted"
 	record["updated_at"]=Time.get_datetime_string_from_system(true)
-	var result = SQL.run(path_for(id),[SQL.stmt("UPDATE meta SET value=? WHERE key='campaign'",[JSON.stringify(record)]),SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(?,?,'campaign_deleted',?)",[int(record.get("turn",0)),"Unspecified",JSON.stringify({"deleted_at":record["updated_at"]})])])
-	return "" if result.get("ok",false) else result_error(result,"Campaign deletion failed.")
+	return write_metadata(id,loaded_metadata,record,true)
+
+# Compare the exact stored JSON, not a reserialized approximation. The bridge
+# runs the UPDATE and optional event together under BEGIN IMMEDIATE.
+func write_metadata(id: String, previous: String, record: Dictionary, deleting: bool = false) -> String:
+	if not db_exists(id) or previous.is_empty():
+		return "Campaign is unavailable."
+	var commands = [SQL.stmt("UPDATE meta SET value=? WHERE key='campaign' AND value=?",[JSON.stringify(record),previous]),SQL.stmt("SELECT changes() AS updated")]
+	if deleting:
+		commands.append(SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) SELECT ?,?,'campaign_deleted',? WHERE changes()=1",[int(record.get("turn",0)),"Unspecified",JSON.stringify({"deleted_at":record["updated_at"]})]))
+	var result = SQL.run(path_for(id),commands)
+	if not result.get("ok",false):
+		return result_error(result,"Campaign metadata save failed.")
+	if int(result["results"][1][0]["updated"])!=1:
+		return "Campaign changed since it was loaded. Reopen and retry."
+	return ""
 
 func read_log(id: String, limit: int = 40) -> Array:
 	last_error = ""
