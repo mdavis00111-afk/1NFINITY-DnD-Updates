@@ -48,3 +48,6 @@ Gameplay AI uses semantic relevance, not only rigid recency/radius/keyword match
 
 ## Complete gameplay phase — C1 assigned
 06 final checkpoint 4dd72f9598af9fac51320a66e9259e6d1af7df1a accepted for source/infrastructure only. New single unpublished development phase feature/complete-gameplay, based on exact QA checkpoint with live owner requirements reconciled. See design/COMPLETE_GAMEPLAY_PHASE.md. C1 READY 01, then C2 03, C3 02, C4 01/lead, C5 04, C6 05/06. Only 01 writes now; no parallel shared branch writes. One integrated release after acceptance, not intermediate versions. Replace two vintage symbols with original artwork in C1 (retain coverage and registry count; no uncertain art distribution). Existing runtime, byte audit, Windows bridge/backup/rollback, creative/adjudication and full mechanics gates remain; no publication. Live v0.0.24.
+
+### After v0.0.27 live acceptance (not part of this release)
+Comprehensive combat, merchant/economy, nested containers, broader magical-item/instance effects, and automated architect–developer coordination are explicitly deferred. Current release remains bounded to existing approved systems, safeguards, context/memory, performance and native validation. Native failures are blockers, not a new development phase.
