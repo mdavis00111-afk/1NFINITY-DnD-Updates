@@ -288,4 +288,34 @@ func run() -> void:
 			expect(resolved.has("interaction") and resolved["interaction"]["slot_assignments"]["main_hand"]==iid,"Reconciled C1 slots invalid")
 	else:
 		expect(false,"Legacy equipment migration fixture failed")
+	# A legacy claim with zero owned rows must not be silently migrated into
+	# an irreconcilable instance model. Deliberately corrupt a separate fixture
+	# after B1 has been established, so C2 rollback/retry can be compared exactly.
+	var missing = base.create_campaign("Legacy missing ownership",equipped_master,"road","standard")
+	if missing.is_empty():
+		expect(false,"Missing ownership fixture creation failed")
+	else:
+		var missing_id = str(missing["id"])
+		var missing_path = base.path_for(missing_id)
+		var wm = preload("res://world/world_migration.gd").new().ensure(missing_id)
+		expect(wm.get("ok",false),"B1 migration for missing ownership fixture failed")
+		if wm.get("ok",false):
+			var original = SQL.run(missing_path,[SQL.stmt("SELECT actor_id,item_id,quantity,payload FROM inventory ORDER BY actor_id,item_id")],true)
+			expect(original.get("ok",false) and original["results"][0].size()==1,"Missing ownership fixture inventory unavailable")
+			if original.get("ok",false) and original["results"][0].size()==1:
+				var item = original["results"][0][0]
+				expect(SQL.run(missing_path,[SQL.stmt("DELETE FROM inventory WHERE actor_id=?",[missing["actor_id"]])]).get("ok",false),"Missing ownership fixture deletion failed")
+				var before = SQL.run(missing_path,[SQL.stmt("SELECT id,payload FROM actors ORDER BY id"),SQL.stmt("SELECT * FROM world_state"),SQL.stmt("SELECT * FROM inventory ORDER BY actor_id,item_id"),SQL.stmt("SELECT value FROM meta WHERE key='gameplay_schema'"),SQL.stmt("SELECT name FROM sqlite_master WHERE type='table' AND name='item_instances'")],true)
+				var refused = MIGRATION.new().ensure(missing_id)
+				var after = SQL.run(missing_path,[SQL.stmt("SELECT id,payload FROM actors ORDER BY id"),SQL.stmt("SELECT * FROM world_state"),SQL.stmt("SELECT * FROM inventory ORDER BY actor_id,item_id"),SQL.stmt("SELECT value FROM meta WHERE key='gameplay_schema'"),SQL.stmt("SELECT name FROM sqlite_master WHERE type='table' AND name='item_instances'")],true)
+				expect(not refused.get("ok",false) and str(refused.get("error","")).contains("Legacy weapon not owned"),"Zero-row legacy equipment claim was not rejected")
+				expect(before.get("ok",false) and after.get("ok",false) and before["results"]==after["results"] and after["results"][3].is_empty() and after["results"][4].is_empty(),"Refused migration changed authoritative state or created partial schema")
+				expect(SQL.run(missing_path,[SQL.stmt("INSERT INTO inventory(actor_id,item_id,quantity,payload) VALUES(?,?,CAST(? AS INTEGER),?)",[item["actor_id"],item["item_id"],item["quantity"],item["payload"]])]).get("ok",false),"Fixture repair failed")
+				var repaired = MIGRATION.new().ensure(missing_id)
+				expect(repaired.get("ok",false) and repaired.get("migrated",false),"C2 migration could not resume after explicit fixture repair")
+				if repaired.get("ok",false):
+					var once = base.gameplay_view(missing_id)
+					var repeated = MIGRATION.new().ensure(missing_id)
+					expect(repeated.get("ok",false) and not repeated.get("migrated",true) and base.gameplay_view(missing_id)==once,"Repeat migration changed stable repaired state")
+	expect(base.gameplay_view(b["id"])==sibling and players.load_record(master_id)==original_master,"Missing ownership fixture affected sibling/master")
 	finish()

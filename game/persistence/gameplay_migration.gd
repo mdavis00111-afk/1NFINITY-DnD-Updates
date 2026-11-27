@@ -105,11 +105,15 @@ func ensure(id: String) -> Dictionary:
 		if not by_actor.has(row["actor_id"]):
 			by_actor[row["actor_id"]]={}
 		by_actor[row["actor_id"]][item_id]={"id":instance_id,"payload":payload}
-	for actor_id in by_actor:
+	# Validate EVERY actor, including an actor with zero normalized inventory rows.
+	# Previously the by_actor loop silently skipped missing owned claims for such
+	# actors, creating a migrated but irreconcilable equipment mirror. Do not
+	# synthesize the missing possessions or clear their legacy equipment.
+	for actor_id in actor_data:
 		var gear = actor_data[actor_id].get("equipment",{})
 		if not gear is Dictionary or not gear.get("weapon_ids",[]) is Array:
 			return fail("Malformed legacy equipment. Backup retained.")
-		var owned: Dictionary = by_actor[actor_id]
+		var owned: Dictionary = by_actor.get(actor_id,{})
 		var claimed: Array = gear.get("weapon_ids",[]).duplicate()
 		for pair in [["armor_id","body","worn"],["shield_id","shield","one_handed"]]:
 			var item = str(gear.get(pair[0],""))
