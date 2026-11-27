@@ -1,7 +1,7 @@
 extends Control
 
 const CHANNEL = "https://raw.githubusercontent.com/mdavis00111-afk/1NFINITY-DnD-Updates/godot/channel.json"
-const GOLD = Color("#e4be6b")
+const GOLD = Color("#f4ce7b")
 const MUTED = Color("#a8997e")
 const THEME = preload("res://themes/master_theme.tres")
 const CONFIG_PATH = "user://settings.cfg"
@@ -77,30 +77,9 @@ func make_label(value: String, font_size: int, color: Color = GOLD) -> Label:
 	return l
 
 func menu_button(value: String, action: Callable) -> Button:
-	var b = Button.new()
+	var b = preload("res://themes/menu_button.gd").new()
 	b.text = value
-	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	b.custom_minimum_size = Vector2(400, 44)
-	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	b.pressed.connect(action)
-	var glow = ColorRect.new()
-	glow.color = Color("#f5c66e")
-	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	glow.visible = false
-	b.add_child(glow)
-	glow.position = Vector2(0, 39)
-	glow.size = Vector2(178, 2)
-	b.mouse_entered.connect(func():
-		glow.visible = true
-		b.add_theme_color_override("font_outline_color", Color("#a96419"))
-		b.add_theme_constant_override("outline_size", 6))
-	b.mouse_exited.connect(func():
-		glow.visible = b.has_focus()
-		b.remove_theme_color_override("font_outline_color")
-		b.remove_theme_constant_override("outline_size"))
-	b.focus_entered.connect(func(): glow.visible = true)
-	b.focus_exited.connect(func(): glow.visible = false)
 	return b
 
 func show_screen(name: String) -> void:
@@ -144,7 +123,7 @@ func show_screen(name: String) -> void:
 	margin.add_child(scroll)
 	var menu = VBoxContainer.new()
 	menu.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	menu.add_theme_constant_override("separation", 8)
+	menu.add_theme_constant_override("separation", 5)
 	scroll.add_child(menu)
 	var title = make_label("1NFINITY D&D" if name == "Main" else name, 54 if name == "Main" else 36)
 	if not painted_title:
