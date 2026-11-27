@@ -1,128 +1,132 @@
 {
   "channel": "godot",
-  "version": "0.0.22",
-  "source_commit": "439b807088d887e06ab22da24f97f7ba16db8bab",
-  "notes": "Windows playtest: fixed 70% sheet and left portrait roster, bottom actions, lighter creator surfaces and centered fields, default portrait, pre-roll cards, compact dropdowns, six AI personal details. Godot dice unchanged. Runtime import and Windows playtest verification pending; updater safeguards retained.",
+  "version": "0.0.23",
+  "source_commit": "40bfa2ca1ba975bd5ff4cf02f214e042f24ce11d",
+  "notes": "Windows playtest: campaign manager and six starts, isolated campaign saves, optional validated Gemini opening, editable maturity and Narrator, Random character creation and final character GUI polish. Independent SQL fixtures passed; Windows/Godot runtime verification pending. Existing updater staging and rollback retained. No gameplay turn controller yet.",
   "files": [
-    {
-      "path": "main.tscn",
-      "blob": "e31f2d10cc1c617542e2e21fc01e4bd09561e7e6"
-    },
-    {
-      "path": "art/castle.svg",
-      "blob": "74de64525449e8f7c58fee46f6a96c799f7469a2"
-    },
     {
       "path": "art/arcane.svg",
       "blob": "0ae7d418a135c4aea0eacf1e9475931cb18357bf"
-    },
-    {
-      "path": "art/forest.svg",
-      "blob": "c0f44ec3f375785af4f2e27e86f0d355849c21d5"
-    },
-    {
-      "path": "art/valley.svg",
-      "blob": "cf3481a79028208802de57859be2602b9ea8c24e"
     },
     {
       "path": "art/castle.jpg",
       "blob": "c7f6e5a9d24d3e43d7d0fb2029a84439cf308592"
     },
     {
-      "path": "themes/gold_flourish.svg",
-      "blob": "b18833292ef5dd034e1c7b6f3fb4bf57a18023a9"
+      "path": "art/castle.svg",
+      "blob": "74de64525449e8f7c58fee46f6a96c799f7469a2"
     },
     {
-      "path": "themes/fonts/OFL.txt",
-      "blob": "c1ec5e1818415eab6f8fca95a230af477d64eb61"
-    },
-    {
-      "path": "themes/fonts/EBGaramond.ttf",
-      "blob": "52d34b86ec20977f222ce37e8158e6b3002c0a31"
-    },
-    {
-      "path": "themes/fonts/arcane.fnt",
-      "blob": "7f6aba96ecb6966800d8ed59afeb9e20c9d7d92d"
-    },
-    {
-      "path": "themes/fonts/arcane_atlas.png",
-      "blob": "9404512d0977a189bcb5e5c61b023387894cb217"
-    },
-    {
-      "path": "rules/library.gd",
-      "blob": "b11f96198fb71abe398ec53e417a6f7045912910"
-    },
-    {
-      "path": "rules/mechanics.gd",
-      "blob": "785266cee39294f4b61cbcc63c8f7b5c6f9361dd"
-    },
-    {
-      "path": "rules/README.md",
-      "blob": "49b8a50578b083f0a70023c8d243a9bc7e403fd1"
-    },
-    {
-      "path": "players/character_sheet.gd",
-      "blob": "d0f546992e84073db1947dacfad0a8284e4a5bba"
+      "path": "art/forest.svg",
+      "blob": "c0f44ec3f375785af4f2e27e86f0d355849c21d5"
     },
     {
       "path": "art/hall.jpg",
       "blob": "8ef7254bbdfcddd004b848014e79aba192c8bf5f"
     },
     {
-      "path": "themes/fonts/italic_atlas.png",
-      "blob": "9fa87df956ef24871e4436c2dfc522da5186a3a0"
-    },
-    {
-      "path": "themes/fonts/italic.fnt",
-      "blob": "5a10c74a38ed1847fed6d0294a3e3799f22496be"
-    },
-    {
-      "path": "themes/parts/icons.png",
-      "blob": "8a2ec001c63dfaed25f18c4bfecd9f83a0ce68f3"
-    },
-    {
-      "path": "themes/parts/icons.json",
-      "blob": "28036c79de60273d941e8b253c0a831475cd9988"
-    },
-    {
-      "path": "themes/parts/frame.png",
-      "blob": "fbd9ae5f438502989da87573a9b2359095ad4f97"
-    },
-    {
-      "path": "themes/parts/corner.png",
-      "blob": "a4e0822d4872f902741514034e9869a65d22d2a6"
-    },
-    {
       "path": "art/sheet_reference.jpg",
       "blob": "74cbe1105d673f88659c5246d5d757cdb397e240"
     },
     {
-      "path": "rules/master_reference.gd",
-      "blob": "843b2de08848b38784e014ba50033ae13e6848e9"
+      "path": "art/sheet_title.png",
+      "blob": "33c237a6e2b0c6c0bf49aca49481c27dd0dae22d"
     },
     {
-      "path": "rules/MASTER_REFERENCE.md",
-      "blob": "e40d949408961503eccd434967fdd50ee72256b3"
+      "path": "art/valley.svg",
+      "blob": "cf3481a79028208802de57859be2602b9ea8c24e"
     },
     {
-      "path": "data/2014/races.json",
-      "blob": "3b0864fb0f01592bc4ceeb2544cb6538787a059e"
+      "path": "campaigns/campaign_manager.gd",
+      "blob": "6b9c5e19347395592709d13c2fa1c0b7179c1856"
     },
     {
-      "path": "data/2014/subraces.json",
-      "blob": "c61f4f9c27ef7f225a29c36f43a9039ad7c356a8"
+      "path": "campaigns/campaign_starts.gd",
+      "blob": "eebeaee2d3704fde496d415f6fe97446d594fb76"
+    },
+    {
+      "path": "campaigns/campaign_store.gd",
+      "blob": "0bc6d64f66a553509518c6b1a2e15f124a525704"
+    },
+    {
+      "path": "campaigns/maturity_profiles.gd",
+      "blob": "f0562ffd24c235ece5bf62c5843e3cfa9121899d"
+    },
+    {
+      "path": "campaigns/narrator_prompt.gd",
+      "blob": "4ba228430ed9043c6b9e87aedb2837f6f55dcbff"
+    },
+    {
+      "path": "campaigns/opening_scene.gd",
+      "blob": "23f8b4dbaf20bbf35b2e47fd41d4d358bf3360bc"
+    },
+    {
+      "path": "data/2014/ATTRIBUTION.txt",
+      "blob": "a1250899a49f9d14a96e7641d3c73c3ecc9c2268"
+    },
+    {
+      "path": "data/2014/INDEX.json",
+      "blob": "df54d5578688e72f5558abe206b27ed214ee23de"
+    },
+    {
+      "path": "data/2014/ability-scores.json",
+      "blob": "50dd5029f0aed1354d89c8674cb6ce420aa87d74"
+    },
+    {
+      "path": "data/2014/backgrounds.json",
+      "blob": "c29c642b5ccc41cc60f2b7698c6ea70b42e6ef4a"
     },
     {
       "path": "data/2014/classes.json",
       "blob": "cbf375149b82b0093fb2e7ecc3a69a1e40fe2096"
     },
     {
-      "path": "data/2014/subclasses.json",
-      "blob": "c80b0484b7c80815ed5576b492e7686fa7e71e13"
+      "path": "data/2014/conditions.json",
+      "blob": "27b981e91e0d5ce0e334f547b132600e8efa8491"
     },
     {
-      "path": "data/2014/backgrounds.json",
-      "blob": "c29c642b5ccc41cc60f2b7698c6ea70b42e6ef4a"
+      "path": "data/2014/creature_core_batch_001.json",
+      "blob": "9c6458d16e9b1e90d8540fe1e71843712e4bfc33"
+    },
+    {
+      "path": "data/2014/equipment-categories.json",
+      "blob": "cda2624102f88bd360a3446b2ee24de5b97b062d"
+    },
+    {
+      "path": "data/2014/equipment.json",
+      "blob": "2de4750ba8a2f2b14799c3dcb03b539b24cc1ca9"
+    },
+    {
+      "path": "data/2014/feats.json",
+      "blob": "af42c2a12e7462a5acf57d651a49cc3f1b580bd1"
+    },
+    {
+      "path": "data/2014/features.json",
+      "blob": "854afaed5e98d3f47a4da870a1c8af217e3f33ac"
+    },
+    {
+      "path": "data/2014/languages.json",
+      "blob": "5a19769fcc171a25e1672e6e553f3d35bd335b92"
+    },
+    {
+      "path": "data/2014/levels.json",
+      "blob": "614a330c9dc1f638672f4dbf282a4a3d22914a0a"
+    },
+    {
+      "path": "data/2014/magic-items.json",
+      "blob": "dbce372189b5cade8b106942a8caad7599615cae"
+    },
+    {
+      "path": "data/2014/proficiencies.json",
+      "blob": "64d8be4ad6bd1cb40ec7da2d975a910bf06db9d7"
+    },
+    {
+      "path": "data/2014/races.json",
+      "blob": "3b0864fb0f01592bc4ceeb2544cb6538787a059e"
+    },
+    {
+      "path": "data/2014/rule-sections.json",
+      "blob": "42969e45a3d5a01941f7d0e9bca2f06b8ec69776"
     },
     {
       "path": "data/2014/skills.json",
@@ -133,96 +137,120 @@
       "blob": "141e79d370367e157025ec53b98d6293714311ad"
     },
     {
-      "path": "data/2014/equipment.json",
-      "blob": "2de4750ba8a2f2b14799c3dcb03b539b24cc1ca9"
+      "path": "data/2014/subclasses.json",
+      "blob": "c80b0484b7c80815ed5576b492e7686fa7e71e13"
     },
     {
-      "path": "data/2014/equipment-categories.json",
-      "blob": "cda2624102f88bd360a3446b2ee24de5b97b062d"
-    },
-    {
-      "path": "data/2014/features.json",
-      "blob": "854afaed5e98d3f47a4da870a1c8af217e3f33ac"
-    },
-    {
-      "path": "data/2014/levels.json",
-      "blob": "614a330c9dc1f638672f4dbf282a4a3d22914a0a"
-    },
-    {
-      "path": "data/2014/languages.json",
-      "blob": "5a19769fcc171a25e1672e6e553f3d35bd335b92"
-    },
-    {
-      "path": "data/2014/proficiencies.json",
-      "blob": "64d8be4ad6bd1cb40ec7da2d975a910bf06db9d7"
+      "path": "data/2014/subraces.json",
+      "blob": "c61f4f9c27ef7f225a29c36f43a9039ad7c356a8"
     },
     {
       "path": "data/2014/traits.json",
       "blob": "7d39f0483421a1135958670238406bdcf617ffce"
     },
     {
-      "path": "data/2014/ability-scores.json",
-      "blob": "50dd5029f0aed1354d89c8674cb6ce420aa87d74"
-    },
-    {
-      "path": "data/2014/magic-items.json",
-      "blob": "dbce372189b5cade8b106942a8caad7599615cae"
-    },
-    {
-      "path": "data/2014/conditions.json",
-      "blob": "27b981e91e0d5ce0e334f547b132600e8efa8491"
-    },
-    {
-      "path": "data/2014/feats.json",
-      "blob": "af42c2a12e7462a5acf57d651a49cc3f1b580bd1"
-    },
-    {
       "path": "data/2014/weapon-properties.json",
       "blob": "68e33903260d24f7bbe1289c98bbf8412da13fcf"
     },
     {
-      "path": "data/2014/rule-sections.json",
-      "blob": "42969e45a3d5a01941f7d0e9bca2f06b8ec69776"
+      "path": "data/rules.db.gz",
+      "blob": "ea6ba81a76751fc4e2e478ab7e52be7e4000fa75"
     },
     {
-      "path": "data/2014/INDEX.json",
-      "blob": "df54d5578688e72f5558abe206b27ed214ee23de"
+      "path": "main.gd",
+      "blob": "8233229721b8525274067067108c0a7d25010e31"
     },
     {
-      "path": "data/2014/ATTRIBUTION.txt",
-      "blob": "a1250899a49f9d14a96e7641d3c73c3ecc9c2268"
-    },
-    {
-      "path": "themes/fonts/EBGaramond-Italic.ttf",
-      "blob": "f9ad996001c8ee72fd43b4b8e67c8924b7f615b1"
-    },
-    {
-      "path": "themes/master_theme.tres",
-      "blob": "c6cb9b5ef9779d593373e9224cc2c19f1cac7bf3"
-    },
-    {
-      "path": "themes/menu_button.gd",
-      "blob": "f2a1709b307e26c9fe13bcb666a76c4dbba2d380"
-    },
-    {
-      "path": "themes/TYPOGRAPHY.md",
-      "blob": "eac8bb8e11a693fbc6eff88c7cbd428c6cfadc2e"
+      "path": "main.tscn",
+      "blob": "e31f2d10cc1c617542e2e21fc01e4bd09561e7e6"
     },
     {
       "path": "players/CHARACTER_SYSTEM.md",
       "blob": "2912089d5d98f7eba9f120fece0d9c5f176fcf44"
     },
     {
+      "path": "players/character_creator.gd",
+      "blob": "f8292c4e7287c71e21a90471e816fbf1fca60a8d"
+    },
+    {
+      "path": "players/character_manager.gd",
+      "blob": "f5294a1fdcd9f8c8ed44b33c18fdf936834c7312"
+    },
+    {
+      "path": "players/character_sheet.gd",
+      "blob": "d0f546992e84073db1947dacfad0a8284e4a5bba"
+    },
+    {
       "path": "players/character_store.gd",
-      "blob": "60d189601a4bd4db7d5dcfdcf5cec71f47e4eb23"
+      "blob": "f019ec85291aa47ad0609f07dd091d79ec6c6abf"
+    },
+    {
+      "path": "players/full_character_sheet.gd",
+      "blob": "cd8b1c1a0576e09503822efb712329dba49421b5"
+    },
+    {
+      "path": "players/portrait_art.gd",
+      "blob": "7933cf7093e828e78de0e17c25750cf94aebda5a"
+    },
+    {
+      "path": "project.godot",
+      "blob": "219e00a1840e1db22fc871f0181836794f1a51a3"
+    },
+    {
+      "path": "rules/MASTER_REFERENCE.md",
+      "blob": "e40d949408961503eccd434967fdd50ee72256b3"
+    },
+    {
+      "path": "rules/PRIVATE_REFERENCE_POLICY.md",
+      "blob": "40cb5504b0a3e506e114d2f85940e6c7679d1853"
+    },
+    {
+      "path": "rules/README.md",
+      "blob": "49b8a50578b083f0a70023c8d243a9bc7e403fd1"
+    },
+    {
+      "path": "rules/REFERENCE_BATCHES.md",
+      "blob": "7179d64500a279a78d818466687958bd82be3620"
+    },
+    {
+      "path": "rules/batch_catalog.gd",
+      "blob": "ba45a7fca47369ac043eb3ad535d41b1dd5c13ef"
+    },
+    {
+      "path": "rules/catalog.gd",
+      "blob": "abd5bafa1cefa0942aa83e3c6d27ff25ea31c0f7"
+    },
+    {
+      "path": "rules/catalog_browser.gd",
+      "blob": "35770489c4613aa42615526af10cfa6b9ff81f64"
     },
     {
       "path": "rules/character_rules.gd",
-      "blob": "276499225605567df3acc67bcb23a652a2e7db6b"
+      "blob": "4c6540d5a3a9e6d545f8332714034dee4e07a8e9"
+    },
+    {
+      "path": "rules/library.gd",
+      "blob": "b11f96198fb71abe398ec53e417a6f7045912910"
+    },
+    {
+      "path": "rules/master_reference.gd",
+      "blob": "843b2de08848b38784e014ba50033ae13e6848e9"
+    },
+    {
+      "path": "rules/mechanics.gd",
+      "blob": "785266cee39294f4b61cbcc63c8f7b5c6f9361dd"
+    },
+    {
+      "path": "systems/asset_library.gd",
+      "blob": "0d9af299d1e705a545aadec8a402949d346ea69d"
     },
     {
       "path": "systems/campaign_schema.sql",
       "blob": "e1a39e4957700a7cd2f1ef5e003254217f8a3b5b"
+    },
+    {
+      "path": "systems/gemini.gd",
+      "blob": "72f246dbf36f0375d5802a906f6300db890b37b7"
     },
     {
       "path": "systems/sqlite.gd",
@@ -237,12 +265,88 @@
       "blob": "32f343d787c0ac66b57b04a224ac41338678d114"
     },
     {
+      "path": "tests/ai_profile_smoke.gd",
+      "blob": "7034b7c31c5066c1aab7defc50d739d963867315"
+    },
+    {
+      "path": "tests/assets_smoke.gd",
+      "blob": "bc2b099a038867e55659fd69fcf531fe0e479412"
+    },
+    {
+      "path": "tests/campaign_smoke.gd",
+      "blob": "419461332df66719f649c54204e7f38d6e7d5c57"
+    },
+    {
       "path": "tests/character_smoke.gd",
-      "blob": "2378683215f7d956764ac154c5ac6339830b78cc"
+      "blob": "5c431040eba2aa07efad37af2709efe2f7090abb"
+    },
+    {
+      "path": "tests/layout_smoke.gd",
+      "blob": "7fa2df8d24ec5435564e489195d2b6a77b45d4bf"
     },
     {
       "path": "tests/sqlite_smoke.gd",
       "blob": "378c85212bd8ba5f7579c39de4b440d91b602703"
+    },
+    {
+      "path": "themes/TYPOGRAPHY.md",
+      "blob": "eac8bb8e11a693fbc6eff88c7cbd428c6cfadc2e"
+    },
+    {
+      "path": "themes/fonts/EBGaramond-Italic.ttf",
+      "blob": "f9ad996001c8ee72fd43b4b8e67c8924b7f615b1"
+    },
+    {
+      "path": "themes/fonts/EBGaramond.ttf",
+      "blob": "52d34b86ec20977f222ce37e8158e6b3002c0a31"
+    },
+    {
+      "path": "themes/fonts/OFL.txt",
+      "blob": "c1ec5e1818415eab6f8fca95a230af477d64eb61"
+    },
+    {
+      "path": "themes/fonts/arcane.fnt",
+      "blob": "7f6aba96ecb6966800d8ed59afeb9e20c9d7d92d"
+    },
+    {
+      "path": "themes/fonts/arcane_atlas.png",
+      "blob": "9404512d0977a189bcb5e5c61b023387894cb217"
+    },
+    {
+      "path": "themes/fonts/italic.fnt",
+      "blob": "5a10c74a38ed1847fed6d0294a3e3799f22496be"
+    },
+    {
+      "path": "themes/fonts/italic_atlas.png",
+      "blob": "9fa87df956ef24871e4436c2dfc522da5186a3a0"
+    },
+    {
+      "path": "themes/gold_flourish.svg",
+      "blob": "b18833292ef5dd034e1c7b6f3fb4bf57a18023a9"
+    },
+    {
+      "path": "themes/master_theme.tres",
+      "blob": "c6cb9b5ef9779d593373e9224cc2c19f1cac7bf3"
+    },
+    {
+      "path": "themes/menu_button.gd",
+      "blob": "f2a1709b307e26c9fe13bcb666a76c4dbba2d380"
+    },
+    {
+      "path": "themes/parts/corner.png",
+      "blob": "a4e0822d4872f902741514034e9869a65d22d2a6"
+    },
+    {
+      "path": "themes/parts/frame.png",
+      "blob": "fbd9ae5f438502989da87573a9b2359095ad4f97"
+    },
+    {
+      "path": "themes/parts/icons.json",
+      "blob": "28036c79de60273d941e8b253c0a831475cd9988"
+    },
+    {
+      "path": "themes/parts/icons.png",
+      "blob": "8a2ec001c63dfaed25f18c4bfecd9f83a0ce68f3"
     },
     {
       "path": "themes/parts/panel_active.png",
@@ -257,80 +361,8 @@
       "blob": "6907eaee2e216df48d04b4b279010f948de0fa6a"
     },
     {
-      "path": "data/rules.db.gz",
-      "blob": "ea6ba81a76751fc4e2e478ab7e52be7e4000fa75"
-    },
-    {
-      "path": "art/sheet_title.png",
-      "blob": "33c237a6e2b0c6c0bf49aca49481c27dd0dae22d"
-    },
-    {
-      "path": "main.gd",
-      "blob": "715c51e614a318f77322e290c4eb0e2f3bfcd5ae"
-    },
-    {
-      "path": "players/character_creator.gd",
-      "blob": "0cde698905c42f5a45989e505ef56932dc98076c"
-    },
-    {
-      "path": "players/character_manager.gd",
-      "blob": "8a3fe026862278d55f849ca0df3155c05ed92dd6"
-    },
-    {
-      "path": "players/full_character_sheet.gd",
-      "blob": "707e7b966c4cc48bfba231c5af56c30983917425"
-    },
-    {
-      "path": "project.godot",
-      "blob": "735d124c0d952a415043b33182ea00e718bf703f"
-    },
-    {
-      "path": "rules/catalog.gd",
-      "blob": "abd5bafa1cefa0942aa83e3c6d27ff25ea31c0f7"
-    },
-    {
-      "path": "rules/catalog_browser.gd",
-      "blob": "35770489c4613aa42615526af10cfa6b9ff81f64"
-    },
-    {
-      "path": "systems/asset_library.gd",
-      "blob": "0d9af299d1e705a545aadec8a402949d346ea69d"
-    },
-    {
-      "path": "systems/gemini.gd",
-      "blob": "b69ec25115a0cbf40e7ccc73548eb6ebab6213a9"
-    },
-    {
-      "path": "tests/assets_smoke.gd",
-      "blob": "bc2b099a038867e55659fd69fcf531fe0e479412"
-    },
-    {
-      "path": "tests/layout_smoke.gd",
-      "blob": "42ad82afd292e4ef2b8ec0a7c0d029919adcd2c3"
-    },
-    {
       "path": "version.txt",
-      "blob": "818944f5b824c9d85b70605f0649e7c68485fd40"
-    },
-    {
-      "path": "rules/PRIVATE_REFERENCE_POLICY.md",
-      "blob": "40cb5504b0a3e506e114d2f85940e6c7679d1853"
-    },
-    {
-      "path": "data/2014/creature_core_batch_001.json",
-      "blob": "9c6458d16e9b1e90d8540fe1e71843712e4bfc33"
-    },
-    {
-      "path": "rules/batch_catalog.gd",
-      "blob": "ba45a7fca47369ac043eb3ad535d41b1dd5c13ef"
-    },
-    {
-      "path": "rules/REFERENCE_BATCHES.md",
-      "blob": "7179d64500a279a78d818466687958bd82be3620"
-    },
-    {
-      "path": "players/portrait_art.gd",
-      "blob": "7933cf7093e828e78de0e17c25750cf94aebda5a"
+      "blob": "df5db66fed35a2fa0b4bc82c381aefe91fb2459d"
     }
   ]
 }
