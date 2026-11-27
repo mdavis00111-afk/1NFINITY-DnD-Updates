@@ -1,0 +1,551 @@
+# **1NFINITY D&D — GUI Fidelity Audit & Implementation Plan**
+
+## **Pre-implementation review**
+
+Baseline v0.0.20 · Godot 4.7.2
+
+PROJECT_BRAIN.md
+
+Read from GitHub
+
+AGENTS.md
+
+Read from GitHub
+
+ROADMAP.md
+
+Read from GitHub
+
+Code modifications
+
+None
+
+## **1. Scope and repository verification**
+
+There is a minor discrepancy in the priority numbering. The current `ROADMAP.md` identifies **P0 — Windows baseline and GUI fidelity** as the responsibility of chats 01 and 05. P1 is structured rules coverage, assigned to chat 02.
+
+I will treat your explicit GUI instructions as the authorized scope and leave structured rules expansion untouched.
+
+Repository references:
+
+- [PROJECT_BRAIN.md](https://github.com/mdavis00111-afk/1NFINITY-DnD-Updates/blob/godot/PROJECT_BRAIN.md?utm_source=chatgpt.com)
+- [AGENTS.md](https://github.com/mdavis00111-afk/1NFINITY-DnD-Updates/blob/godot/AGENTS.md?utm_source=chatgpt.com)
+- [ROADMAP.md](https://github.com/mdavis00111-afk/1NFINITY-DnD-Updates/blob/godot/ROADMAP.md?utm_source=chatgpt.com)
+
+The objective is **faithful implementation of the five approved interfaces**, not another visual redesign. Every decorative element and functional control must be represented through working Godot components.
+
+The four character creation screens must fit within the available viewport. The completed character sheet is a separate portrait-format interface that must support scrolling and zooming.
+
+## **2. Approved design comparison**
+
+I have inspected all five original design images stored in the Project sources and compared them with your seven Windows screenshots.
+
+| Approved design           | Reference dimensions |
+| ------------------------- | -------------------- |
+| Identity                  | 1672 × 941           |
+| Ability Scores            | 1672 × 941           |
+| Skills & Spells           | 1672 × 941           |
+| Loadout & Review          | 1672 × 941           |
+| Completed Character Sheet | 1103 × 1426          |
+
+Your runtime screenshots demonstrate that the game is operational and that the general visual theme is present. However, the implementation is currently much closer to a conventional Godot form with fantasy-themed textures than the approved interface.
+
+The principal problem is the layout, not the background artwork.
+
+## **3. Global discrepancies across character creation**
+
+**Screen proportions**
+
+High priority
+
+The actual controls are compressed vertically, leaving large unused areas on pages 1 and 2, while pages 3 and 4 overflow the available space.
+
+**Typography**
+
+High priority
+
+Almost everything uses the same italic treatment. The approved designs have distinct title, heading, label, value and descriptive-text hierarchies.
+
+**Borders and framing**
+
+High priority
+
+Current borders have thin, interrupted edges and several appear open at the bottom. Approved borders are complete, illuminated and ornamental, with consistent corners.
+
+**Navigation tabs**
+
+Medium priority
+
+Actual tabs are four equal-width bars spanning almost the entire screen. Approved tabs are compact, icon-led, connected by decorative diamonds and highlight the active stage.
+
+**Portrait frame**
+
+High priority
+
+Actual portrait frames are narrow capsules with sparse ornamentation. Approved frames are wider, taller and considerably more elaborate.
+
+**Reference panel**
+
+High priority
+
+The approved panel has its own heading, subject heading, icon, divider, readable description and scenic artwork. The actual panel is largely empty or displays unformatted database content.
+
+**Navigation buttons**
+
+High priority
+
+Exit, Back, Save Draft and Next appear small and shallow. Approved buttons have stronger padding, closed borders and a prominent illuminated primary action.
+
+**Spacing and padding**
+
+High priority
+
+Text frequently touches panel edges. Approved designs use deliberate inner margins, consistent gutters and separation between headings and content.
+
+**Artwork integration**
+
+Medium priority
+
+The hall background is recognisable, but the foreground panels, portrait ornamentation, lighting effects and reference illustrations do not yet reproduce the approved composition.
+
+### **Approximate proportional comparison**
+
+Measurements below are visual estimates normalized to the visible game canvas, rather than the desktop or Windows taskbar.
+
+Page 1 — width occupied by the portrait column
+
+Approved
+
+20%
+
+Actual
+
+13%
+
+Page 1 — vertical space occupied by the central form
+
+Approved
+
+63%
+
+Actual
+
+53%
+
+Page 1 — bottom navigation button height
+
+Approved
+
+6%
+
+Actual
+
+2.5%
+
+This cannot be corrected by applying a single global font-size increase. Each page requires its own proportional layout within a shared visual framework.
+
+## **4. Page-by-page audit**
+
+### **Page 1 — Identity**
+
+| Element          | Discrepancy                                                                 |
+| ---------------- | --------------------------------------------------------------------------- |
+| Main title       | Too small; missing substantial illuminated flourish                         |
+| Identity heading | Missing section title and instructional subtitle                            |
+| Character name   | Placeholder substitutes for a permanent field label                         |
+| Race and class   | Missing independent labels and icons                                        |
+| Background       | Missing label and icon                                                      |
+| Sex / Gender     | Missing independent label and icon                                          |
+| Alignment        | Current value replaces field identity                                       |
+| Dropdown arrows  | Small generic triangles rather than prominent gold chevrons                 |
+| Description      | Text area too shallow; generated text requires scrolling almost immediately |
+| Personality      | Missing decorative labelled badge and icon                                  |
+| Ideal            | Missing decorative labelled badge and icon                                  |
+| Bond             | Missing decorative labelled badge and icon                                  |
+| Flaw             | Missing decorative labelled badge and icon                                  |
+| Backstory        | Existing extra field must be preserved without breaking the approved layout |
+| Portrait         | Undersized relative to canvas and visually simplified                       |
+| Choose Portrait  | Detached from portrait by excessive empty space                             |
+| Reference        | Missing dedicated subject styling and lower scenic illustration             |
+| Footer           | Undersized controls and weak primary-action emphasis                        |
+
+**Functional corrections:** Every identity field must remain editable. AI description generation, portrait importing, backstory and draft saving must remain available. Dropdown selections must retain their values when moving between stages.
+
+Your screenshots provide evidence that AI description generation and identity selection worked during this session.
+
+### **Selection dialog — shared character creation control**
+
+The class selection screenshot reveals another significant issue.
+
+The popup uses a generic grey window title bar, conventional grey list selection, plain scrollbar and a largely unformatted reference description. These elements are inconsistent with the fantasy interface.
+
+Specific defects include:
+
+- Raw values such as `6.0` and `1.0` instead of `d6` and integer quantities.
+- Internal data structure terminology such as `options_array` and `counted_reference`.
+- Excessive vertical spacing between individual reference properties.
+- Poor visual emphasis on selected entries.
+- Duplicate reference information displayed behind the modal.
+- Very small Select and Cancel buttons.
+- Missing appropriate decorative framing and subject-specific icons.
+
+The five approved images do not specify a separate modal design. I propose using the existing approved panel, typography and button assets for this dialog rather than introducing a new visual theme.
+
+### **Page 2 — Ability Scores**
+
+| Element               | Approved design requirement / discrepancy                                    |
+| --------------------- | ---------------------------------------------------------------------------- |
+| Score generation      | Missing descriptive guidance and method icons                                |
+| Roll 4d6              | Label should explicitly communicate dropping the lowest die                  |
+| Roll Stats            | No distinct prominent roll action shown                                      |
+| Reroll                | Undersized                                                                   |
+| Ability section       | Missing titled panel and explanatory subtitle                                |
+| Ability cards         | Values too small; cards lack individual ability icons                        |
+| Racial modifiers      | Insufficient distinction between base and final scores                       |
+| Swap                  | Existing working control needs to remain without disrupting card proportions |
+| Roll history          | Missing ability headings and full, clearly ordered dice notation             |
+| Derived statistics    | Small values and icons positioned at panel edges                             |
+| Passive Perception    | Abbreviated to “Passive”                                                     |
+| Spell Attack          | Abbreviated to “Spell Atk”                                                   |
+| Reference             | Still displaying previous alignment instead of ability-score guidance        |
+| Vertical distribution | Excessive unused space beneath the central panels                            |
+
+The displayed wizard statistics appear internally consistent with the selected scores: Intelligence 16 produces a +3 modifier, spell save DC 13 and spell attack +5 with +2 proficiency.
+
+This is a visual check of the displayed example, not a complete character-rules test.
+
+### **Page 3 — Skills & Spells**
+
+This page has the most significant difference in information presentation.
+
+The approved design uses an organized character overview with compact spell tables, icons, categories and short descriptions. The actual implementation presents repeated full-width selection fields, consuming much more vertical space.
+
+| Element                 | Discrepancy                                                                  |
+| ----------------------- | ---------------------------------------------------------------------------- |
+| Spellcasting overview   | Missing counts for available cantrips, prepared spells and spellbook entries |
+| Spell slots             | Shows a single number rather than available/maximum format                   |
+| Proficiency summary     | Abbreviated headings and small typography                                    |
+| Skills panel            | Missing column headers, row dividers and organized numerical alignment       |
+| Saving throws           | Positioned below the visible boundary                                        |
+| Skill selections        | Repeated generic Select buttons                                              |
+| Languages               | Two indistinguishably named selection groups                                 |
+| Cantrips                | Missing icon, name, category and short-description rows                      |
+| Spellbook               | Missing compact structured spell rows                                        |
+| Prepared spells         | Missing approved table presentation                                          |
+| Reference panel         | Displays stale alignment information                                         |
+| Prepared-spell guidance | Missing dedicated explanation                                                |
+| Scrolling               | Central content exceeds the visible viewport                                 |
+
+The spell rows must be functional selectors, not static images. The player must still be able to choose spells, inspect their details, distinguish known and prepared spells, and correct invalid selections.
+
+The language groups must retain their separate rules-derived choice allocations while making their sources clear to the player.
+
+### **Page 4 — Loadout & Review**
+
+This page also requires substantial layout correction.
+
+The approved design has a compact identity banner, six combat statistics, equipment, inventory, attacks, languages and proficiencies, features and traits, and a reference panel. The existing starting-equipment controls dominate the page and push the review panels below the visible region.
+
+| Element                   | Discrepancy                                                              |
+| ------------------------- | ------------------------------------------------------------------------ |
+| Identity banner           | Missing background, alignment, identity icons and decorative level badge |
+| Statistics                | Cards too shallow; labels and values lack emphasis                       |
+| Starting equipment        | Five stacked full-width selection controls occupy excessive space        |
+| Equipment                 | Missing icon-led equipment presentation                                  |
+| Inventory                 | Missing structured item and quantity columns                             |
+| Attacks                   | Missing Attack, To Hit, Damage and Type headers                          |
+| Languages & Proficiencies | Not visible in the screenshot                                            |
+| Features & Traits         | Not visible in the screenshot                                            |
+| Currency                  | Extends below the visible region                                         |
+| Reference                 | Displays raw class record and nested equipment definitions               |
+| Navigation                | Save Character present; approved Begin Adventure action absent           |
+| Scrolling                 | Lower content extends beyond the central panel viewport                  |
+
+Starting equipment must remain selectable. I propose integrating the existing choices into the approved Equipment panel using the existing selection-dialog mechanism. This preserves functionality without retaining five oversized controls above the entire review screen.
+
+**Begin Adventure is a dependency:** The current repository documents that campaign runtime is not implemented. The approved button must not launch a fabricated campaign system. Its appearance can be implemented, but its actual gameplay integration belongs to the campaign development milestone.
+
+### **Page 5 — Completed Character Sheet**
+
+The completed sheet requires its own canvas and display behaviour, rather than using the same landscape layout as the creator.
+
+| Element                                | Discrepancy                                                                              |
+| -------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Sheet placement                        | Left-aligned, leaving approximately 38% of the game canvas unused on the right           |
+| Background                             | Uses the hall backdrop rather than the approved portrait sheet composition               |
+| Branding                               | Undersized relative to the sheet                                                         |
+| Portrait                               | Narrow capsule with simplified ornamentation                                             |
+| Character name                         | Insufficient visual prominence                                                           |
+| Identity details                       | Missing approved column dividers and padding                                             |
+| Level badge                            | Generic rectangular card instead of ornamental badge                                     |
+| XP bar                                 | Thin plain bar rather than illuminated progress indicator                                |
+| Combat statistics                      | Missing larger values, stronger icons and approved framing                               |
+| Ability scores                         | Missing individual abbreviation badges and numerical cells                               |
+| Saving throws                          | Insufficient padding; modifiers touch the right border                                   |
+| Skills                                 | Both columns appear cramped with inadequate numeric clearance                            |
+| Attacks                                | Headers and values crowded together                                                      |
+| Features & Traits                      | Descriptions truncated with ellipses                                                     |
+| Equipment, inventory, spells and notes | Below the visible region; full rendering cannot be verified from the supplied screenshot |
+| Management toolbar                     | Character selector dominates width; action buttons are cramped                           |
+| Vertical scrolling                     | Present visually; complete scroll behaviour requires testing                             |
+| Zoom                                   | No visible zoom controls                                                                 |
+
+The approved sheet is approximately 1:1.29 in width-to-height proportions. It should remain a portrait-format document displayed within a centered scrollable viewer.
+
+It should not be stretched into a landscape form simply to fill the monitor.
+
+## **5. Confirmed source-code causes**
+
+I have also inspected the relevant live GDScript files. Several of the visual problems can now be traced directly to the implementation rather than inferred from screenshots.
+
+| Source finding                              | Consequence                                                                                     |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Font sizes multiplied by `0.64`             | Undersized typography throughout                                                                |
+| Icon sizes multiplied by `0.65`             | Reduced visual prominence                                                                       |
+| Control heights multiplied by `0.58`        | Shallow fields and buttons                                                                      |
+| Panel content margins multiplied by `0.5`   | Insufficient internal padding                                                                   |
+| Creator buttons have a minimum height of 23 | Compressed navigation and selection controls                                                    |
+| Shared creator central `ScrollContainer`    | Whole-page central scrolling instead of fitted page layouts                                     |
+| Portrait column minimum width of 174        | Narrow portrait presentation                                                                    |
+| Reference column minimum width of 245       | Inflexible allocation across different pages                                                    |
+| Sheet manager minimum body width of 780     | Sheet sizing is not properly tied to the available viewport                                     |
+| Sheet horizontal scrolling disabled         | Prevents navigation of a sheet enlarged beyond viewport width unless another mechanism is added |
+
+The recurring reduction factors affect `character_creator.gd`, `full_character_sheet.gd` and `character_manager.gd`.
+
+**The implementation plan is to replace these blanket reductions with design-specific dimensions and responsive layout rules.** Simply removing all reduction factors without restructuring the layouts would create further overflow.
+
+## **6. Proposed layout specifications**
+
+The following diagrams represent the structure of your approved designs. They are implementation layout guides, not replacement artwork.
+
+### **01 — Identity**
+
+### **02 — Ability Scores**
+
+### **03 — Skills & Spells**
+
+### **04 — Loadout & Review**
+
+Structural guides only. Existing controls absent from the mockups must be integrated without removing functionality.
+
+### **Completed sheet viewer**
+
+Centered portrait sheet with an independent management and zoom toolbar. Scroll within the viewer, not the entire application.
+
+The proposed zoom controls are an addition expressly required by your instructions. They sit outside the approved character sheet artwork so the underlying design remains intact.
+
+## **7. Scoped implementation plan**
+
+| Phase | Work                                                                       | Primary files                                  |
+| ----- | -------------------------------------------------------------------------- | ---------------------------------------------- |
+| 1     | Establish reusable typography, border, spacing and icon dimensions         | `character_creator.gd`, theme assets           |
+| 2     | Correct creator viewport layout, portrait, navigation and reference panels | `character_creator.gd`                         |
+| 3     | Restore approved Identity and Ability Scores layouts                       | `character_creator.gd`                         |
+| 4     | Restore approved Skills & Spells layout with functional selections         | `character_creator.gd`                         |
+| 5     | Restore approved Loadout & Review layout                                   | `character_creator.gd`                         |
+| 6     | Format reference information and selection dialogs                         | Character UI scripts                           |
+| 7     | Rebuild portrait-format sheet presentation                                 | `full_character_sheet.gd`                      |
+| 8     | Implement centered sheet viewer, scrolling and zoom                        | `character_manager.gd`                         |
+| 9     | Validate artwork and repair visual assets where necessary                  | `art/`, `themes/parts/`                        |
+| 10    | Expand layout tests and perform regression testing                         | `tests/layout_smoke.gd`                        |
+| 11    | Document changes and submit for review                                     | `PROJECT_BRAIN.md`, `TESTING.md`, `ROADMAP.md` |
+
+### **Files protected from unrelated modification**
+
+- `character_rules.gd`
+- `character_store.gd`
+- SQLite schemas and transport
+- Rules catalogue databases
+- Gemini API integration and prompts
+- Campaign and world systems
+- Launcher and updater
+- Live release manifest
+
+If a functional defect is traced to another subsystem, I will document it and refer it to the responsible development thread rather than silently change that subsystem.
+
+## **8. Acceptance criteria**
+
+## **Acceptance register**
+
+0 / 36 verified
+
+**A — Visual fidelity**
+
+All five interfaces match the approved composition and section ordering.
+
+Correct portrait proportions and decorative framing.
+
+Correct title, heading, label and value typography hierarchy.
+
+Consistent gold borders, corners, icons and illumination.
+
+No text touching panel edges or overlapping adjacent controls.
+
+Active navigation stage and primary action clearly highlighted.
+
+Reference artwork and backgrounds retain their approved styling.
+
+**B — Layout and scaling**
+
+All four creator pages fit at 1280 × 720.
+
+All four creator pages fit at 1920 × 1080.
+
+Fullscreen and maximized window modes work correctly.
+
+No whole-page or central-form scrolling in character creation.
+
+No clipped controls, hidden required fields or overlapping panels.
+
+Individual reference and selection regions may scroll where necessary.
+
+Long names and descriptions do not break the layout.
+
+**C — Character functionality**
+
+Identity fields, portraits and AI descriptions remain functional.
+
+Rolled scores, standard array, point buy, reroll and swap remain functional.
+
+Racial modifiers and derived statistics remain accurate.
+
+Skills, languages, subclasses and applicable character choices remain accessible.
+
+Cantrip, spellbook and prepared spell selections remain validated.
+
+Starting equipment, inventory and equipment selections remain functional.
+
+Back and Next preserve entered character data.
+
+Drafts and completed characters save and reload correctly.
+
+**D — Completed character sheet**
+
+Sheet is centered and retains approved portrait-format proportions.
+
+All approved sections are present and readable.
+
+Vertical scrolling reaches the complete sheet.
+
+Zoom in, zoom out, reset and fit-width controls work.
+
+Horizontal navigation is available when zoom exceeds viewport width.
+
+Interactive references remain accessible at different zoom levels.
+
+Edit, archive, character selection and catalogue controls remain available.
+
+**E — Regression and release safety**
+
+Existing character records, portraits and settings remain intact.
+
+No unrelated systems changed.
+
+Relevant Godot scripts parse and import successfully.
+
+Character, SQLite, layout and applicable asset smoke tests executed.
+
+Windows manual comparison completed for all five screens.
+
+PROJECT_BRAIN.md and testing documentation updated.
+
+Scoped changes reviewed before merging or publishing.
+
+All criteria are intentionally unchecked. They are requirements for the corrected implementation, not claims of completed testing.
+
+## **9. Proposed display behaviour**
+
+| Setting                      | Proposed behaviour              |
+| ---------------------------- | ------------------------------- |
+| Creator design resolution    | 1280 × 720 logical canvas       |
+| Creator scaling              | Proportional, aspect-preserving |
+| Creator page scrolling       | Disabled                        |
+| Reference text scrolling     | Permitted within its own panel  |
+| Selection dialog scrolling   | Permitted                       |
+| Long-text field scrolling    | Permitted within the field      |
+| Character sheet aspect ratio | 1103:1426 reference proportions |
+| Sheet alignment              | Centered                        |
+| Default sheet zoom           | Fit width                       |
+| Zoom range                   | 50–200%                         |
+| Zoom increments              | 10 percentage points            |
+| Zoom reset                   | 100%                            |
+| Scrollbar appearance         | Matching gold-and-dark theme    |
+
+The zoom range, increment and default behaviour are my proposed implementation decisions. They were not specified in the original designs.
+
+## **10. Testing strategy**
+
+The existing layout smoke test is insufficient to establish visual fidelity. It needs to check actual control boundaries, visibility, available dimensions and overflow rather than merely minimum sizes.
+
+| Test                         | Required validation                                                 |
+| ---------------------------- | ------------------------------------------------------------------- |
+| `layout_smoke.gd`            | All creator stages fit; sheet viewport and zoom behave correctly    |
+| `character_smoke.gd`         | Character mechanics and selections remain correct                   |
+| `sqlite_smoke.gd`            | Database integration and persistence remain functional              |
+| `assets_smoke.gd`            | Artwork and optional asset handling                                 |
+| Manual screenshot comparison | Five-screen comparison against approved designs                     |
+| Save/reload regression       | Existing and newly created characters remain intact                 |
+| Windows runtime              | Actual visual rendering, mouse interaction and fullscreen behaviour |
+
+Testing must include spellcasting and non-spellcasting classes, different racial choices, extensive inventory, lengthy feature descriptions and characters with and without portraits.
+
+The approved example artwork contains illustrative character statistics and spell selections. These are visual references, not authoritative mechanical test fixtures. Actual values must always come from the character rules engine.
+
+## **11. Outstanding issues requiring acknowledgement**
+
+Three aspects of the implementation require particular care:
+
+**Existing controls not shown in the approved designs.** Backstory, portrait selection, AI generation, ability swapping, additional language selections and equipment choices must remain functional. Their precise placement requires integration into the approved layout.
+
+**Artwork fidelity.** The approved frames and decorative effects are more elaborate than the current runtime assets. Exact reproduction may require creating additional matching transparent graphical components. The approved designs themselves will not be replaced.
+
+**Begin Adventure.** The approved final page includes this button, but the campaign runtime does not yet exist. It cannot be fully functional within this development scope.
+
+Additionally, the current environment has not independently executed the Windows build. Your screenshots are valuable runtime evidence, but they do not establish that every character operation or scrolling interaction works.
+
+## **12. Development session report**
+
+Published version
+
+**v0.0.20**
+
+Approved designs reviewed
+
+5 of 5
+
+Runtime screenshots reviewed
+
+7 of 7
+
+Visual audit
+
+Completed
+
+Implementation plan
+
+Prepared
+
+Acceptance criteria
+
+Prepared
+
+Code changes
+
+None
+
+Tests executed
+
+None
+
+Commits / pull requests
+
+None
+
+Release published
+
+No
+
+**Awaiting implementation approval**
+
+**The approved designs remain the target, not merely inspiration.** The next development step is to implement this plan on a scoped feature branch based on the latest `godot` branch, without modifying the live v0.0.20 release until review and authorization.
