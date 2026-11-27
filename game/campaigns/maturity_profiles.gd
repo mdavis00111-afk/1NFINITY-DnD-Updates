@@ -5,6 +5,8 @@ const SECTION = "campaign_maturity"
 const KEY = "profiles"
 const DEFAULT_ID = "standard"
 const IDS = ["family", "standard", "mature"]
+# The legacy editor supported 24 custom entries. Built-ins must not consume those slots.
+const MAX_LEGACY_PROFILES = 24
 const DEFAULTS = [
 	{"id":"family","name":"Family friendly","instructions":"Audience: children and families. No graphic violence; conflict is brief or off-screen. Friendship rather than romance. At most a mildly spooky tone."},
 	{"id":"standard","name":"Standard","instructions":"Audience: general adult table. Ordinary fantasy violence without lingering gore. Romance may be implied; sexual activity stays off-page."},
@@ -19,9 +21,10 @@ static func default_profiles() -> Array:
 static func validate(value: Variant) -> String:
 	if not value is Array:
 		return "Profiles must be a JSON array."
-	if value.size() > 24:
-		return "Use at most 24 profiles."
+	if value.size() > MAX_LEGACY_PROFILES + IDS.size():
+		return "Use at most 24 legacy profiles plus the three built-in profiles."
 	var seen: Dictionary = {}
+	var legacy_count = 0
 	var regex = RegEx.new()
 	regex.compile("^[a-z0-9][a-z0-9_-]{0,47}$")
 	for profile in value:
@@ -36,6 +39,10 @@ static func validate(value: Variant) -> String:
 		if str(profile["name"]).length()>80 or str(profile["instructions"]).length()>12000:
 			return "Profile name or instructions exceed the supported length."
 		seen[id]=true
+		if not IDS.has(id):
+			legacy_count += 1
+	if legacy_count > MAX_LEGACY_PROFILES:
+		return "Use at most 24 legacy profiles."
 	return ""
 
 static func _merge(value: Array) -> Array:

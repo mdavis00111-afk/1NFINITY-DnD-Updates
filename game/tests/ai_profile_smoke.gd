@@ -41,6 +41,16 @@ func run() -> void:
 	expect(MATURITY.reset_guidance("family").is_empty() and MATURITY.resolve("family")["instructions"]==defaults[0]["instructions"],"Profile reset")
 	expect(NARRATOR.reset_prompt().is_empty() and NARRATOR.load_prompt()==NARRATOR.DEFAULT_PROMPT,"Narrator reset")
 	expect(config.load(MATURITY.PATH)==OK and config.get_value("fixture","keep")=="unchanged" and config.get_value("prompts","NPC")=="NPC fixture","Unrelated settings preserved")
+	# Preserve the entire pre-existing legacy capacity after introducing the built-ins.
+	var legacy_profiles: Array = []
+	for i in range(MATURITY.MAX_LEGACY_PROFILES-1):
+		legacy_profiles.append({"id":"legacy-"+str(i),"name":"Legacy "+str(i),"instructions":"Legacy fixture"})
+	expect(MATURITY.save_profiles(legacy_profiles).is_empty(),"Legacy capacity consumed by built-ins")
+	expect(MATURITY.load_profiles().size()==MATURITY.MAX_LEGACY_PROFILES+3,"Legacy profiles lost during merge")
+	expect(MATURITY.save_guidance("standard","Updated full-registry guidance").is_empty(),"Full registry prevented built-in edit")
+	expect(MATURITY.reset_guidance("standard").is_empty(),"Full registry prevented built-in reset")
+	expect(not MATURITY.save_profiles([{"id":"legacy-over-limit","name":"Over limit","instructions":"Fixture"}]).is_empty(),"Exceeded legacy capacity")
+	expect(MATURITY.resolve("legacy")["instructions"]=="Legacy guidance","Existing legacy guidance lost")
 	var response = {"candidates":[{"finishReason":"STOP","content":{"parts":[{"text":"{}"}]}}]}
 	expect(GEMINI.generation_text(response,true)=={"ok":true,"message":"{}"},"Complete structured envelope rejected")
 	response["candidates"][0]["finishReason"]="MAX_TOKENS"
