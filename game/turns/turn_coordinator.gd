@@ -34,6 +34,7 @@ var candidate: Dictionary = {}
 var geography: Dictionary = {}
 var attempt: Dictionary = {}
 var generation = 0
+var notifying = false
 
 func make_id() -> String:
 	return Crypto.new().generate_random_bytes(16).hex_encode()
@@ -44,7 +45,9 @@ func fail(message: String) -> Dictionary:
 func set_phase(next: String, message: String = "") -> void:
 	phase=next
 	status_text=message
+	notifying=true
 	state_changed.emit(view_state())
+	notifying=false
 
 # Public projection never exposes a candidate, raw provider error or private token.
 func view_state() -> Dictionary:
@@ -80,9 +83,11 @@ func reset_turn() -> void:
 
 # Explicit trusted binding; not a map-tab or startup migration.
 func bind_campaign(id: String) -> Dictionary:
+	if notifying:
+		return fail("Defer controller actions until the state notification completes.")
 	if not is_inside_tree() or not DTO.id_valid(id):
 		return fail("Bind a valid campaign from a live controller.")
-	if not resolver.unresolved.is_empty() or phase=="mechanics_retry":
+	if not resolver.unresolved.is_empty() or phase in ["mechanics_resolving","mechanics_retry"]:
 		return fail("Reconcile the outstanding mechanical receipt before switching.")
 	retire()
 	reset_turn()
@@ -107,7 +112,12 @@ func bind_campaign(id: String) -> Dictionary:
 
 func refresh_scene(current: Dictionary) -> Dictionary:
 	var dm = world.dm_geography(campaign_id)
-	var visible = world.map_view(campaign_id,0,128)
+	if not dm.get("ok",false):
+		return dm
+	var related_ids: Array = []
+	for place in dm["locations"]:
+		related_ids.append(place["id"])
+	var visible = world.public_context(campaign_id,related_ids)
 	var result = PACK.public_world(current,dm,visible)
 	if result.get("ok",false):
 		scene=result["scene"]
@@ -116,6 +126,8 @@ func refresh_scene(current: Dictionary) -> Dictionary:
 
 # Player submission does not spend dice or persist a player turn.
 func submit(text: String) -> Dictionary:
+	if notifying:
+		return fail("Defer controller actions until the state notification completes.")
 	if phase not in ["idle","clarification","unsupported","rules_failed"] or campaign_id.is_empty() or not DTO.bounded_text(text,2000):
 		return fail("No available turn or invalid player action.")
 	if not resolver.unresolved.is_empty():
@@ -168,7 +180,8 @@ func send(stage: String, expected: Dictionary, prompt: String, schema: Dictionar
 	set_phase(stage+"_pending","Requesting "+stage+" from Gemini…")
 	if transport!=source or generation!=epoch:
 		return fail("Request canceled.")
-	source.generate(prompt,"","",true,schema,65536,8192,temperature)
+	var tokens = 2048 if stage=="rules" else (4096 if stage=="narration" else 8192)
+	source.generate(prompt,"","",true,schema,65536,tokens,temperature)
 	return {"ok":true,"request_id":expected["request_id"]}
 
 func received(ok: bool, message: String, source: Node, epoch: int) -> void:
@@ -237,6 +250,8 @@ func approval_request() -> Dictionary:
 # Caller must independently confirm player intent and ruling; matching shape
 # alone is NOT proof. Never synthesize the ruling from a model response.
 func approve(local_approval: Dictionary) -> Dictionary:
+	if notifying:
+		return fail("Defer controller actions until the state notification completes.")
 	if phase!="awaiting_local_approval" or not resolver.approval_valid(token,turn_id,proposal["actions"][0],local_approval):
 		return fail("Trusted local adjudication required.")
 	approval=local_approval.duplicate(true)
@@ -317,6 +332,8 @@ func reconciliation_bundle() -> Dictionary:
 # against receipt, established world and audience. Nonempty geography cannot
 # be accepted here: B4 owns atomic fact/narration reconciliation.
 func accept_reviewed_text(bundle: Dictionary) -> Dictionary:
+	if notifying:
+		return fail("Defer controller actions until the state notification completes.")
 	var current = reconciliation_bundle()
 	if current.is_empty() or bundle!=current or not geography["facts"].is_empty():
 		return fail("Exact reviewed text-only bundle required; geography requires B4.")
@@ -332,6 +349,8 @@ func check_narration_ack(failure: Dictionary) -> Dictionary:
 
 # B4 calls after its guarded transaction. Verify persisted acknowledgement.
 func confirm_reconciled() -> Dictionary:
+	if notifying:
+		return fail("Defer reconciliation acknowledgement until the state notification completes.")
 	var prior = store.receipt_by_id(campaign_id,turn_id)
 	var current = store.snapshot(campaign_id)
 	if not prior.get("ok",false) or not prior.get("found",false) or prior.get("narration_event_id")==null or not current.get("ok",false) or current["pending_turn_id"]!=null or current["actor_id"]!=actor_id:
@@ -343,6 +362,8 @@ func confirm_reconciled() -> Dictionary:
 	return {"ok":true,"revision":current["revision"]}
 
 func retry() -> Dictionary:
+	if notifying:
+		return fail("Defer controller actions until the state notification completes.")
 	match phase:
 		"rules_failed":
 			return start_rules()
@@ -365,6 +386,8 @@ func retry() -> Dictionary:
 
 # Cancel never abandons an unresolved prepared roll or committed receipt.
 func cancel() -> Dictionary:
+	if notifying:
+		return fail("Defer controller actions until the state notification completes.")
 	if phase in ["mechanics_resolving","mechanics_retry"] or not resolver.unresolved.is_empty():
 		return fail("Reconcile the mechanical receipt before cancellation.")
 	retire()
@@ -385,6 +408,8 @@ func cancel() -> Dictionary:
 	return {"ok":true}
 
 func abandon_uncommitted() -> Dictionary:
+	if notifying:
+		return fail("Defer controller actions until the state notification completes.")
 	if phase!="mechanics_retry":
 		return fail("No unresolved local action.")
 	var prior = store.receipt_by_id(campaign_id,turn_id)

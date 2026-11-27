@@ -218,6 +218,7 @@ static func generation_text(data: Dictionary, require_complete: bool = false, ma
 # Controller retires each request node. Clear credentials and suppress signals
 # before canceling; cancellation cannot report a usable provider response.
 func cancel_generation() -> void:
+	var was_active = active
 	active=false
 	mode=""
 	current_key=""
@@ -225,5 +226,5 @@ func cancel_generation() -> void:
 	discovery_key=""
 	complete_response_required=false
 	response_limit=4000
-	if is_instance_valid(request):
+	if was_active and is_instance_valid(request):
 		request.cancel_request()

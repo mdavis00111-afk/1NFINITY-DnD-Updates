@@ -95,7 +95,7 @@ static func geo_schema(expected: Dictionary) -> Dictionary:
 static func rule_context(token: Dictionary, cat) -> Dictionary:
 	if not cat.initialize():
 		return RAW.fail("Pinned rules catalogue unavailable.")
-	if not token["actor"].get("combat") is Dictionary or not token["actor"]["combat"].get("conditions",[]) is Array:
+	if not token["actor"].get("combat") is Dictionary or not token["actor"]["combat"].get("conditions",[]) is Array or not DTO.whole(token["actor"]["combat"].get("exhaustion",0),0,6):
 		return RAW.fail("Actor condition data requires local review.")
 	var refs: Array = []
 	for kind in RAW.HANDLERS:
@@ -166,11 +166,15 @@ static func public_world(token: Dictionary, dm: Dictionary, visible: Dictionary)
 		if relation["from_id"] in ids and relation["to_id"] in ids:
 			relations.append(relation)
 	var history: Array = []
-	for event in dm["recent_events"]:
-		if event.get("kind") in ["campaign_created","narration","mechanical_receipt"]:
+	var seen_events: Array = []
+	# Initial public opening remains available after the recent window moves on.
+	for event in visible.get("opening_events",[])+dm["recent_events"]:
+		if event.get("kind") in ["campaign_created","narration"] and not event.get("event_id") in seen_events:
 			var payload = JSON.parse_string(str(event.get("payload","")))
 			if payload is Dictionary and DTO.bounded_text(payload.get("text"),4000):
-				history.push_front({"event_id":event["event_id"],"turn":event["turn"],"kind":event["kind"],"text":payload["text"]})
+				history.append({"event_id":event["event_id"],"turn":event["turn"],"kind":event["kind"],"text":payload["text"]})
+				seen_events.append(event["event_id"])
+	history.sort_custom(func(a,b): return a["event_id"]<b["event_id"])
 	var public_ids = ids.duplicate()
 	for route in routes:
 		public_ids.append(route["id"])
@@ -179,9 +183,20 @@ static func public_world(token: Dictionary, dm: Dictionary, visible: Dictionary)
 		var place: Dictionary = places[i].duplicate(true)
 		if not place.get("parent_id") in ids:
 			place["parent_id"]=null
-		place["region_id"]=null
+		if not visible.get("region",[]).any(func(region): return region["id"]==place.get("region_id")):
+			place["region_id"]=null
 		places[i]=place
-	var scene = {"location_id":token["location_id"],"distance_unit":"mile","locations":places,"aliases":aliases,"routes":routes,"relationships":relations,"recent_events":history}
+	var regions: Array = visible.get("region",[])
+	for region in regions:
+		public_ids.append(region["id"])
+	var travel: Array = []
+	for segment in visible.get("travel",[]):
+		if segment["from_id"] in ids and segment["to_id"] in ids:
+			var entry: Dictionary = segment.duplicate(true)
+			if not entry.get("route_id") in public_ids:
+				entry["route_id"]=null
+			travel.append(entry)
+	var scene = {"location_id":token["location_id"],"distance_unit":"mile","locations":places,"aliases":aliases,"routes":routes,"relationships":relations,"regions":regions,"recent_travel":travel,"local_facts":visible.get("local_facts",[]),"recent_events":history}
 	if JSON.stringify(scene).length()>48000:
 		return RAW.fail("Public scene exceeds the context budget.")
 	return {"ok":true,"scene":scene,"ids":public_ids}

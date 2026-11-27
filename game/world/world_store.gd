@@ -86,6 +86,50 @@ func map_view(id: String, page: int = 0, limit: int = LIMIT) -> Dictionary:
 	# No manufactured point: party location can be known by name only.
 	return {"ok":true,"schema_version":DTO.VERSION,"campaign_id":id,"world_id":id,"revision":token["revision"],"page":page,"limit":limit,"distance_unit":"mile","x_axis":"east","y_axis":"north","locations":typed_rows(sets[0]),"aliases":sets[1],"relationships":typed_rows(sets[2]),"routes":typed_rows(sets[3]),"route_points":typed_rows(sets[4]),"terrain_regions":sets[5],"terrain_points":typed_rows(sets[6]),"travel":typed_rows(sets[7]),"travel_points":typed_rows(sets[8]),"annotations":sets[9],"party_location":party[0] if not party.is_empty() else null}
 
+# B3 bounded player-safe subset for a current DM query. Do not use the first
+# alphabetically sorted map page as the relevant-world query.
+func public_context(id: String, related_ids: Array) -> Dictionary:
+	var token = TURN.new().snapshot(id)
+	if not token.get("ok",false):
+		return token
+	if related_ids.size()>DM_LIMIT+1:
+		return failure("Too many relevant places.")
+	var ids: Array = [token["location_id"]]
+	for place_id in related_ids:
+		if not DTO.id_valid(place_id):
+			return failure("Invalid relevant place identifier.")
+		if not place_id in ids:
+			ids.append(place_id)
+	var placeholders: PackedStringArray = []
+	for place_id in ids:
+		placeholders.append("?")
+	var marks = ",".join(placeholders)
+	var places = MAP_LOCATIONS+" AND l.id IN ("+marks+") ORDER BY l.id"
+	var at = token["location_id"]
+	var result = read_sets(token,[
+		SQL.stmt(places,ids),
+		SQL.stmt("SELECT a.location_id,a.alias FROM location_aliases a JOIN ("+places+") p ON p.id=a.location_id WHERE a.visibility='player' ORDER BY a.location_id,a.alias LIMIT ?",ids+[DM_LIMIT*4]),
+		SQL.stmt("SELECT g.id,g.from_id,g.to_id,g.kind,g.direction,g.distance_miles,g.precision FROM geographic_relationships g JOIN world_discovery a ON a.location_id=g.from_id JOIN world_discovery b ON b.location_id=g.to_id WHERE g.visibility='player' AND a.visibility='player' AND a.status<>'unknown' AND b.visibility='player' AND b.status<>'unknown' AND g.from_id IN ("+marks+") AND g.to_id IN ("+marks+") ORDER BY g.id LIMIT ?",ids+ids+[DM_LIMIT]),
+		SQL.stmt(MAP_ROUTES+" AND (r.from_id=? OR r.to_id=?) AND r.from_id IN ("+marks+") AND r.to_id IN ("+marks+") ORDER BY r.id LIMIT ?",[at,at]+ids+ids+[DM_LIMIT]),
+		SQL.stmt(MAP_LOCATIONS+" AND l.id=?",[at]),
+		SQL.stmt(MAP_TRAVEL+" ORDER BY t.turn_number DESC,m.seq DESC LIMIT ?",[token["actor_id"],DM_LIMIT]),
+		SQL.stmt("SELECT substr(l.payload,1,6000) AS payload FROM locations l JOIN world_discovery d ON d.location_id=l.id WHERE l.id=? AND d.visibility='player' AND d.first_event_id=(SELECT min(id) FROM events WHERE kind='campaign_created' AND turn=0)",[at]),
+		SQL.stmt(MAP_REGIONS+" AND r.id=(SELECT region_id FROM world_places WHERE location_id=?)",[at]),
+		SQL.stmt("SELECT id AS event_id,turn,kind,substr(payload,1,4000) AS payload FROM events WHERE turn=0 AND kind IN ('campaign_created','narration') ORDER BY id LIMIT 2")
+	])
+	if not result.get("ok",false):
+		return result
+	var sets: Array = result["sets"]
+	var party = typed_rows(sets[4])
+	var local_facts: Array = []
+	if not sets[6].is_empty():
+		var legacy = JSON.parse_string(str(sets[6][0]["payload"]))
+		if legacy is Dictionary and legacy.get("world_facts") is Array:
+			for fact in legacy["world_facts"].slice(0,16):
+				if DTO.bounded_text(fact,500):
+					local_facts.append(fact)
+	return {"ok":true,"campaign_id":id,"revision":token["revision"],"locations":typed_rows(sets[0]),"aliases":sets[1],"relationships":typed_rows(sets[2]),"routes":typed_rows(sets[3]),"party_location":party[0] if not party.is_empty() else null,"travel":typed_rows(sets[5]),"local_facts":local_facts,"region":typed_rows(sets[7]),"opening_events":typed_rows(sets[8])}
+
 # Separate private DM read model. Only current, connected or geographically
 # nearby places; no whole-campaign dump. Distances are not inferred.
 func dm_geography(id: String, radius_miles: float = 25.0) -> Dictionary:
