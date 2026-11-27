@@ -15,6 +15,7 @@ const PROSE_LINE = "A line of narrative that should remain available in full. "
 var failures: Array[String] = []
 var saved_test_id = ""
 var saved_test_portrait = ""
+var persistence_enabled = false
 
 
 func _initialize() -> void:
@@ -213,8 +214,7 @@ func exercise_creator(base: Control, role: String) -> Dictionary:
 
 
 func check_persistence_enabled() -> bool:
-	var isolated_directory = OS.get_environment("XDG_DATA_HOME")
-	return OS.get_environment("INFINITY_TEST_TRANSPORT") != "" and not isolated_directory.is_empty() and ProjectSettings.globalize_path("user://").begins_with(isolated_directory + "/")
+	return persistence_enabled
 
 
 func exercise_save(base: Control, creator: Control, long_prose: String) -> void:
@@ -394,6 +394,15 @@ func exercise_catalogue(base: Control) -> void:
 
 
 func run() -> void:
+	# Windows uses the unchanged production transport, not INFINITY_TEST_TRANSPORT.
+	# Establish this guard before touching the catalogue or any player storage.
+	var expected = OS.get_environment("INFINITY_TEST_USER_ROOT").replace("\\","/").trim_suffix("/")
+	var actual = ProjectSettings.globalize_path("user://").replace("\\","/").trim_suffix("/")
+	if expected.is_empty() or expected!=actual or FileAccess.file_exists("user://players.db") or FileAccess.file_exists("user://settings.cfg") or DirAccess.dir_exists_absolute(ProjectSettings.globalize_path("user://players")) or DirAccess.dir_exists_absolute(ProjectSettings.globalize_path("user://campaigns")):
+		push_error("Layout smoke requires an explicitly authorized empty disposable user directory.")
+		quit(2)
+		return
+	persistence_enabled = true
 	var catalogue = CATALOGUE.new()
 	if not catalogue.initialize():
 		push_error("Layout smoke requires a populated rules catalogue: " + catalogue.last_error)
