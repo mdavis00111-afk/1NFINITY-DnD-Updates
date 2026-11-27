@@ -36,3 +36,6 @@ Evidence: user-pasted Codex report, baseline branch 4ea43b7 / live 0.0.20; not i
 - REPORTED PASS: Python SQLite 3.53.1 opened packaged DB in memory, PRAGMA integrity_check returned ok, 1,968 catalogue rows counted, FTS5 test table created. Standalone sqlite3 CLI absent. This does not validate Godot SQL integration.
 - BLOCKED in cloud: production Windows powershell.exe, .NET Framework C# and winsqlite3.dll bridge; stock database-backed smoke tests; Windows launcher/updater integration. Optional local reference assets required by assets smoke. Windows manual testing remains outstanding.
 - Codex reported no game files changed, committed, pushed or published. Exact command logs not supplied.
+
+## Reference readiness — 2026-11-27
+Executed local Python SQLite checks on supplied expanded rules_private.db: integrity_check ok, foreign_key_check empty, FTS MATCH fireball 50 hits, all four source PDF SHA256 matches; 1327 page records (44 no text, 11 sparse), 1968 catalogue rows, 2701 outline entries. All 12 GUI image SHA256 values matched. Combined ZIP CRC verification passed. No Godot runtime tests executed; private Codex access and Windows book browser integration remain unverified.
