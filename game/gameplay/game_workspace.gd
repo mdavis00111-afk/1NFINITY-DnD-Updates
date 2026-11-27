@@ -872,4 +872,4 @@ func show_map() -> void:
 	popup.configure(str(campaign.get("id","")),str(campaign.get("title","Campaign")))
 	add_child(popup)
 	var extent = get_viewport().get_visible_rect().size
-	popup.popup_centered(Vector2i(maxf(800,extent.x-36),maxf(480,extent.y-36)))
+	popup.popup_centered(Vector2i(maxf(940,extent.x-36),maxf(610,extent.y-36)))

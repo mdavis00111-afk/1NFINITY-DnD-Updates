@@ -12,7 +12,7 @@ const PAPER = Color("#f1d7a8")
 const RED = Color("#a62220")
 const MIN_ZOOM = 0.0000000001
 const MAX_ZOOM = 2048.0
-const LAYER_NAMES = ["Water","Terrain","Roads & Tracks","Settlements","Points of Interest","Labels","Fog of War","Party Path","Party","Notes"]
+const LAYER_NAMES = ["Water","Terrain","Rivers & Coastlines","Roads & Tracks","Settlements","Points of Interest","Camps","Labels","Fog of War","Party Path","Party","Notes"]
 var layers: Dictionary = {}
 var art = ART.new()
 var snapshot: Dictionary = {}
@@ -31,6 +31,7 @@ var center_x = 0.0
 var center_y = 0.0
 var hits: Array = []
 var region_hits: Array = []
+var label_rects: Array[Rect2] = []
 var dragging = false
 var drag_distance = 0.0
 var press_at = Vector2.ZERO
@@ -223,18 +224,14 @@ func point_bounds(points: PackedVector2Array) -> Rect2:
 	return bounds
 
 func draw_fog() -> void:
-	# Screen-space hatch is a visual unknown substrate, NOT a fabricated
-	# explored-area polygon. Only accepted polygons erase it below.
-	draw_rect(Rect2(Vector2.ZERO,size),Color("#8a7557"),true)
-	var step = 8
-	for y in range(-step,int(size.y)+step,step):
-		for x in range(-step,int(size.x)+step,step):
-			var wobble = (x*13+y*7)%5
-			draw_line(Vector2(x,y),Vector2(x+9,y-7+wobble*0.3),Color("#4d3c29",0.23),0.8,true)
-	var tint = Color(1,1,1,0.13)
-	for x in range(0,int(size.x),180):
-		for y in range(0,int(size.y),132):
-			decoration("decor.fog_hatch.v1",Rect2(x,y,180,132),tint)
+	# This is only a decorative unknown substrate. It neither discloses
+	# secret features nor claims that an arbitrary circle is explored.
+	draw_rect(Rect2(Vector2.ZERO,size),Color(0.35,0.27,0.17,0.42),true)
+	for x in range(-60,int(size.x),144):
+		for y in range(-48,int(size.y),108):
+			var alternate = (int((x+60)/144)+int((y+48)/108))%2
+			decoration("decor.fog_hatch.v1" if alternate==0 else "decor.fog_hatch.v2",Rect2(x,y,168,126),Color(1,1,1,0.60))
+			decoration("decor.fog_cloud.v1" if alternate==0 else "decor.fog_cloud.v2",Rect2(x-12,y-8,184,140),Color(1,1,1,0.10))
 
 func draw_region(row: Dictionary, points: PackedVector2Array, water: bool) -> void:
 	if points.size()<3 or not point_bounds(points).grow(2).intersects(Rect2(Vector2.ZERO,size)):
@@ -266,7 +263,7 @@ func draw_region(row: Dictionary, points: PackedVector2Array, water: bool) -> vo
 		# A decorative region illustration, not a distinct geographic point.
 		draw_art(asset,stamp_at,clampf(minf(bounds.size.x,bounds.size.y)*0.6,24,120),Color(1,1,1,0.42 if reported else 0.88))
 	if layers.get("Labels",true) and Rect2(Vector2.ZERO,size).has_point(stamp_at):
-		draw_label(str(row.get("name","")),stamp_at+Vector2(0,26),15,Color(INK,0.6 if reported else 1.0))
+		map_label(str(row.get("name","")),stamp_at+Vector2(0,26),15,Color(INK,0.6 if reported else 1.0))
 	region_hits.append({"id":row["id"],"polygon":points})
 
 func route_style(kind: Variant) -> Dictionary:
@@ -328,7 +325,22 @@ func draw_label(value: String, pos: Vector2, px: int, color: Color) -> void:
 	draw_string_outline(FONT,start,clipped,HORIZONTAL_ALIGNMENT_LEFT,-1,px,3,Color(PAPER,0.9))
 	draw_string(FONT,start,clipped,HORIZONTAL_ALIGNMENT_LEFT,-1,px,color)
 
+func map_label(value: String,pos: Vector2,px: int,color: Color,priority: bool = false) -> void:
+	var width = FONT.get_string_size(value.substr(0,70),HORIZONTAL_ALIGNMENT_LEFT,-1,px).x
+	var bounds = Rect2(pos-Vector2(width*0.5+3,px),Vector2(width+6,px+5))
+	if not priority:
+		for prior in label_rects:
+			if prior.intersects(bounds):
+				return
+	label_rects.append(bounds)
+	draw_label(value,pos,px,color)
+
 func place_layer(row: Dictionary, asset: Dictionary) -> String:
+	var kind = ART.normalize(row.get("kind",""))
+	if kind in ["camp","military_camp","adventurer_camp","bandit_camp"]:
+		return "Camps"
+	if kind in ["river","stream","rocky_coast","beach"]:
+		return "Rivers & Coastlines"
 	match str(asset.get("category","")):
 		"settlements": return "Settlements"
 		"terrain": return "Terrain"
@@ -353,12 +365,12 @@ func draw_places() -> void:
 		var rect = draw_art(asset,p,width,Color(1,1,1,0.48 if reported else 1.0))
 		if reported:
 			draw_art(art.entries.get("markers.unknown.v1",{}),p+Vector2(0,-10),16)
-		elif row.get("status") in ["visited","surveyed"] and layers.get("Party Path",true):
+		elif (row.get("status")=="visited" or row.get("last_visit_event_id")!=null) and layers.get("Party Path",true):
 			draw_art(art.entries.get("markers.visited.v1",{}),p,16)
 		if row["id"]==selected_id:
 			draw_arc(p,12,0,TAU,24,RED,1.5,true)
 		if layers.get("Labels",true):
-			draw_label(str(row.get("name","")),p+Vector2(0,18),15,Color(INK,0.55 if reported else 1.0))
+			map_label(str(row.get("name","")),p+Vector2(0,18),15,Color(INK,0.55 if reported else 1.0),row["id"]==selected_id or asset.is_empty())
 		if layers.get("Notes",true) and notes_by_place.has(row["id"]):
 			draw_art(art.entries.get("markers.annotation.v1",{}),p+Vector2(20,-15),19)
 		if rect.has_area():
@@ -369,6 +381,7 @@ func draw_places() -> void:
 func _draw() -> void:
 	hits.clear()
 	region_hits.clear()
+	label_rects.clear()
 	draw_rect(Rect2(Vector2.ZERO,size),PAPER)
 	decoration("decor.parchment.v1",Rect2(Vector2.ZERO,size))
 	if layers.get("Fog of War",true):
@@ -385,9 +398,9 @@ func _draw() -> void:
 		if not endpoints_in_region(row):
 			continue
 		var kind = ART.normalize(row.get("kind",""))
-		var water = kind in ["river","stream","coastline","rocky_coast","sea_route"]
-		if layers.get("Water" if water else "Roads & Tracks",true):
-			draw_route(route_points.get(row["id"],[]),route_style(kind),0.5 if row.get("status")=="reported" else 1.0)
+		var waterway = kind in ["river","stream","coastline","rocky_coast"]
+		if layers.get("Rivers & Coastlines" if waterway else "Roads & Tracks",true):
+			draw_route(route_points.get(row["id"],[]),route_style("coastline" if kind=="rocky_coast" else kind),0.5 if row.get("status")=="reported" else 1.0)
 	if layers.get("Party Path",true):
 		for row in snapshot.get("travel",[]):
 			if endpoints_in_region(row):

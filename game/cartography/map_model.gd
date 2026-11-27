@@ -83,7 +83,7 @@ func accept_page(page: Dictionary) -> String:
 	return "done"
 
 static func visible(row: Dictionary) -> bool:
-	return row.get("status") in VISIBLE
+	return row.get("status") in VISIBLE and row.get("visibility","player")=="player"
 
 static func numeric(value: Variant) -> bool:
 	return (value is int or value is float) and is_finite(float(value)) and absf(float(value))<=1e12
@@ -96,7 +96,7 @@ static func segment_key(row: Dictionary, point: bool = false) -> String:
 
 static func filtered(snapshot: Dictionary) -> Dictionary:
 	# Defensive projection only. SQL is the authoritative privacy boundary.
-	var out = snapshot.duplicate(true)
+	var out = {"campaign_id":snapshot.get("campaign_id",""),"revision":snapshot.get("revision",-1)}
 	var places = {}
 	var regions = {}
 	var routes = {}
@@ -120,7 +120,10 @@ static func filtered(snapshot: Dictionary) -> Dictionary:
 	for row in snapshot.get("travel",[]):
 		if places.has(row.get("from_id")) and places.has(row.get("to_id")):
 			travel[segment_key(row)] = row
-			out["travel"].append(row)
+			var visible_segment = row.duplicate(true)
+			if not routes.has(visible_segment.get("route_id")):
+				visible_segment["route_id"] = null
+			out["travel"].append(visible_segment)
 	for key in ["aliases","annotations","relationships","route_points","terrain_points","travel_points"]:
 		out[key] = []
 		for row in snapshot.get(key,[]):
@@ -131,7 +134,7 @@ static func filtered(snapshot: Dictionary) -> Dictionary:
 				"route_points": keep = routes.has(row.get("route_id")) and routes[row["route_id"]].get("precision") in ["approximate","surveyed"]
 				"terrain_points": keep = regions.has(row.get("region_id")) and regions[row["region_id"]].get("precision") in ["approximate","surveyed"]
 				"travel_points": keep = travel.has(segment_key(row,true)) and travel[segment_key(row,true)].get("precision") in ["approximate","surveyed"]
-			if keep:
+			if keep and row.get("visibility","player")=="player":
 				out[key].append(row)
 	var party = snapshot.get("party_location")
 	out["party_location"] = places.get(party.get("id")) if party is Dictionary else null

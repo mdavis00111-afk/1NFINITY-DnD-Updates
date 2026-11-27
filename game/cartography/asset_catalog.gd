@@ -6,7 +6,7 @@ var entries: Dictionary = {}
 var families: Dictionary = {}
 var styles: Dictionary = {}
 var cache: Dictionary = {}
-const ALIASES = {"forest":"deciduous_forest","woods":"deciduous_forest","mountain":"mountain_peak","mountains":"mountain_range","hills":"rolling_hills","hill":"rolling_hills","grassland":"grasslands","plain":"plains","coast":"rocky_coast","coastline":"rocky_coast","harbor":"harbour","capital_city":"capital","fort":"fortress","poi":"point_of_interest","dungeon_entrance":"hidden_entrance","settlement":"village","road":"main_road","track":"dirt_track","path":"footpath","border":"regional_border","water":"lake"}
+const ALIASES = {"forest":"deciduous_forest","woods":"deciduous_forest","mountain":"mountain_peak","mountains":"mountain_range","hills":"rolling_hills","hill":"rolling_hills","grassland":"grasslands","plain":"plains","coast":"rocky_coast","coastline":"rocky_coast","harbor":"harbour","capital_city":"capital","fort":"fortress","poi":"point_of_interest","dungeon_entrance":"hidden_entrance","road":"main_road","track":"dirt_track","path":"footpath","border":"regional_border"}
 func initialize() -> bool:
 	var root = JSON.parse_string(FileAccess.get_file_as_string(CATALOG))
 	if not root is Dictionary or not root.get("assets") is Array:

@@ -15,7 +15,7 @@ var art = ART.new()
 var campaign_id = ""
 var campaign_title = ""
 var intent_handler: Callable
-var canvas: Control
+var canvas
 var region_select: OptionButton
 var scope_label: Label
 var state_label: Label
@@ -32,6 +32,7 @@ var fullscreen_button: Button
 var history_box: RichTextLabel
 var tabs: TabContainer
 var refresh_button: Button
+var note_drafts: Dictionary = {}
 var selected_id = ""
 var selected_region = ""
 var measure_mode = false
@@ -51,7 +52,7 @@ func _ready() -> void:
 	title = "Adventurer's Cartography"
 	transient = true
 	exclusive = true
-	min_size = Vector2i(800,480)
+	min_size = Vector2i(940,610)
 	close_requested.connect(queue_free)
 	art.initialize()
 	theme = map_theme()
@@ -166,9 +167,10 @@ func section(parent: Node,caption: String) -> VBoxContainer:
 	panel.add_theme_stylebox_override("panel",panel_style(Color("#efd4a4"),5))
 	parent.add_child(panel)
 	var col = vbox(panel,2)
-	var heading = label(col,caption,22)
-	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(HSeparator.new())
+	if not caption.is_empty():
+		var heading = label(col,caption,22)
+		heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(HSeparator.new())
 	return col
 
 func build() -> void:
@@ -278,8 +280,10 @@ func build_legend() -> void:
 		image.custom_minimum_size = Vector2(37,25)
 		row.add_child(image)
 		label(row,entry[0],16)
-	for entry in [["—  Red ink","Actual committed travel"],["- -  Black ink","Known route / border"],["≈","Approximate distance"]]:
-		label(legend,entry[0]+"  "+entry[1],15)
+	var travel_legend = label(legend,"—  Actual committed travel",16)
+	travel_legend.add_theme_color_override("font_color",RED)
+	label(legend,"- -  Known route / border",15)
+	label(legend,"≈  Approximate distance",15)
 	label(col,"Fog is illustrative. No surveyed-area denominator is available.",14)
 
 func build_journal() -> void:
@@ -320,12 +324,17 @@ func status(message: String) -> void:
 	state_label.text = message
 
 func refresh_map(refit: bool = false) -> void:
+	var old_region = canvas.region_id
+	var old_selected = selected_id
+	var had_geometry = canvas.has_geometry()
+	stash_note()
 	load_generation += 1
 	var generation = load_generation
 	is_loading = true
 	refresh_button.disabled = true
 	selected_id = ""
 	selected_region = ""
+	note_box.clear()
 	measure_mode = false
 	model.start(campaign_id)
 	canvas.set_snapshot({},false)
@@ -353,7 +362,12 @@ func refresh_map(refit: bool = false) -> void:
 			details.text = model.error
 			status("World map unavailable. "+model.error+" No save migration has been attempted.")
 			return
-		canvas.set_snapshot(model.data,refit or not canvas.has_geometry())
+		canvas.set_snapshot(model.data,false)
+		canvas.region_id = old_region if canvas.regions.has(old_region) else ""
+		if refit or not had_geometry:
+			canvas.fit()
+		else:
+			canvas.queue_redraw()
 		populate_regions()
 		populate_locations()
 		populate_history()
@@ -361,7 +375,11 @@ func refresh_map(refit: bool = false) -> void:
 		var party = model.data.get("party_location")
 		var party_name = str(party.get("name","")) if party is Dictionary else "Unestablished"
 		status("Party: "+party_name+"  ·  "+str(model.data["locations"].size())+" known locations  ·  Revision "+str(model.revision)+"  ·  Explored area not quantified")
-		if party is Dictionary:
+		if canvas.places.has(old_selected) and canvas.in_region(canvas.places[old_selected]):
+			select_location(old_selected,false)
+		elif not canvas.region_id.is_empty():
+			select_region_info(canvas.region_id)
+		elif party is Dictionary:
 			select_location(str(party["id"]),false)
 		else:
 			details.text = "No visible party location established."
@@ -397,7 +415,15 @@ func change_region(index: int) -> void:
 	if not canvas.region_id.is_empty():
 		select_region_info(canvas.region_id)
 	else:
+		stash_note()
+		selected_id = ""
 		selected_region = ""
+		note_box.clear()
+		canvas.selected_id = ""
+		canvas.queue_redraw()
+		open_region_button.disabled = true
+		travel_button.disabled = true
+		note_button.disabled = true
 		details.text = "World overview. Select a known location."
 
 func populate_locations() -> void:
@@ -435,9 +461,16 @@ func name_for(id: Variant) -> String:
 func human(value: Variant) -> String:
 	return "Unknown" if value==null or str(value).is_empty() else str(value).replace("_"," ").capitalize()
 
+func stash_note() -> void:
+	if not selected_id.is_empty() and is_instance_valid(note_box):
+		note_drafts[selected_id] = note_box.text
+
 func select_location(id: String, switch_tab: bool = true) -> void:
 	if not canvas.places.has(id):
 		return
+	if id!=selected_id:
+		stash_note()
+		note_box.text = str(note_drafts.get(id,""))
 	selected_id = id
 	selected_region = ""
 	canvas.selected_id = id
@@ -502,7 +535,11 @@ func select_location(id: String, switch_tab: bool = true) -> void:
 func select_region_info(id: String) -> void:
 	if not canvas.regions.has(id):
 		return
+	stash_note()
 	selected_id = ""
+	note_box.clear()
+	canvas.selected_id = ""
+	canvas.queue_redraw()
 	selected_region = id
 	var row = canvas.regions[id]
 	tabs.current_tab = 1
@@ -522,15 +559,21 @@ func open_region() -> void:
 		select_region_info(id)
 
 func focus_selected(id: String) -> void:
+	var old_region = canvas.region_id
 	if not canvas.focus_place(id):
 		status("This location has no established position.")
 	else:
+		if canvas.region_id!=old_region:
+			populate_locations()
 		select_location(id,false)
 
 func focus_party() -> void:
+	var old_region = canvas.region_id
 	if not canvas.center_party():
 		status("Party location is known by name only; no position to centre.")
 		return
+	if canvas.region_id!=old_region:
+		populate_locations()
 	select_location(str(model.data["party_location"]["id"]),false)
 
 func toggle_measure() -> void:
@@ -574,6 +617,7 @@ func save_annotation() -> void:
 		status(str(result.get("error","Annotation was not saved.")))
 		return
 	note_box.clear()
+	note_drafts.erase(selected_id)
 	refresh_map(false)
 
 func populate_history() -> void:
@@ -601,7 +645,7 @@ func request_travel() -> void:
 	status("Travel intention forwarded for controller validation. No map movement applied.")
 
 func toggle_fullscreen() -> void:
-	var root_size = get_tree().root.size
+	var root_size = Vector2i(get_parent().get_viewport().get_visible_rect().size) if get_parent() is Control else get_tree().root.size
 	if not fullscreen_map:
 		normal_size = size
 		normal_position = position
