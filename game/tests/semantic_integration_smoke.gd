@@ -38,6 +38,10 @@ var outbound: Array=[]
 # Pause only scheduling, never replace production authorization or persistence.
 class FixtureController extends "res://gameplay/semantic_controller.gd":
 	var pause_discovery=false
+	var pause_reconcile=false
+	func reconcile(job: Dictionary,receipt: Dictionary,known: Array) -> void:
+		if not pause_reconcile:
+			super.reconcile(job,receipt,known)
 	func process_story() -> void:
 		if not pause_discovery:
 			super.process_story()
@@ -241,6 +245,7 @@ func run() -> void:
 	await geography_discovery_case(id)
 	await discovery_negative_cases(id,b["id"])
 	await duplicate_world_envelope(id)
+	await candidate_reopen(id)
 	expect(players.load_record(master)==original and base.gameplay_view(b["id"])==sibling,"Master and sibling isolation")
 	ctrl.close_session()
 	workspace.queue_free()
@@ -323,9 +328,21 @@ func geography_discovery_case(id: String) -> void:
 		{"kind":"define_custom","evidence":evidence,"args":{"definition":definition,"official_equivalent_id":null}},
 		{"kind":"loot_discover","evidence":evidence,"args":{"location_id":location,"name":"Counter discovery","items":[{"definition_id":"@0","quantity":1,"charges":null,"condition":"intact","attunement":"not_required"}],"coins":money(0)}}
 	]
+	var identity=ctrl.inflight.duplicate(true)
 	reply(response)
 	if not await pump("idle"):
 		return
+	var db=discovery_db_snapshot(id)
+	await rejected_response(id,identity,response,false,"Duplicate definition and discovery response")
+	expect(discovery_db_snapshot(id)==db,"Duplicate definition/discovery did not change persisted rows")
+	ctrl.close_session()
+	workspace.queue_free()
+	ctrl.queue_free()
+	await process_frame
+	if not bind(id):
+		return
+	await wait_frames()
+	expect(discovery_db_snapshot(id)==db,"Controller reopening preserves world, loot and event identities")
 	expect(outbound.size()-calls==2,"Geography and discovery exactly two provider calls")
 	var after=durable_snapshot(id)
 	expect(after["actor"]==before["actor"] and after["owned"]==before["owned"],"Discovery does not grant resources")
@@ -358,7 +375,14 @@ func discovery_db_snapshot(id: String) -> Dictionary:
 		SQL.stmt("SELECT * FROM locations ORDER BY id"),
 		SQL.stmt("SELECT * FROM world_places ORDER BY location_id"),
 		SQL.stmt("SELECT * FROM world_routes ORDER BY id"),
-		SQL.stmt("SELECT * FROM actors ORDER BY id")
+		SQL.stmt("SELECT * FROM actors ORDER BY id"),
+		SQL.stmt("SELECT * FROM geographic_relationships ORDER BY id"),
+		SQL.stmt("SELECT * FROM world_discovery ORDER BY id"),
+		SQL.stmt("SELECT * FROM item_definitions ORDER BY id"),
+		SQL.stmt("SELECT * FROM item_instances ORDER BY id"),
+		SQL.stmt("SELECT * FROM loot_containers ORDER BY id"),
+		SQL.stmt("SELECT * FROM events ORDER BY id"),
+		SQL.stmt("SELECT * FROM story_history ORDER BY id")
 	],true)
 
 func discovery_negative_cases(id: String,sibling_id: String) -> void:
@@ -431,6 +455,20 @@ func discovery_negative_cases(id: String,sibling_id: String) -> void:
 		expect(after["view"].get("interaction_extension",{}).get("loot_containers")==before["view"].get("interaction_extension",{}).get("loot_containers"),label+" loot unchanged")
 		expect(ctrl.active().get("discovery_index")==1 and ctrl.active().get("stage")=="retry",label+" cursor retained")
 		expect(outbound.size()==calls,label+" no provider request")
+	# Even genuine older narration cannot replace the exact action's source.
+	var earlier=SQL.run(base.path_for(id),[SQL.stmt("SELECT id,payload FROM events WHERE kind='narration' AND id<>? AND json_extract(payload,'$.text') LIKE '%amber tally%' ORDER BY id DESC LIMIT 1",[original["narration_event_id"]])],true)
+	if not expect(earlier.get("ok",false) and earlier["results"][0].size()==1,"Unrelated committed narration fixture"):
+		return
+	var wrong_source=original.duplicate(true)
+	wrong_source["narration_event_id"]=int(earlier["results"][0][0]["id"])
+	expect(not ctrl.committed_job_source(wrong_source,state),"Unrelated committed narration cannot authorize deferred work")
+	if not expect(ctrl.update_active(wrong_source),"Persist unrelated narration pointer fixture"):
+		return
+	var source_db=discovery_db_snapshot(id)
+	var source_calls=outbound.size()
+	ctrl.step_discovery()
+	await wait_frames()
+	expect(ctrl.active().get("stage")=="retry" and ctrl.active().get("discovery_index")==1 and discovery_db_snapshot(id)==source_db and outbound.size()==source_calls,"Wrong source stopped before deferred writes")
 	# A committed SQL row with the right ID but altered request is not a receipt.
 	var altered=request.duplicate(true)
 	altered["args"]["items"][0]["quantity"]=2
@@ -501,6 +539,35 @@ func duplicate_world_envelope(id: String) -> void:
 	await rejected_response(id,identity,response,false,"Duplicate structured world envelope")
 	expect(discovery_db_snapshot(id)==db,"Duplicate structured envelope preserves persisted world rows")
 	expect(outbound.size()-calls==2,"Structured duplicate no extra provider calls")
+
+func candidate_reopen(id: String) -> void:
+	var input="I ask Mara to describe the bridge again."
+	var calls=outbound.size()
+	workspace.composer.text=input
+	workspace.submit_chat()
+	if not await pump("interpret"):
+		return
+	reply({"kind":"conversation","args":{"text":input}})
+	if not await pump("narrate"):
+		return
+	ctrl.pause_reconcile=true
+	var response=combined(TALK)
+	reply(response)
+	await wait_frames()
+	if not expect(ctrl.active().get("stage")=="reconcile","Valid combined candidate persisted before reconciliation"):
+		return
+	var candidate=ctrl.active().duplicate(true)
+	var before=durable_snapshot(id)
+	ctrl.close_session()
+	workspace.queue_free()
+	ctrl.queue_free()
+	await process_frame
+	if not bind(id) or not await pump("idle"):
+		return
+	expect(outbound.size()-calls==2,"Persisted candidate reconciled locally without another AI request")
+	expect(session.token(id)["actor"]==before["actor"] and REG.new().noncombat.read_owned(session.token(id),ctrl.actor_id)==before["owned"],"Candidate recovery does not repeat mechanical changes")
+	var result=session.settlement(id,candidate["tool"]["request_id"])
+	expect(result.get("status")=="committed" and result.get("event_id")!=null,"Candidate recovery settled original receipt")
 
 func wait_frames() -> void:
 	for i in range(12):

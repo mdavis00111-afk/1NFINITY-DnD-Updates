@@ -133,7 +133,7 @@ func validate_assessment(req: Dictionary,report: Variant,job: Dictionary,state: 
 func descriptive_assessment(req: Dictionary,job: Dictionary,state: Dictionary) -> Dictionary:
 	if not req["kind"] in DESCRIPTIVE or req!=job.get("story_request") or not bound_request(req,job,state):
 		return {}
-	if req["kind"]!="story_update" and not controller.discovery_request_valid(req,job,state):
+	if not controller.committed_job_source(job,state) or (req["kind"]!="story_update" and not controller.discovery_request_valid(req,job,state)):
 		return {}
 	var event_id=job.get("narration_event_id")
 	if req["args"].get("source_event_id")!=event_id or not DTO.whole(event_id,1):
@@ -165,7 +165,7 @@ func review(req: Dictionary,scope: Dictionary,intent: Dictionary) -> Dictionary:
 		out["reason"]="Local explicit safe selection or no-effect observation."
 		return out
 	var record=job.get("context_review",{})
-	if record.get("request")!=req or record.get("revision")!=state["revision"] or not DTO.id_valid(record.get("attempt_id")):
+	if not record.get("authorization_version") in ["combined-v027","committed-description-v027"] or record.get("request")!=req or record.get("revision")!=state["revision"] or not DTO.id_valid(record.get("attempt_id")):
 		return out
 	var checked=validate_assessment(req,record.get("report"),job,state)
 	if checked.get("ok",false):

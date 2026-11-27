@@ -161,7 +161,7 @@ func receive_interpretation(identity: Dictionary,result: Dictionary,selected: Ar
 			stop("clarification",checked.get("error","Contextual assessment unavailable."))
 			return failure(status)
 		if checked.get("ok",false):
-			job["context_review"]={"request":req.duplicate(true),"revision":data["state"]["revision"],"attempt_id":identity["attempt_id"],"report":assessment}
+			job["context_review"]={"request":req.duplicate(true),"revision":data["state"]["revision"],"attempt_id":identity["attempt_id"],"report":assessment,"authorization_version":"combined-v027"}
 	var combined=job.get("selected_context",[])+selected
 	var distinct: Array=[]
 	for entry in combined:
@@ -398,13 +398,32 @@ func valid_discoveries(value: Variant,text: String) -> bool:
 			return false
 	return true
 
+# The journal's source pointer is not authority on its own. Bind it to
+# the actual completed action's narration, not merely any public event with
+# matching words. This remains valid after subsequent descriptive revisions.
+func committed_job_source(job: Dictionary,state: Dictionary) -> bool:
+	var req=job.get("tool",{})
+	var event_id=job.get("narration_event_id")
+	if not DTO.id_valid(req.get("request_id")) or not DTO.whole(event_id,1) or req.get("campaign_id")!=state["campaign_id"] or req.get("actor_id")!=state["actor_id"]:
+		return false
+	var settled=registry.session.settlement(state["campaign_id"],req["request_id"])
+	if not settled.get("ok",false) or not settled.get("found",false) or settled.get("request")!=req or settled.get("status")!="committed":
+		return false
+	if standalone(job):
+		var linked=RECON.new().standalone_event(state["campaign_id"],req["request_id"])
+		return linked.get("ok",false) and linked.get("found",false) and linked.get("event_id")==event_id
+	if settled.get("logical_turn_id")!=job.get("turn_id") or settled.get("event_id")!=event_id:
+		return false
+	var receipt=registry.resolver.store.receipt_by_id(state["campaign_id"],job["turn_id"])
+	return receipt.get("ok",false) and receipt.get("found",false) and receipt.get("narration_event_id")==event_id
+
 func discovery_arguments(job: Dictionary,state: Dictionary,index: int,request_id: String,recovered: Dictionary={}) -> Dictionary:
 	var entries=job.get("discoveries",[])
 	if index<0 or index>=entries.size() or not DTO.id_valid(request_id):
 		return {}
 	var entry=entries[index]
 	var event_id=job.get("narration_event_id")
-	if not DTO.whole(event_id,1):
+	if not DTO.whole(event_id,1) or not committed_job_source(job,state):
 		return {}
 	var source=registry.session.source(state,event_id)
 	if source.get("kind")!="narration" or not registry.session.public_source(source) or not valid_discoveries([entry],str(source.get("data",{}).get("text",""))):
@@ -465,6 +484,9 @@ func process_story() -> void:
 	if not reload():
 		return
 	var job=active().duplicate(true)
+	if not committed_job_source(job,data["state"]):
+		stop("retry","Deferred narration source does not belong to this committed action.")
+		return
 	if int(job.get("story_index",0))<job.get("story",[]).size():
 		super.process_story()
 		return
@@ -769,10 +791,10 @@ func prepare_review(req: Dictionary,resume_stage: String) -> bool:
 	if not descriptive.is_empty():
 		var checked=policy.validate_assessment(req,descriptive,job,state)
 		if checked.get("ok",false):
-			job["context_review"]={"request":req.duplicate(true),"revision":state["revision"],"attempt_id":registry.session.make_id(),"report":descriptive}
+			job["context_review"]={"request":req.duplicate(true),"revision":state["revision"],"attempt_id":registry.session.make_id(),"report":descriptive,"authorization_version":"committed-description-v027"}
 			return update_active(job)
 	var record=job.get("context_review",{})
-	if record.get("request")==req and record.get("revision")==state["revision"]:
+	if record.get("authorization_version")=="combined-v027" and record.get("request")==req and record.get("revision")==state["revision"]:
 		var checked=policy.validate_assessment(req,record.get("report"),job,state)
 		if checked.get("ok",false):
 			return true
