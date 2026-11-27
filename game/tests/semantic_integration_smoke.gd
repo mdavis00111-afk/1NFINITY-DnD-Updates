@@ -431,6 +431,24 @@ func discovery_negative_cases(id: String,sibling_id: String) -> void:
 		expect(after["view"].get("interaction_extension",{}).get("loot_containers")==before["view"].get("interaction_extension",{}).get("loot_containers"),label+" loot unchanged")
 		expect(ctrl.active().get("discovery_index")==1 and ctrl.active().get("stage")=="retry",label+" cursor retained")
 		expect(outbound.size()==calls,label+" no provider request")
+	# A committed SQL row with the right ID but altered request is not a receipt.
+	var altered=request.duplicate(true)
+	altered["args"]["items"][0]["quantity"]=2
+	var forged=SQL.run(base.path_for(id),[SQL.stmt("INSERT INTO gameplay_requests(request_id,actor_id,kind,expected_revision,status,request_payload,result_payload,settled_revision,event_id) VALUES(?,?,?,?,'committed',?,?,?,?)",[rid,request["actor_id"],request["kind"],request["expected_revision"],JSON.stringify(altered),JSON.stringify({}),request["expected_revision"],request["args"]["source_event_id"]])])
+	if not expect(forged.get("ok",false),"Inject mismatched SQL settlement"):
+		return
+	if not expect(ctrl.update_active(original),"Persist pending request against forged settlement"):
+		return
+	var forged_before=durable_snapshot(id)
+	var forged_db=discovery_db_snapshot(id)
+	var forged_calls=outbound.size()
+	ctrl.step_discovery()
+	await wait_frames()
+	expect(ctrl.active().get("stage")=="retry" and ctrl.active().get("discovery_index")==1,"Forged settlement cannot advance cursor")
+	expect(durable_snapshot(id)==forged_before and discovery_db_snapshot(id)==forged_db,"Forged settlement cannot mutate authoritative state")
+	expect(outbound.size()==forged_calls,"Forged settlement triggers no provider call")
+	if not expect(SQL.run(base.path_for(id),[SQL.stmt("DELETE FROM gameplay_requests WHERE request_id=?",[rid])]).get("ok",false),"Remove disposable forged settlement"):
+		return
 	if not expect(ctrl.update_active(original),"Restore exact legitimate pending discovery"):
 		return
 	ctrl.step_discovery()

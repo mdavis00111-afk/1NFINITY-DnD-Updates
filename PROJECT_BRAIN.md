@@ -601,3 +601,6 @@ Added scheduling-only fixture controller pause to exercise actual persisted post
 
 ## v0.0.27 checkpoint 3b.3c.3 — structured duplicate regression (partial)
 Active fixture commits NPC/place-bearing envelope and resubmits exact stale identity; asserts one of each, unchanged durable snapshot and world rows, two calls. Discovery-bearing envelope and native execution remain outstanding. No publication.
+
+
+3b.3c.2c follow-up: active disposable fixture now injects a mismatched committed SQLite settlement under the exact pending discovery request ID, checks cursor/state/provider invariants and removes the injected row before legitimate replay. Native execution not run. Unrelated valid narration source and interrupted actor generation remain outstanding. No publication.

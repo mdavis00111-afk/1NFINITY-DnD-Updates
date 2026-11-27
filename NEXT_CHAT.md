@@ -14,3 +14,6 @@ Branch godot; live v0.0.26, target v0.0.27; no intermediate publication. Read PR
 3b.3c.2c negative fixture committed; native execution, actor generation interruption and stronger forged SQL/unrelated source coverage outstanding. Next 3b.3c.3 structured duplicate envelope.
 
 3b.3c.3 NPC/place duplicate envelope fixture committed; discovery-bearing duplicate and 3b.3c.2c remaining actor recovery/forged SQL coverage outstanding. No release.
+
+
+3b.3c.2c follow-up: active disposable fixture now injects a mismatched committed SQLite settlement under the exact pending discovery request ID, checks cursor/state/provider invariants and removes the injected row before legitimate replay. Native execution not run. Unrelated valid narration source and interrupted actor generation remain outstanding. No publication.
