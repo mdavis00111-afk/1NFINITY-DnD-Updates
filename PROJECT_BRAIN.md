@@ -432,3 +432,6 @@ Base 5b4ff6a54685cbf0030e37f7ac9c543c86c445c8; self-target Cure Wounds/Healing W
 
 ## C3 stage 4a — preparation and adoption binding refinement
 Base ccd721e3d19269e4bacfef20479991ec2eba2dcc; explicit rest-linked spell preparation/unpreparation, quick equip alias, no duplicate-copy attunement, B2 receipt result must match durable adopted intent. Registry and recovery adapter next; source only, no publication.
+
+## C3 stage 4b — semantic registry and durable lifecycle
+Base 8b7ea6920ae29db6945d92d0817ca197a2b3fa39; 16 query and 33 mutation descriptors, strict typed arguments, local review callback, contextual evidence/difficulty categories and no-roll conversation, object statistics and checks, C2 services, adopted B2 lifecycle/recovery/cancel and bounded ordered execution. See design/C3_TOOL_CONTRACT.md. No live binding or publication. Test and source review next.
