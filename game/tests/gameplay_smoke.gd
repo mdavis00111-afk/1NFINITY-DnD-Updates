@@ -72,7 +72,8 @@ func run() -> void:
 		for control in [ui.nav_bar,ui.left_panel,ui.center_panel,ui.right_panel,ui.composer,ui.send_button,ui.dice_type,ui.dice_count,ui.dice_result,ui.log_scroll]:
 			inside(control,bounds,str(resolution))
 		expect(not ui.composer.editable and ui.send_button.disabled,"Future action input unexpectedly active")
-		expect(ui.center_panel.size.x>ui.left_panel.size.x and ui.center_panel.size.x>ui.right_panel.size.x,"Central panel is not largest")
+		var columns_width = ui.left_panel.size.x+ui.center_panel.size.x+ui.right_panel.size.x
+		expect(columns_width>0 and absf(ui.left_panel.size.x/columns_width-27.0/99.0)<0.05 and absf(ui.center_panel.size.x/columns_width-43.0/99.0)<0.05 and absf(ui.right_panel.size.x/columns_width-29.0/99.0)<0.05,"Column proportions differ from reference")
 		expect(ui.inventory_cells.has("backpack") and ui.inventory_cells.has("shortsword"),"Normalized inventory cells missing")
 		ui.select_item("backpack")
 		expect(ui.inventory_detail.text.contains("Quantity: 3"),"Selected quantity not normalized")

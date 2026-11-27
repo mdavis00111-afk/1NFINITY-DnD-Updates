@@ -16,6 +16,8 @@ const FONT = preload("res://themes/fonts/EBGaramond.ttf")
 const DOLL = preload("res://gameplay/paper_doll.svg")
 const COMPASS = preload("res://gameplay/reference_compass.png")
 const EMPTY_PARTY = preload("res://gameplay/reference_party.png")
+const SLOT_ATLAS = preload("res://gameplay/reference_slots.png")
+const SLOT_NAMES = ["Head","Cloak","Body","Hands","Feet","Neck","Ring","Accessory","Belt","Shield"]
 const SHORTSWORD = preload("res://gameplay/reference_shortsword.png")
 const BACKPACK = preload("res://gameplay/reference_backpack.png")
 const PORTRAIT_FRAME = preload("res://themes/parts/portrait_empty.png")
@@ -259,24 +261,36 @@ func navigate(destination: String) -> void:
 
 func stat(parent: Node, caption: String, value: String, icon_id: String = "", health: bool = false) -> void:
 	var tile = frame(parent,1.0,false,false,3)
+	var row: HBoxContainer
 	if health:
 		var max_hp = actor.get("combat",{}).get("hp_max")
 		var current_hp = actor.get("combat",{}).get("hp_current")
 		var bar = ProgressBar.new()
 		bar.show_percentage = false
-		bar.custom_minimum_size.y = 9
+		bar.custom_minimum_size.y = 27
 		bar.max_value = maxf(1.0,float(max_hp)) if max_hp!=null else 1.0
 		bar.value = float(current_hp) if current_hp!=null else 0.0
 		var fill = StyleBoxFlat.new()
-		fill.bg_color = Color("#aa2429")
-		fill.set_corner_radius_all(3)
+		fill.bg_color = Color("#a6262c")
+		fill.set_corner_radius_all(4)
+		var background = StyleBoxFlat.new()
+		background.bg_color = Color("#301a2c")
+		background.set_corner_radius_all(4)
 		bar.add_theme_stylebox_override("fill",fill)
+		bar.add_theme_stylebox_override("background",background)
 		tile.add_child(bar)
-	var row = hbox(tile,4)
+		row = hbox(bar,4)
+		row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		row.offset_left = 4
+		row.offset_right = -4
+	else:
+		row = hbox(tile,4)
 	if not icon_id.is_empty():
-		picture(row,glyph(icon_id),Vector2(17,17))
+		var symbol = picture(row,glyph(icon_id),Vector2(17,17))
+		symbol.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	one_line(row,caption,15,GOLD)
-	var val = one_line(row,value,16,IVORY,true)
+	var val = one_line(row,value,16,IVORY)
+	val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	val.size_flags_stretch_ratio = 0.8
 
 func build_left(parent: VBoxContainer) -> void:
@@ -351,11 +365,19 @@ func build_left(parent: VBoxContainer) -> void:
 	one_line(money,"Weight: "+number(actor.get("carried_weight_lb"))+" / "+number(actor.get("carrying_capacity_lb"))+" lb",16)
 
 func slot_card(parent: Node, slot: String, id: String) -> void:
-	var caption = slot+"\n"+(title_for("equipment",id) if not id.is_empty() else "Empty")
-	var b = button(parent,caption,func(): inspect("equipment",id),13,"armor" if slot=="Body" and not id.is_empty() else ("shield" if slot=="Shield" and not id.is_empty() else ""))
-	b.custom_minimum_size.y = 39
+	var caption = title_for("equipment",id) if not id.is_empty() else "Empty"
+	var b = button(parent,caption,func(): inspect("equipment",id),12,"armor" if slot=="Body" and not id.is_empty() else ("shield" if slot=="Shield" and not id.is_empty() else ""))
+	b.custom_minimum_size.y = 40
 	b.disabled = id.is_empty()
-	b.tooltip_text = caption
+	b.tooltip_text = slot+" — "+caption
+	if id.is_empty():
+		var atlas = AtlasTexture.new()
+		atlas.atlas = SLOT_ATLAS
+		atlas.region = Rect2(SLOT_NAMES.find(slot)*28,0,28,28)
+		b.icon = atlas
+	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+	b.add_theme_constant_override("icon_max_width",20)
 
 func show_equipped_weapons() -> void:
 	var lines: PackedStringArray = []
@@ -677,13 +699,15 @@ func build_spells() -> void:
 
 func build_skills() -> void:
 	var list = list_for_tab("Skills & Saving Throws")
-	for rec in cat.rows("skills"):
-		var id = str(rec["index"])
+	var skill_ids = actor.get("skills",{}).keys()
+	skill_ids.sort()
+	for raw_id in skill_ids:
+		var id = str(raw_id)
 		var skill = actor.get("skills",{}).get(id,{})
 		if skill.is_empty():
 			continue
 		var marker = "◆ " if skill.get("expertise",false) else ("◇ " if skill.get("proficient",false) else "   ")
-		reference_row(list,"skills",id,marker+str(rec["name"])+"   "+number(skill.get("modifier"),true))
+		reference_row(list,"skills",id,marker+title_for("skills",id)+"   "+number(skill.get("modifier"),true))
 	for key in ABILITIES:
 		label(list,key.to_upper()+" Save  "+number(actor.get("saving_throws",{}).get(key),true),16)
 
