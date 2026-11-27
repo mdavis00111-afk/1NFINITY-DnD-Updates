@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.13",
-  "source_commit": "32669ee20e90c3085368e61a3ea905fd69352573",
-  "notes": "Fix vertical character creator header collapse: non-wrapping expanding title, deferred full-screen layout, minimum panel widths for creator and player manager. Includes layout regression test script; Windows runtime testing pending. Includes v0.0.12 artwork fix.",
+  "version": "0.0.14",
+  "source_commit": "f394630ef9b551fa9abfc71bd455a307bb73ffdb",
+  "notes": "SQLite rules and player persistence, legacy JSON migration, redesigned four-screen creator, Gemini description generation and API settings, campaign schema. Public rules DB is losslessly compressed and SHA-256 verified on first use. Private references remain local. Windows runtime testing pending.",
   "files": [
     {
       "path": "main.tscn",
@@ -197,18 +197,6 @@
       "blob": "f9ad996001c8ee72fd43b4b8e67c8924b7f615b1"
     },
     {
-      "path": "rules/catalog.gd",
-      "blob": "cb271355cad80ac22a912fbcc6b95a033aa01be3"
-    },
-    {
-      "path": "rules/character_rules.gd",
-      "blob": "96343e93c0eaa8e6010348fd2ab7247f26b3b24a"
-    },
-    {
-      "path": "players/character_store.gd",
-      "blob": "b6dbc0349d6d62f1163c2ed534b3ea1532359748"
-    },
-    {
       "path": "themes/master_theme.tres",
       "blob": "c6cb9b5ef9779d593373e9224cc2c19f1cac7bf3"
     },
@@ -217,44 +205,96 @@
       "blob": "f2a1709b307e26c9fe13bcb666a76c4dbba2d380"
     },
     {
-      "path": "players/CHARACTER_SYSTEM.md",
-      "blob": "9b5813556e58b5a5c50982ccfc2550c2944a00e6"
-    },
-    {
-      "path": "tests/character_smoke.gd",
-      "blob": "b20dec9a2d39106f684438d77c5698c61524b36b"
-    },
-    {
       "path": "themes/TYPOGRAPHY.md",
       "blob": "eac8bb8e11a693fbc6eff88c7cbd428c6cfadc2e"
     },
     {
+      "path": "tests/layout_smoke.gd",
+      "blob": "3d565a8d9bca828a9a8c260e73935f3cda7f0096"
+    },
+    {
       "path": "main.gd",
-      "blob": "d118c88270a89362b1c4bde34739c42b0e218d8e"
+      "blob": "9c2748805797682b37396b33cb43442ee5a80586"
+    },
+    {
+      "path": "players/CHARACTER_SYSTEM.md",
+      "blob": "2912089d5d98f7eba9f120fece0d9c5f176fcf44"
     },
     {
       "path": "players/character_creator.gd",
-      "blob": "bafbc75115182fe4f1739a4354c71e43c89d17b1"
+      "blob": "524f8e19aea31aab867cff6360c96ca539093a4f"
     },
     {
       "path": "players/character_manager.gd",
-      "blob": "54074168b6c857cb45bbb8c23635dae6f78154bf"
+      "blob": "acf35377ce579c8f3120deaf2fab534d9139f65e"
     },
     {
-      "path": "rules/catalog_browser.gd",
-      "blob": "b1f9d8b6ed3ec4b54b31c5e03d7492f01d78ce07"
+      "path": "players/character_store.gd",
+      "blob": "60d189601a4bd4db7d5dcfdcf5cec71f47e4eb23"
     },
     {
       "path": "project.godot",
-      "blob": "cedd070b146de046b2541a5395da7e2ed24afcb7"
+      "blob": "f93d8bdac5d6e63becd1850e9dd4fd69dab6ec0c"
+    },
+    {
+      "path": "rules/catalog_browser.gd",
+      "blob": "259cf25eb351da456fb15fb5c255d155b1e9d399"
+    },
+    {
+      "path": "rules/character_rules.gd",
+      "blob": "276499225605567df3acc67bcb23a652a2e7db6b"
+    },
+    {
+      "path": "systems/campaign_schema.sql",
+      "blob": "e1a39e4957700a7cd2f1ef5e003254217f8a3b5b"
+    },
+    {
+      "path": "systems/gemini.gd",
+      "blob": "2bf07bb71014bf9f3503ad0430d5a2830c06c584"
+    },
+    {
+      "path": "systems/sqlite.gd",
+      "blob": "4adae9e847fecd3e0a55a490275f3db3a98767ec"
+    },
+    {
+      "path": "systems/sqlite_bridge.cs",
+      "blob": "49f8ad34c6cf9ef93e8d0aade3e08a04677744b8"
+    },
+    {
+      "path": "systems/sqlite_bridge.ps1",
+      "blob": "32f343d787c0ac66b57b04a224ac41338678d114"
+    },
+    {
+      "path": "tests/character_smoke.gd",
+      "blob": "2378683215f7d956764ac154c5ac6339830b78cc"
+    },
+    {
+      "path": "tests/sqlite_smoke.gd",
+      "blob": "1d57abbdc0cfc0fa2cf5eab13a34515c13542211"
+    },
+    {
+      "path": "themes/parts/panel_active.png",
+      "blob": "14c7bd90e2370a6dbe8140a603939b6fad84fb5f"
+    },
+    {
+      "path": "themes/parts/panel_gold.png",
+      "blob": "51d4506815ebdecf78c20e0f1b8d8cb230d10551"
+    },
+    {
+      "path": "themes/parts/portrait_empty.png",
+      "blob": "6907eaee2e216df48d04b4b279010f948de0fa6a"
     },
     {
       "path": "version.txt",
-      "blob": "43b29618309bc6aa441848513d5dd3554a32c7c1"
+      "blob": "9789c4ccb0c8a10f055933a2eebb6eea8453b153"
     },
     {
-      "path": "tests/layout_smoke.gd",
-      "blob": "3d565a8d9bca828a9a8c260e73935f3cda7f0096"
+      "path": "data/rules.db.gz",
+      "blob": "ea6ba81a76751fc4e2e478ab7e52be7e4000fa75"
+    },
+    {
+      "path": "rules/catalog.gd",
+      "blob": "67b8329a2e3ca351007da1163bb5ba5499ec89cd"
     }
   ]
 }
