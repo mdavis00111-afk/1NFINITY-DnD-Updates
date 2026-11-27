@@ -328,3 +328,6 @@ Read live godot fcfb629 and branch 0ddb4d6 Brain/Handoff/Testing and C5 assignme
 
 ## C5 stage 2 — independent local review and standalone narration persistence
 Added conservative trusted policy (explicit selection/no-effect path; other context requires independent local reviewer, not Gemini approval), B4 standalone source-linked narration with exact committed C3 settlement and atomic meta marker/geography transaction, no fabricated B2 turn. Extended public event projection for original standalone player input. Full creative prose still requires independent trusted reviewer; deterministic fallback only static sensory grammar. No native acceptance or publication.
+
+## C5 stage 3 — explicit C5 controller binding and durable continuations
+Added semantic_controller.gd extending C4, development bind_ai only, bounded contextual packet, persistent multi-step subrequests reinterpreted at new revision, standalone narration recovery and preview, critical correction and deferred source-linked definition/actor/loot proposals with idempotent C3 settlement, no automatic pickup. C4 production entry point unchanged. Required new mechanical claims are corrected to pending/offer or explicitly blocked; no unverified post-receipt mutation. Context-dependent effects and unrestricted prose still require independent trusted adjudication; native/live provider not run.
