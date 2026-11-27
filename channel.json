@@ -1,12 +1,12 @@
 {
   "channel": "godot",
-  "version": "0.0.5",
-  "source_commit": "a86c827c8e614baaf7c42d7de25bf8fff36f0e60",
-  "notes": "Menu placement matched to approved painted logo. Supports actual castle art in res://art/castle.png or user://art/castle.png. Artwork must be installed separately for this version; source-only release.",
+  "version": "0.0.6",
+  "source_commit": "abf094364c7a851665931792b12395d335136b7f",
+  "notes": "Includes actual approved coastal castle painting with ornate gold title, cleaned of menu labels and encoded as a high-quality JPEG. No manual artwork installation required. Other screens still use temporary art.",
   "files": [
     {
       "path": "project.godot",
-      "blob": "a4f69087ad83ee48290722587fd76420c886001c"
+      "blob": "73813551d9f97e4e197dcba19870d23fa41d8ace"
     },
     {
       "path": "main.tscn",
@@ -14,7 +14,7 @@
     },
     {
       "path": "version.txt",
-      "blob": "bbdeab6222cb8ad8ab423239cbeff9e6163d0d38"
+      "blob": "1750564f270b91dbcbd20a6e91b49ca281b350c3"
     },
     {
       "path": "main.gd",
@@ -39,6 +39,10 @@
     {
       "path": "art/valley.svg",
       "blob": "cf3481a79028208802de57859be2602b9ea8c24e"
+    },
+    {
+      "path": "art/castle.jpg",
+      "blob": "c7f6e5a9d24d3e43d7d0fb2029a84439cf308592"
     }
   ]
 }
