@@ -14,7 +14,7 @@ import tempfile
 import uuid
 
 SUITES = ('sqlite', 'character', 'layout', 'campaign', 'ai_profile', 'gameplay',
-          'world', 'coordinator', 'cartography_assets', 'cartography_renderer', 'persistence', 'noncombat')
+          'world', 'coordinator', 'cartography_assets', 'cartography_renderer', 'persistence', 'noncombat', 'complete_gameplay')
 REQUIRED = {'project.godot', 'main.tscn', 'main.gd', 'version.txt'}
 
 
