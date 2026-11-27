@@ -112,6 +112,9 @@ func run() -> void:
 	expect(not first.captured_prompt.contains("actor_payload") and not first.captured_prompt.contains("master_character_id"),"Raw local token leaked")
 	reply(ctrl,{"status":"clarification","actions":[],"clarification":"Which beam?","rule_refs":[]})
 	expect(ctrl.phase=="clarification" and store.snapshot(a["id"])["revision"]==before["revision"],"Clarification committed a turn")
+	expect(ctrl.submit("Cast an unsupported spell.").get("ok",false),"Unsupported request did not reach interpreter")
+	reply(ctrl,{"status":"unsupported","actions":[],"clarification":"Spell mechanics are not implemented.","rule_refs":[]})
+	expect(ctrl.phase=="unsupported" and store.snapshot(a["id"])["revision"]==before["revision"],"Unsupported action committed a turn")
 	expect(ctrl.submit("Check the roof beam.").get("ok",false),"New clarified request failed")
 	if ctrl.phase!="rules_pending":
 		finish()
@@ -154,6 +157,9 @@ func run() -> void:
 		return
 	expect(committed["player_text"]=="Check the roof beam." and committed["receipt"]["rolls"].size()==1,"Original intent or roll not committed")
 	var original_receipt = committed["receipt"].duplicate(true)
+	var damaged = original_receipt.duplicate(true)
+	damaged["results"]=[]
+	expect(PACK.committed_receipt_usable(original_receipt) and not PACK.committed_receipt_usable(damaged),"Unreadable receipt projection accepted")
 	expect(ctrl.transport.captured_prompt.contains("Custom storyteller fixture.") and ctrl.transport.captured_prompt.contains("Family guidance fixture.") and ctrl.transport.captured_prompt.contains("Old Stone Bridge"),"Narrator settings/canon missing")
 	reply(ctrl,{},false)
 	expect(ctrl.phase=="narration_failed","Narration failure not retained")
@@ -165,7 +171,7 @@ func run() -> void:
 	if reopened.phase!="narration_pending":
 		finish()
 		return
-	expect(reopened.transport.captured_prompt.contains("Check the roof beam.") and store.receipt_by_id(a["id"],logical)["receipt"]==original_receipt,"Resume lost original intent or rerolled")
+	expect(reopened.transport.captured_prompt.contains("Check the roof beam.") and store.receipt_by_id(a["id"],logical)["receipt"]==original_receipt and reopened.view_state()["committed_player_text"]=="Check the roof beam.","Resume lost original intent or rerolled")
 	reply(reopened,{"text":"The Old Stone Bridge lies north of Oakhaven."})
 	expect(reopened.phase=="geography_pending","Separate geography request not made")
 	var fact = {"kind":"relationship","from":{"id":a["location_id"],"local_key":null},"to":{"id":bridge,"local_key":null},"relation_kind":"relative","direction":"north","distance_miles":null,"precision":"provisional","visibility":"player","evidence":"The Old Stone Bridge lies north of Oakhaven."}

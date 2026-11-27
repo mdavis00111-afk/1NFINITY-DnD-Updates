@@ -51,7 +51,7 @@ func set_phase(next: String, message: String = "") -> void:
 
 # Public projection never exposes a candidate, raw provider error or private token.
 func view_state() -> Dictionary:
-	return {"campaign_id":campaign_id,"actor_id":actor_id,"turn_id":turn_id,"phase":phase,"status_text":status_text,"mechanical_summary":RAW.summary(receipt) if not receipt.is_empty() else "","retry_allowed":phase in ["rules_failed","mechanics_retry","pending_narration","narration_failed","geography_failed","reconcile_pending"]}
+	return {"campaign_id":campaign_id,"actor_id":actor_id,"turn_id":turn_id,"revision":token.get("revision"),"phase":phase,"status_text":status_text,"committed_player_text":player_text if not receipt.is_empty() else "","mechanical_summary":RAW.summary(receipt) if not receipt.is_empty() else "","retry_allowed":phase in ["rules_failed","mechanics_retry","pending_narration","narration_failed","geography_failed","reconcile_pending"]}
 
 func retire() -> void:
 	generation+=1
@@ -258,6 +258,8 @@ func approve(local_approval: Dictionary) -> Dictionary:
 	return resolve_local()
 
 func resolve_local() -> Dictionary:
+	if notifying or phase not in ["awaiting_local_approval","mechanics_retry"] or proposal.is_empty() or approval.is_empty():
+		return fail("No locally approved resolution available.")
 	# No network or speculative prepare in this phase.
 	set_phase("mechanics_resolving","Resolving verified local action.")
 	var result = resolver.resolve(campaign_id,token,proposal_request_id,turn_id,proposal,offered_refs,approval,player_text)
@@ -278,8 +280,8 @@ func restore_pending(auto_request: bool = false) -> Dictionary:
 	if not current.get("ok",false) or current.get("actor_id")!=actor_id:
 		set_phase("pending_narration","Receipt exists; reload campaign before narration.")
 		return fail(status_text)
-	if prior["receipt"]["actor_id"]!=actor_id:
-		set_phase("pending_narration","Receipt actor mismatch.")
+	if prior["receipt"]["actor_id"]!=actor_id or not PACK.committed_receipt_usable(prior["receipt"]):
+		set_phase("pending_narration","Stored receipt requires review; no new mechanics or narration.")
 		return fail(status_text)
 	receipt=prior["receipt"].duplicate(true)
 	player_text=str(prior.get("player_text",""))
@@ -353,7 +355,7 @@ func confirm_reconciled() -> Dictionary:
 		return fail("Defer reconciliation acknowledgement until the state notification completes.")
 	var prior = store.receipt_by_id(campaign_id,turn_id)
 	var current = store.snapshot(campaign_id)
-	if not prior.get("ok",false) or not prior.get("found",false) or prior.get("narration_event_id")==null or not current.get("ok",false) or current["pending_turn_id"]!=null or current["actor_id"]!=actor_id:
+	if not prior.get("ok",false) or not prior.get("found",false) or prior.get("narration_event_id")==null or not current.get("ok",false) or current["pending_turn_id"]!=null or current["actor_id"]!=actor_id or prior.get("receipt")!=receipt or current["revision"]<=receipt.get("next_revision",-1):
 		return fail("Narration commit not confirmed.")
 	candidate={}
 	geography={}
