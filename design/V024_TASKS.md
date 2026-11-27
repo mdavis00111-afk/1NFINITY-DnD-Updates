@@ -20,3 +20,5 @@ Base fa03ec15a874bb28ee1ee47d1eb4012f6100d620; same specialist and scope. Execut
 Task 03 complete at source level on commit containing this entry (base 8216676). Scoped campaign lifecycle fixes and regression source; independent SQLite fixture passed, Godot/Windows/live Gemini not run. See HANDOFF.md and TESTING.md for limitations. Task 04 ready. No publication.
 
 Task 04 source complete on the commit containing this entry; base 9966fae448cb16df86db91e7df302352e48965e9. See design/V024_TURN_CONTRACT.md, docs/AI.md and HANDOFF.md. Structured opening request and regression source; no Godot/live provider execution. Next 05. No publication.
+
+Task 04 implementation SHA: 9e2bca3e3be2ba68a0abe14a20e9b0c19bd92107. Final documentation checkpoint records successful static tree/dependency checks and disposable SQLite cross-campaign/rollback/replay verification; Godot/provider runtime remains pending. Task 05 READY.
