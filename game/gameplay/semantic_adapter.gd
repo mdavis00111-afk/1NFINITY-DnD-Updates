@@ -87,11 +87,11 @@ func prompt() -> String:
 	var stage=str(identity["stage"])
 	if stage=="narrate":
 		var scene=payload.get("scene",{})
-		var context={"SCENE":scene,"ACTION THIS TURN":{"original":payload.get("player_text",""),"interpreted":payload.get("interpreted",{})},"OUTCOME":payload.get("receipt",payload.get("settlement",{})),"MEMORY":{"overview":payload.get("overview",{}),"persistent_factors":payload.get("story",[]),"selected_enquiries":payload.get("selected_context",[])},"CAMPAIGN LOG":payload.get("recent_events",scene.get("recent_events",[])),"PLOT HOOKS":payload.get("public_quests",[]),"COMBAT":{"supported":false},"RECENT OUTCOMES":payload.get("recent_outcomes",[]),"CHARACTER":payload.get("character",{}),"NPCS":payload.get("public_actors",[]),"RULES":payload.get("rules",[]),"CORRECTION":payload.get("correction",""),"PRIOR OUTCOME":payload.get("prior_outcome",{}),"PENDING CONSEQUENCE":payload.get("pending_for_narrator",{})}
+		var context={"SCENE":scene,"ACTION THIS TURN":{"original":payload.get("player_text",""),"interpreted":payload.get("interpreted",{})},"OUTCOME":payload.get("receipt",payload.get("settlement",{})),"MEMORY":{"overview":payload.get("overview",{}),"persistent_factors":payload.get("story",[]),"selected_enquiries":payload.get("selected_context",[]),"narrative_recap":payload.get("narrative_recap",{})},"CAMPAIGN LOG":payload.get("recent_moves",[]),"PLOT HOOKS":payload.get("public_quests",[]),"CAMPAIGN":payload.get("campaign_context",{}),"SITUATIONAL CONTEXT":payload.get("situational_context",{}),"COMBAT":{"supported":false},"RECENT OUTCOMES":payload.get("recent_outcomes",[]),"CHARACTER":payload.get("character",{}),"NPCS":payload.get("public_actors",[]),"RULES":payload.get("rules",[]),"CORRECTION":payload.get("correction",""),"PRIOR OUTCOME":payload.get("prior_outcome",{}),"PENDING CONSEQUENCE":payload.get("pending_for_narrator",{})}
 		var expected={"schema_version":"1","campaign_id":identity["campaign_id"],"actor_id":identity["actor_id"],"turn_id":payload["turn_id"],"request_id":identity["attempt_id"],"expected_revision":identity["revision"]}
 		context["WORLD UPDATE SCHEMA"]=PACK.geo_schema(expected)
-		context["WORLD TOOL CATALOGUE"]=controller.registry.catalogue()
-		return NARRATOR.build(str(payload.get("maturity_id","standard")),context,{},"Return one JSON object with text (natural storyteller prose), geography, story and discoveries. "+world_contract()+" Extract from your own text. Narrate only verified outcomes. Follow any correction in the context. Pending consequence is not yet completed. For a settled continuation narrate the new outcome without repeating the original turn or granting another effect. If proposing a new consequential effect, leave it unresolved for adjudication.")
+		context["WORLD TOOL CATALOGUE"]=payload.get("world_catalogue",{})
+		return NARRATOR.build(str(payload.get("maturity_id","standard")),context,{},"Return one JSON object with text (natural storyteller prose), recap (a concise updated narrative memory, at most 3000 characters, preserving established significant people, relationships, facts and unresolved threads from previous recap and this move), geography, story and discoveries. The recap is memory only, not permission to change mechanics or canon. "+world_contract()+" Extract from your own text. Narrate only verified outcomes. Follow any correction in the context. Pending consequence is not yet completed. For a settled continuation narrate the new outcome without repeating the original turn or granting another effect. If proposing a new consequential effect, leave it unresolved for adjudication.")
 	var data=payload.duplicate(true)
 	if not data.has("catalogue"):
 		data["tool_catalogue"]=controller.registry.catalogue()
@@ -138,7 +138,7 @@ func received(epoch: int,clock: int,ok: bool,message: String) -> void:
 		return
 	match identity["stage"]:
 		"narrate":
-			if not DTO.exact_keys(parsed,["text","geography","story","discoveries"]) or not DTO.bounded_text(parsed["text"],12000):
+			if not DTO.exact_keys(parsed,["text","recap","geography","story","discoveries"]) or not DTO.bounded_text(parsed["recap"],3000) or not DTO.bounded_text(parsed["text"],12000):
 				failed("Invalid combined narration envelope.")
 				return
 		"interpret":

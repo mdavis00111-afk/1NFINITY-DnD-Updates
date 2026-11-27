@@ -490,7 +490,7 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 
 func reconcile(job: Dictionary,receipt: Dictionary,known: Array) -> void:
 	var bundle={"campaign_id":campaign_id,"actor_id":actor_id,"turn_id":job["turn_id"],"expected_revision":data["state"]["revision"],"receipt":receipt,"narration":job["candidate"],"geography":job["geography"]}
-	var result=RECON.new().commit_bundle(campaign_id,bundle,known,job.get("critical_verified",false))
+	var result=RECON.new().commit_bundle(campaign_id,bundle,known,job.get("critical_verified",false),str(job.get("narrative_recap","")))
 	if not result.get("ok",false):
 		stop("retry","Narration reconciliation unconfirmed.")
 		return

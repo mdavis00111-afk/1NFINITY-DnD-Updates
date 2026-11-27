@@ -639,7 +639,7 @@ func wait_frames() -> void:
 		await process_frame
 
 func combined(text: String) -> Dictionary:
-	return {"text":text,"geography":geography(),"story":[],"discoveries":[]}
+	return {"text":text,"recap":"Recent narrative: "+text.left(2500),"geography":geography(),"story":[],"discoveries":[]}
 
 func legacy_recovery_cases(id: String) -> void:
 	for stage in ["critical","background","adjudicate"]:

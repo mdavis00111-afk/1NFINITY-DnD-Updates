@@ -3,6 +3,8 @@ extends "res://gameplay/complete_controller.gd"
 const ADAPTER=preload("res://gameplay/semantic_adapter.gd")
 const POLICY=preload("res://gameplay/semantic_policy.gd")
 const REVIEW=preload("res://gameplay/independent_review.gd")
+const CONTEXT=preload("res://gameplay/turn_context.gd")
+var context_builder=CONTEXT.new()
 const DISCOVERY=["define_official","define_custom","actor_generate","loot_discover"]
 const NARRATABLE=["equip","quick_equip","swap","unequip","attune","unattune","item_use","item_drop","item_transfer","currency_transfer","loot_pickup","loot_take_all","spell_cast","spell_prepare","spell_unprepare","resource_use","rest","object_interact","reconcile_legacy_slots","party_membership"]
 var policy=POLICY.new()
@@ -38,7 +40,7 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 			sample("queue_wait",clock-int(timing[rid]["accepted"]))
 	var expanded=payload.duplicate(true)
 	var state=data["state"]
-	var snap=BASE.new().gameplay_view(campaign_id)
+	var snap=view if view.get("interaction_extension",{}).get("revision")==state["revision"] and view.get("campaign",{}).get("id")==campaign_id else BASE.new().gameplay_view(campaign_id)
 	var ext=snap.get("interaction_extension",{})
 	if ext.get("revision")!=state["revision"]:
 		stop("retry","Context revision changed.")
@@ -48,10 +50,23 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	for key in ["ability_modifiers","combat","equipment","resources","spellcasting","coins","carrying_capacity_lb","proficiency_ids","expertise_ids","feat_ids","feature_ids","class_features","racial_traits","subclass_id","subrace_id","xp","review_required"]:
 		if state["actor"].has(key):
 			character[key]=state["actor"][key]
+	character.erase("inventory") # actual instances below, not duplicate catalogue stacks
 	character["owned_instances"]=ext.get("inventory_instances",[]).slice(0,64)
 	character["slot_assignments"]=ext.get("known_slot_assignments",[])
 	expanded["character"]=character
-	expanded["recent_events"]=snap.get("events",[]).slice(maxi(0,snap.get("events",[]).size()-24))
+	var memory=context_builder.memory(state,registry.session)
+	if not memory.get("ok",false):
+		stop("retry","Revision-consistent recent moves unavailable.")
+		return
+	expanded["recent_moves"]=memory["moves"]
+	expanded["narrative_recap"]=memory["recap"]
+	# Public scene keeps older local evidence but does not repeat recent moves.
+	var scene=expanded.get("scene",{}).duplicate(true)
+	scene.erase("recent_events")
+	expanded["scene"]=scene
+	expanded.erase("actor")
+	expanded.erase("inventory")
+	expanded.erase("recent_events")
 	expanded["public_actors"]=ext.get("public_actors",[]).slice(0,32)
 	expanded["public_quests"]=ext.get("public_quests",[]).slice(0,32)
 	expanded["story"]=ext.get("story_records",[]).slice(0,32)
@@ -60,7 +75,11 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	expanded["recent_outcomes"]=job.get("completed_steps",[])
 	expanded["interpreted"]=job.get("tool",{})
 	expanded["remaining_intents"]=job.get("remaining",[])
-	expanded["original_intent"]=job["intent"]
+	expanded.erase("original_intent")
+	expanded["original_player_text"]=job["intent"]["args"].get("text",payload.get("player_text",""))
+	expanded["campaign_context"]={"id":campaign_id,"title":state["campaign"].get("title",""),"maturity_id":state["campaign"].get("maturity_id","standard"),"elapsed_seconds":state["elapsed_seconds"]}
+	expanded["situational_context"]=context_builder.situational(expanded["original_player_text"],job.get("tool",{}).get("kind",""),scene,ext)
+	expanded["rules"]=context_builder.rules(expanded["situational_context"],job.get("tool",{}).get("kind",""))
 	expanded["correction"]=job.get("correction","")
 	expanded["prior_outcome"]=job.get("prior_outcome",{})
 	if job.has("pending_consequence") and stage=="narrate":
@@ -75,6 +94,8 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 		expanded["verified_outcome"]=expanded.get("receipt",expanded.get("settlement",{}))
 	if stage=="interpret":
 		expanded["intent"]=job["intent"]
+		expanded.erase("original_player_text") # exact original already in intent
+		expanded["catalogue"]=context_builder.catalogue(registry)
 		expanded["next_step_hint"]=job.get("remaining",[]).front() if not job.get("remaining",[]).is_empty() else null
 		expanded["completed_steps"]=job.get("completed_steps",[])
 		expanded["independent_pass"]=false
@@ -86,13 +107,10 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 			shapes[kind]=policy.rule_shape({"kind":kind,"args":args})
 		expanded["ruling_shapes"]=shapes
 	elif stage=="narrate":
-		var refs: Array=[]
-		for section in REG.TOOLS.get(job.get("tool",{}).get("kind",""),[{}, "", []])[2]:
-			var q=enquiry("rule_record",{"category":"rule-sections","id":section},1)
-			if q.get("ok",false):
-				refs.append(q["data"])
-		expanded["rules"]=refs
 		expanded["player_text"]=job["intent"]["args"].get("text",payload.get("player_text",""))
+		expanded.erase("original_player_text")
+		expanded["world_catalogue"]=context_builder.world_catalogue(registry)
+
 	# Base C4 payload has its own limit. Trim duplicate large fields only,
 	# retaining exact original input and verified outcome.
 	if JSON.stringify(expanded).length()>85000:
@@ -230,7 +248,7 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 	var job=active().duplicate(true)
 	if stage=="narrate" and result.has("geography"):
 		var context=scene_context(data["state"])
-		if not DTO.exact_keys(result,["text","geography","story","discoveries"]) or not DTO.bounded_text(result["text"],12000) or not context.get("ok",false) or not PACK.valid_geography(result["geography"],PACK.identity(data["state"],job["turn_id"],identity["attempt_id"]),result["text"],context["ids"]) or not valid_story(result["story"],result["text"]) or not valid_discoveries(result["discoveries"],result["text"]):
+		if not DTO.exact_keys(result,["text","recap","geography","story","discoveries"]) or not DTO.bounded_text(result["recap"],3000) or not DTO.bounded_text(result["text"],12000) or not context.get("ok",false) or not PACK.valid_geography(result["geography"],PACK.identity(data["state"],job["turn_id"],identity["attempt_id"]),result["text"],context["ids"]) or not valid_story(result["story"],result["text"]) or not valid_discoveries(result["discoveries"],result["text"]):
 			stop("retry","Combined narration/world proposal failed validation.")
 			return failure(status)
 		var verified=outcome(job)
@@ -239,6 +257,8 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 			return failure(status)
 		job["candidate"]=PACK.identity(data["state"],job["turn_id"],identity["attempt_id"])
 		job["candidate"]["text"]=result["text"]
+		job["narrative_recap"]=result["recap"]
+		job["local_recap_hash"]=result["recap"].sha256_text()
 		job["geography"]=result["geography"].duplicate(true)
 		# Combined transport uses one identity; the B4 local transaction uses
 		# distinct operation IDs for narration and geography. Allocate only
@@ -369,7 +389,7 @@ func reconcile(job: Dictionary,receipt: Dictionary,known: Array) -> void:
 		stop("critical_blocked","Durable independent review no longer matches exact candidate/outcome; recover before committing narration.")
 		return
 	if standalone(job):
-		var result=RECON.new().commit_standalone(campaign_id,job["tool"],job["candidate"],job["geography"],known,job["intent"]["args"].get("text",""),job.get("critical_verified",false))
+		var result=RECON.new().commit_standalone(campaign_id,job["tool"],job["candidate"],job["geography"],known,job["intent"]["args"].get("text",""),job.get("critical_verified",false),str(job.get("narrative_recap","")))
 		if not result.get("found",false):
 			stop("retry",str(result.get("error","Standalone narration reconciliation unconfirmed.")))
 			return
@@ -660,6 +680,8 @@ func settle_verified_only() -> Dictionary:
 	job["geography"]=geography
 	job["critical_verified"]=true
 	job["verified_only"]=true
+	job.erase("narrative_recap")
+	job.erase("local_recap_hash")
 	job["story"]=[]
 	job["discoveries"]=[]
 	job["story_index"]=0
@@ -853,6 +875,8 @@ func reviewed_candidate(job: Dictionary,verified: Dictionary,scene: Dictionary) 
 		return false
 	var text=str(job.get("candidate",{}).get("text",""))
 	if not DTO.bounded_text(text,12000):
+		return false
+	if job.has("narrative_recap") and (not DTO.bounded_text(job["narrative_recap"],3000) or job.get("local_recap_hash")!=job["narrative_recap"].sha256_text()):
 		return false
 	if job.get("verified_only",false):
 		var expected=str(verified.get("summary","")) if standalone(job) else RECON.new().receipt_line(verified)

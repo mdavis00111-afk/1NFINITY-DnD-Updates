@@ -562,7 +562,9 @@ func sensory_lines(text: String) -> PackedStringArray:
 # Invoked with the frozen local controller bundle and known IDs, not a provider
 # action. The receipt, event, revision, all accepted facts and audit are checked
 # and persisted together. No commands from the input dictionary are executed.
-func commit_bundle(id: String, bundle: Dictionary, known_ids: Array, reviewed_prose: bool = false) -> Dictionary:
+func commit_bundle(id: String, bundle: Dictionary, known_ids: Array, reviewed_prose: bool = false, recap: String = "") -> Dictionary:
+	if not recap.is_empty() and (not reviewed_prose or not DTO.bounded_text(recap,3000)):
+		return {"ok":false,"error":"Invalid narrative recap."}
 	var store = TURN.new()
 	var state = store.snapshot(id)
 	if not state.get("ok",false) or not DTO.exact_keys(bundle,["campaign_id","actor_id","turn_id","expected_revision","receipt","narration","geography"]):
@@ -596,7 +598,11 @@ func commit_bundle(id: String, bundle: Dictionary, known_ids: Array, reviewed_pr
 		passages.append_array(planned["lines"])
 		text="\n\n".join(passages)
 	var game_time = "Unspecified" if state["elapsed_seconds"]==null else "Elapsed "+str(state["elapsed_seconds"])+" seconds (tracked epoch)"
-	var batch: Array = [store.guard(state),SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(?,?,'narration',?)",[state["turn"],game_time,JSON.stringify({"turn_id":turn_id,"location_id":state["location_id"],"text":text,"b4_reconciled":true})]),SQL.stmt("INSERT INTO turn_narrations(turn_id,event_id,revision) VALUES(?,last_insert_rowid(),?)",[turn_id,state["revision"]+1])]
+	var narrative={"turn_id":turn_id,"location_id":state["location_id"],"text":text,"b4_reconciled":true}
+	# Recap is non-authoritative memory, persisted atomically with accepted prose.
+	if reviewed_prose and clean and not recap.is_empty():
+		narrative["narrative_recap"]=recap
+	var batch: Array = [store.guard(state),SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(?,?,'narration',?)",[state["turn"],game_time,JSON.stringify(narrative)]),SQL.stmt("INSERT INTO turn_narrations(turn_id,event_id,revision) VALUES(?,last_insert_rowid(),?)",[turn_id,state["revision"]+1])]
 	batch.append_array(planned["commands"])
 	batch.append(SQL.stmt("UPDATE world_state SET revision=?,pending_turn_id=NULL WHERE campaign_id=?",[state["revision"]+1,id]))
 	batch.append(SQL.stmt("DELETE FROM meta WHERE key='turn_write_guard'"))
@@ -626,7 +632,9 @@ func standalone_event(id: String,request_id: String) -> Dictionary:
 		return {"ok":false,"error":"Standalone narration provenance corrupt."}
 	return {"ok":true,"found":true,"event_id":DTO.sql_int(row["id"]),"text":data["text"]}
 
-func commit_standalone(id: String,request: Dictionary,candidate: Dictionary,geography: Dictionary,known_ids: Array,player_text: String,reviewed: bool) -> Dictionary:
+func commit_standalone(id: String,request: Dictionary,candidate: Dictionary,geography: Dictionary,known_ids: Array,player_text: String,reviewed: bool,recap: String = "") -> Dictionary:
+	if not recap.is_empty() and (not reviewed or not DTO.bounded_text(recap,3000)):
+		return {"ok":false,"error":"Invalid narrative recap."}
 	var session=preload("res://persistence/gameplay_session.gd").new()
 	if not reviewed or not session.request_valid(request) or request["campaign_id"]!=id:
 		return {"ok":false,"error":"Independent standalone review required."}
@@ -650,7 +658,10 @@ func commit_standalone(id: String,request: Dictionary,candidate: Dictionary,geog
 			return {"ok":false,"error":"Deferred world proposal conflicts; review required."}
 	var key="c5_narration:"+rid
 	var game_time="Unspecified" if state["elapsed_seconds"]==null else "Elapsed "+str(state["elapsed_seconds"])+" seconds (tracked epoch)"
-	var batch=[TURN.new().guard(state),SQL.stmt("INSERT INTO meta(key,value) VALUES('c5_standalone_guard',(SELECT 'ok' FROM gameplay_requests WHERE request_id=? AND status='committed' AND logical_turn_id IS NULL AND event_id=? AND settled_revision=? AND NOT EXISTS(SELECT 1 FROM gameplay_requests WHERE status='accepted_pending')))",[rid,settled["event_id"],state["revision"]]),SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(?,?,'narration',?)",[state["turn"],game_time,JSON.stringify({"standalone_request_id":rid,"source_event_id":settled["event_id"],"location_id":state["location_id"],"text":candidate["text"],"player_text":player_text,"b4_reconciled":true,"visibility":"player"})]),SQL.stmt("INSERT INTO meta(key,value) VALUES(?,CAST(last_insert_rowid() AS TEXT))",[key])]
+	var narrative={"standalone_request_id":rid,"source_event_id":settled["event_id"],"location_id":state["location_id"],"text":candidate["text"],"player_text":player_text,"b4_reconciled":true,"visibility":"player"}
+	if not recap.is_empty():
+		narrative["narrative_recap"]=recap
+	var batch=[TURN.new().guard(state),SQL.stmt("INSERT INTO meta(key,value) VALUES('c5_standalone_guard',(SELECT 'ok' FROM gameplay_requests WHERE request_id=? AND status='committed' AND logical_turn_id IS NULL AND event_id=? AND settled_revision=? AND NOT EXISTS(SELECT 1 FROM gameplay_requests WHERE status='accepted_pending')))",[rid,settled["event_id"],state["revision"]]),SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(?,?,'narration',?)",[state["turn"],game_time,JSON.stringify(narrative)]),SQL.stmt("INSERT INTO meta(key,value) VALUES(?,CAST(last_insert_rowid() AS TEXT))",[key])]
 	batch.append_array(planned["commands"])
 	batch.append(SQL.stmt("UPDATE world_state SET revision=revision+1 WHERE campaign_id=?",[id]))
 	batch.append(SQL.stmt("DELETE FROM meta WHERE key='c5_standalone_guard'"))
