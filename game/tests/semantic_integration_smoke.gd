@@ -246,6 +246,8 @@ func run() -> void:
 	await discovery_negative_cases(id,b["id"])
 	await duplicate_world_envelope(id)
 	await candidate_reopen(id)
+	await actor_generation_reopen(id)
+	await legacy_unsettled_authorization(id)
 	expect(players.load_record(master)==original and base.gameplay_view(b["id"])==sibling,"Master and sibling isolation")
 	ctrl.close_session()
 	workspace.queue_free()
@@ -568,6 +570,69 @@ func candidate_reopen(id: String) -> void:
 	expect(session.token(id)["actor"]==before["actor"] and REG.new().noncombat.read_owned(session.token(id),ctrl.actor_id)==before["owned"],"Candidate recovery does not repeat mechanical changes")
 	var result=session.settlement(id,candidate["tool"]["request_id"])
 	expect(result.get("status")=="committed" and result.get("event_id")!=null,"Candidate recovery settled original receipt")
+
+func actor_generation_reopen(id: String) -> void:
+	var input="I look around the inn."
+	var evidence="A cooper named Darrin stands beside the hearth."
+	var calls=outbound.size()
+	workspace.composer.text=input
+	workspace.submit_chat()
+	if not await pump("interpret"):
+		return
+	reply({"kind":"conversation","args":{"text":input}})
+	if not await pump("narrate"):
+		return
+	ctrl.pause_discovery=true
+	var response=combined(evidence)
+	response["discoveries"]=[{"kind":"actor_generate","evidence":evidence,"args":{"template_ids":["commoner"],"existing_actor_id":null,"kind":"npc","name":"Darrin","occupation":"cooper","location_id":session.token(id)["location_id"],"visibility":"player","sheet_visibility":"private","possessions":[],"coins":money(0),"attitude":null}}]
+	reply(response)
+	await wait_frames()
+	if not expect(ctrl.active().get("stage")=="post_story","Actor generation staged after committed narration"):
+		return
+	var job=ctrl.active().duplicate(true)
+	var state=session.token(id)
+	var rid=session.make_id()
+	var args=ctrl.discovery_arguments(job,state,0,rid)
+	if not expect(not args.is_empty(),"Actor generation reconstructs exact request"):
+		return
+	var req=ctrl.tool_for(job["intent"],state,"actor_generate",args)
+	req["request_id"]=rid
+	job["story_request"]=req
+	if not expect(ctrl.update_active(job) and ctrl.prepare_review(req,"post_story"),"Persist and authorize actor generation"):
+		return
+	# Real registry transaction, deliberately stop before cursor acknowledgement.
+	var created=ctrl.registry.execute(id,req,ctrl.review_tool)
+	var settled=session.settlement(id,rid)
+	if not expect(created.get("ok",false) and settled.get("status")=="committed","Actor generation committed before interrupted cursor"):
+		return
+	var db=discovery_db_snapshot(id)
+	var actor_id=settled["result"]["actor_id"]
+	ctrl.close_session()
+	workspace.queue_free()
+	ctrl.queue_free()
+	await process_frame
+	if not bind(id) or not await pump("idle"):
+		return
+	expect(discovery_db_snapshot(id)==db and session.settlement(id,rid)==settled,"Interrupted actor generation reused exact settlement")
+	var rows=SQL.run(base.path_for(id),[SQL.stmt("SELECT actor_id FROM actor_instances WHERE generation_key=?",[rid])],true)
+	expect(rows.get("ok",false) and rows["results"][0].size()==1 and rows["results"][0][0]["actor_id"]==actor_id,"Recovered actor has original persistent identity")
+	expect(outbound.size()-calls==2,"Actor recovery requires no extra provider requests")
+
+func legacy_unsettled_authorization(id: String) -> void:
+	var state=session.token(id)
+	var intent={"schema_version":"1","campaign_id":id,"actor_id":state["actor_id"],"expected_revision":state["revision"],"request_id":session.make_id(),"kind":"chat","args":{"text":"I wait one minute."}}
+	var req=ctrl.tool_for(intent,state,"wait",{"seconds":60,"text":intent["args"]["text"]})
+	var job={"intent":intent,"stage":"execute","tool":req,"attempt":{},"context_review":{"request":req,"revision":state["revision"],"attempt_id":session.make_id(),"report":{"disposition":"supported","intent_evidence":intent["args"]["text"],"context":[],"ruling":{"seconds":60,"establish_clock":false},"reason":"Legacy assessment fixture."}}}
+	if not expect(ctrl.update_active(job),"Persist unsettled legacy authorization"):
+		return
+	var before=durable_snapshot(id)
+	var calls=outbound.size()
+	ctrl.advance()
+	await wait_frames()
+	expect(ctrl.active().get("stage")=="clarification" and durable_snapshot(id)==before and outbound.size()==calls,"Unsettled legacy report cannot authorize a write")
+	expect(not session.settlement(id,req["request_id"]).get("found",false),"No settlement created from legacy authorization")
+	ctrl.cancel()
+	await pump("idle")
 
 func wait_frames() -> void:
 	for i in range(12):

@@ -240,6 +240,10 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 		job["candidate"]=PACK.identity(data["state"],job["turn_id"],identity["attempt_id"])
 		job["candidate"]["text"]=result["text"]
 		job["geography"]=result["geography"].duplicate(true)
+		# Combined transport uses one identity; the B4 local transaction uses
+		# distinct operation IDs for narration and geography. Allocate only
+		# after checking the exact provider envelope above.
+		job["geography"]["request_id"]=registry.session.make_id()
 		job["story"]=result["story"].duplicate(true)
 		job["discoveries"]=result["discoveries"].duplicate(true)
 		job["story_index"]=0
