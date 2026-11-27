@@ -123,7 +123,7 @@ func run() -> void:
 		ui.dice_tool("Clear")
 		expect(ui.last_roll.is_empty(),"Clear did not clear informational dice")
 		for tab in ["Spells","Skills","Features","Notes","Inventory"]:
-			ui.show_tab(tab)
+			ui.right_tabs[tab].pressed.emit()
 			await settle()
 			expect(ui.current_tab==tab and ui.right_content.get_child_count()>0,"Right panel switch failed")
 			if tab=="Spells":

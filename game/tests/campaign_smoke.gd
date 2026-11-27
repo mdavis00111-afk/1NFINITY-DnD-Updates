@@ -266,6 +266,19 @@ func exercise_ui(campaigns) -> void:
 			manager.resume()
 			expect(manager.workspace.view==committed and not is_instance_valid(manager.opening_button),"Resume duplicated or lost opening")
 			expect(campaigns.gameplay_view(other_id)==other_before,"Opening changed another campaign")
+			# A concurrent successful opening invalidates a button rendered earlier.
+			if not other_id.is_empty():
+				manager.leave()
+				for i in range(manager.rows.size()):
+					if manager.rows[i]["id"]==other_id: manager.select_campaign(i)
+				manager.resume()
+				var external = campaigns.prepare_opening(other_id)
+				expect(not external.is_empty() and is_instance_valid(manager.opening_button),"Stale retry fixture not eligible")
+				if not external.is_empty():
+					expect(campaigns.commit_opening(other_id,external["previous"],JSON.stringify(proposal)).is_empty(),"External opening commit failed")
+					manager.request_opening()
+					expect(manager.pending_campaign.is_empty() and manager.workspace.view==campaigns.gameplay_view(other_id) and not is_instance_valid(manager.opening_button),"Stale retry did not refresh committed opening")
+					expect(campaigns.gameplay_view(created_id)==committed,"Stale retry changed sibling campaign")
 		root.remove_child(base)
 		base.queue_free()
 		await settle()
