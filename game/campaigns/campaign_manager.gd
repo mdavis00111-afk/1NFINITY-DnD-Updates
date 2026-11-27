@@ -359,7 +359,7 @@ func request_opening() -> void:
 	if is_instance_valid(opening_button):
 		opening_button.disabled=true
 	show_note("Generating opening… Saved campaign is safe.")
-	gemini.generate(prepared["prompt"])
+	gemini.generate(prepared["prompt"],"","",true)
 
 func opening_received(ok: bool, message: String) -> void:
 	var id = pending_campaign

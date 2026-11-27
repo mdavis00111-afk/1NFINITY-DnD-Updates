@@ -13,6 +13,7 @@ var discovered: Array = []
 var pages = 0
 var current_key = ""
 var current_model = ""
+var complete_response_required = false
 
 func _ready() -> void:
 	request = HTTPRequest.new()
@@ -49,7 +50,7 @@ func list_page(token: String) -> void:
 	if err != OK:
 		fail("Could not start model discovery.")
 
-func generate(prompt: String, key_override: String = "", model_override: String = "") -> void:
+func generate(prompt: String, key_override: String = "", model_override: String = "", require_complete: bool = false) -> void:
 	if active:
 		return
 	var cfg = ConfigFile.new()
@@ -70,6 +71,7 @@ func generate(prompt: String, key_override: String = "", model_override: String 
 	mode = "generate"
 	current_key = key
 	current_model = model
+	complete_response_required = require_complete
 	var err = request.request(BASE+"models/"+model+":generateContent",PackedStringArray(["Content-Type: application/json","x-goog-api-key: "+key]),HTTPClient.METHOD_POST,JSON.stringify(payload))
 	if err != OK:
 		fail("Could not start Gemini request.")
@@ -81,6 +83,7 @@ func fail(message: String) -> void:
 	discovery_key = ""
 	current_key = ""
 	current_model = ""
+	complete_response_required = false
 	if was_discovery:
 		models_completed.emit(false,[],message)
 	else:
@@ -141,14 +144,35 @@ func received(result: int, code: int, _headers: PackedStringArray, body: PackedB
 	mode = ""
 	current_key = ""
 	current_model = ""
+	var output = generation_text(data,complete_response_required)
+	complete_response_required = false
+	completed.emit(output["ok"],output["message"])
+
+# Parse the provider envelope defensively. Opening proposals must be complete,
+# never truncated into an apparently valid JSON prefix. Prose callers retain their cap.
+static func generation_text(data: Dictionary, require_complete: bool = false) -> Dictionary:
+	var failure = {"ok":false,"message":"Gemini did not return a complete usable response. Try again or choose another model."}
 	var candidates = data.get("candidates",[])
+	if not candidates is Array or candidates.is_empty() or not candidates[0] is Dictionary:
+		return failure
+	var candidate: Dictionary = candidates[0]
+	if require_complete and candidate.get("finishReason","") != "STOP":
+		return failure
+	var content = candidate.get("content")
+	if not content is Dictionary:
+		return failure
+	var parts = content.get("parts")
+	if not parts is Array:
+		return failure
 	var texts: PackedStringArray = []
-	if not candidates.is_empty():
-		for part in candidates[0].get("content",{}).get("parts",[]):
-			if part.has("text") and not part.get("thought",false):
-				texts.append(str(part["text"]))
+	for part in parts:
+		if not part is Dictionary:
+			return failure
+		if part.has("text") and not part.get("thought",false):
+			if not part["text"] is String:
+				return failure
+			texts.append(part["text"])
 	var output = "\n".join(texts).strip_edges()
-	if output.is_empty():
-		completed.emit(false,"Gemini did not return text. Try another model or adjust your request.")
-	else:
-		completed.emit(true,output.left(4000))
+	if output.is_empty() or (require_complete and output.length()>4000):
+		return failure
+	return {"ok":true,"message":output.left(4000)}

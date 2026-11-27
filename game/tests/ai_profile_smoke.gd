@@ -1,6 +1,7 @@
 extends SceneTree
 const MATURITY = preload("res://campaigns/maturity_profiles.gd")
 const NARRATOR = preload("res://campaigns/narrator_prompt.gd")
+const GEMINI = preload("res://systems/gemini.gd")
 var failures: Array[String] = []
 
 func _initialize() -> void:
@@ -40,6 +41,15 @@ func run() -> void:
 	expect(MATURITY.reset_guidance("family").is_empty() and MATURITY.resolve("family")["instructions"]==defaults[0]["instructions"],"Profile reset")
 	expect(NARRATOR.reset_prompt().is_empty() and NARRATOR.load_prompt()==NARRATOR.DEFAULT_PROMPT,"Narrator reset")
 	expect(config.load(MATURITY.PATH)==OK and config.get_value("fixture","keep")=="unchanged" and config.get_value("prompts","NPC")=="NPC fixture","Unrelated settings preserved")
+	var response = {"candidates":[{"finishReason":"STOP","content":{"parts":[{"text":"{}"}]}}]}
+	expect(GEMINI.generation_text(response,true)=={"ok":true,"message":"{}"},"Complete structured envelope rejected")
+	response["candidates"][0]["finishReason"]="MAX_TOKENS"
+	expect(not GEMINI.generation_text(response,true)["ok"],"Incomplete structured envelope accepted")
+	response["candidates"][0]["finishReason"]="STOP"
+	response["candidates"][0]["content"]["parts"][0]["text"]="{}".rpad(4000," ")+"extra"
+	expect(not GEMINI.generation_text(response,true)["ok"],"Oversize structured envelope truncated and accepted")
+	expect(not GEMINI.generation_text({"candidates":[{"content":null}]},true)["ok"],"Null provider content accepted")
+	expect(not GEMINI.generation_text({"candidates":[{"finishReason":"STOP","content":{"parts":[null]}}]},true)["ok"],"Malformed provider part accepted")
 	for failure in failures:
 		push_error(failure)
 	print("AI profile smoke failures: ", failures.size())

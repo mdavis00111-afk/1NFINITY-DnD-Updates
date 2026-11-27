@@ -39,10 +39,19 @@ func roll_scores(d: Dictionary, method: String) -> void:
 	d["roll_history"] = history
 	d["answers"] = {}
 
+func whole_number(value: Variant, low: int, high: int) -> bool:
+	if not (value is int or value is float):
+		return false
+	var number = float(value)
+	return is_finite(number) and number == floor(number) and number >= low and number <= high
+
 func points_used(d: Dictionary) -> int:
 	var total = 0
 	for a in ABILITIES:
-		var score = int(d.get("base_scores",{}).get(a,0))
+		var value = d.get("base_scores",{}).get(a,0)
+		if not whole_number(value,8,15):
+			return 999
+		var score = int(value)
 		if not POINT_COST.has(score):
 			return 999
 		total += int(POINT_COST[score])
@@ -348,7 +357,10 @@ func validate_step(d: Dictionary,step: int) -> String:
 		else:
 			var assigned: Array = []
 			for a in ABILITIES:
-				assigned.append(int(d.get("base_scores",{}).get(a,0)))
+				var value = d.get("base_scores",{}).get(a,0)
+				if not whole_number(value,3,18):
+					return "Invalid ability score."
+				assigned.append(int(value))
 			assigned.sort()
 			var pool = d.get("roll_pool",[]).duplicate()
 			pool.sort()
@@ -366,7 +378,7 @@ func validate_step(d: Dictionary,step: int) -> String:
 						return "Invalid dice history."
 					var dice = row.duplicate()
 					for v in dice:
-						if int(v)<1 or int(v)>6:
+						if not whole_number(v,1,6):
 							return "Invalid die value."
 					dice.sort()
 					totals.append(int(dice[1])+int(dice[2])+int(dice[3]))

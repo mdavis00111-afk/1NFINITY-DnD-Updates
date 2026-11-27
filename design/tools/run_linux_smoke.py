@@ -58,6 +58,9 @@ def patch_copy(adapter):
     adapter.write_text(source[:execute_start] + command + source[execute_end:], encoding="utf-8")
 
 
+SUITES = ("sqlite", "character", "layout", "campaign", "ai_profile")
+
+
 def run(suites):
     repo = Path(__file__).resolve().parents[2]
     with TemporaryDirectory(prefix="infinity-linux-smoke-") as temp:
@@ -83,14 +86,24 @@ def run(suites):
             return imported.returncode or 1
         print("Godot import passed using the disposable Linux test copy.", flush=True)
         failed = False
-        for suite in suites:
+        for index, suite in enumerate(suites):
+            # Separate fresh user:// for every suite; campaign and AI tests refuse existing saves/settings.
+            suite_root = root / f"suite-{index}-{suite}"
+            data = suite_root / "data"
+            suite_env = {
+                **child_env,
+                "XDG_CACHE_HOME": str(suite_root / "cache"),
+                "XDG_CONFIG_HOME": str(suite_root / "config"),
+                "XDG_DATA_HOME": str(data),
+                "INFINITY_TEST_USER_ROOT": str(data / "1NFINITY_DnD_Godot"),
+            }
             result = subprocess.run(
                 [*godot, "--script", f"res://tests/{suite}_smoke.gd"],
-                env=child_env, capture_output=True, text=True, timeout=180,
+                env=suite_env, capture_output=True, text=True, timeout=180,
             )
             output = result.stdout + result.stderr
             print(output, end="")
-            failed |= result.returncode != 0 or "SCRIPT ERROR:" in output
+            failed |= result.returncode != 0 or "SCRIPT ERROR:" in output or "ERROR:" in output
             print(f"{suite}: exit {result.returncode}", flush=True)
         return int(failed)
 
@@ -100,11 +113,11 @@ def main():
         transport(Path(sys.argv[2]), Path(sys.argv[3]))
         return 0
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("suites", nargs="*", metavar="SUITE", help="sqlite, character or layout")
+    parser.add_argument("suites", nargs="*", metavar="SUITE", help=", ".join(SUITES))
     args = parser.parse_args()
-    suites = args.suites or ["sqlite", "character", "layout"]
-    if set(suites) - {"sqlite", "character", "layout"}:
-        parser.error("choose sqlite, character or layout")
+    suites = args.suites or list(SUITES)
+    if set(suites) - set(SUITES):
+        parser.error("choose " + ", ".join(SUITES))
     try:
         return run(suites)
     except (OSError, ValueError, subprocess.TimeoutExpired) as error:

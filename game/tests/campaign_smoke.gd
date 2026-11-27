@@ -7,6 +7,7 @@ const PLAYER = preload("res://players/character_store.gd")
 const MATURITY = preload("res://campaigns/maturity_profiles.gd")
 const OPENING = preload("res://campaigns/opening_scene.gd")
 const STARTS = preload("res://campaigns/campaign_starts.gd")
+const MANAGER = preload("res://campaigns/campaign_manager.gd")
 var failures: Array[String] = []
 
 func _initialize() -> void:
@@ -127,5 +128,76 @@ func run() -> void:
 	expect(after_rollback.get("ok",false) and int(after_rollback["results"][0][0]["quantity"])==2,"Failed transaction did not roll back")
 	var actor_a = campaigns.load_campaign(a["id"],true)
 	expect(actor_a.get("actor_id")==a["actor_id"],"Deleted actor metadata lost")
+	# Exercise every start through the real store, rather than only inspecting labels/art.
+	for start in STARTS.STARTS:
+		var opening_id = str(start["id"])
+		var fresh = campaigns.create_campaign("QA "+opening_id,id,opening_id,"family")
+		expect(not fresh.is_empty(),"Could not create "+opening_id)
+		if fresh.is_empty():
+			continue
+		var packet = campaigns.prepare_opening(fresh["id"])
+		expect(not packet.is_empty(),"Could not prepare "+opening_id)
+		if packet.is_empty():
+			continue
+		var scene = proposal.duplicate(true)
+		scene["start_id"]=opening_id
+		scene["thumbnail_id"]=""
+		if opening_id in ["woods","road"]:
+			scene["npcs"]=[]
+		expect(campaigns.commit_opening(fresh["id"],packet["previous"],JSON.stringify(scene)).is_empty(),"Opening commit failed: "+opening_id)
+		var reload = STORE.new().load_campaign(fresh["id"])
+		expect(reload.get("opening_committed",false) and reload.get("thumbnail_id")==opening_id,"Opening reload failed: "+opening_id)
+	await exercise_ui(campaigns)
 	expect(master.load_record(id)==saved_master,"Campaign operation modified master character")
 	finish()
+
+func settle() -> void:
+	for frame in range(5):
+		await process_frame
+
+func exercise_ui(campaigns) -> void:
+	# The fixture settings contain no Gemini credentials. No network call.
+	for resolution in [Vector2i(1280,720),Vector2i(1920,1080)]:
+		root.size=resolution
+		var base = Control.new()
+		base.size=Vector2(resolution)
+		root.add_child(base)
+		var manager = MANAGER.new()
+		manager.configure("new",func(): pass,func(): pass)
+		base.add_child(manager)
+		manager.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		await settle()
+		var bounds = base.get_global_rect().grow(1.0)
+		expect(manager.maturity_choice.selected==MATURITY.IDS.find("standard") and not manager.adult_confirmation.visible,"Standard default")
+		for control in [manager.title_input,manager.maturity_choice,manager.synopsis]:
+			expect(bounds.encloses(control.get_global_rect()) and control.get_global_rect().has_area(),"Campaign control outside viewport: "+str(resolution))
+		manager.title_input.text="UI fixture "+str(resolution.x)
+		var mature_index = MATURITY.IDS.find("mature")
+		manager.maturity_choice.select(mature_index)
+		manager.maturity_choice.item_selected.emit(mature_index)
+		await settle()
+		expect(manager.adult_confirmation.visible and bounds.encloses(manager.adult_confirmation.get_global_rect()),"Adult confirmation missing or clipped")
+		var count_before = campaigns.list_campaigns().size()
+		manager.create()
+		expect(manager.mode=="new" and campaigns.list_campaigns().size()==count_before,"Unconfirmed Mature campaign created")
+		manager.adult_confirmation.button_pressed=true
+		manager.select_start("road")
+		manager.create()
+		await settle()
+		expect(manager.mode=="workspace","Confirmed campaign did not open workspace")
+		if manager.mode=="workspace":
+			var created_id = str(manager.active["id"])
+			expect(campaigns.load_campaign(created_id).get("maturity_id")=="mature","Maturity ID not saved")
+			manager.request_opening()
+			await settle()
+			expect(manager.pending_campaign.is_empty() and is_instance_valid(manager.opening_button) and not manager.opening_button.disabled,"No-key failure did not enable retry")
+			expect(not campaigns.load_campaign(created_id).get("opening_committed",false),"No-key failure changed saved opening")
+			manager.leave()
+			await settle()
+			expect(manager.mode=="library" and manager.active.get("id")==created_id,"Save & Exit lost campaign selection")
+			manager.resume()
+			await settle()
+			expect(manager.mode=="workspace" and manager.active.get("id")==created_id,"Resume failed")
+		root.remove_child(base)
+		base.queue_free()
+		await settle()
