@@ -56,7 +56,7 @@ static func valid_refs(refs: Variant, expected: Array, cat) -> bool:
 # values or unimplemented feature effects must not produce an invented bonus.
 static func actor_ready(actor: Dictionary) -> bool:
 	var combat = actor.get("combat")
-	if actor.get("ruleset")!=CAT.RULESET or not combat is Dictionary or not DTO.whole(actor.get("level"),1,20) or not DTO.whole(combat.get("hp_current"),1) or not DTO.whole(combat.get("hp_max"),1) or combat["hp_current"]>combat["hp_max"]:
+	if actor.get("ruleset")!=CAT.RULESET or actor.get("catalog_revision")!=CAT.REVISION or not combat is Dictionary or not DTO.whole(actor.get("level"),1,20) or not DTO.whole(combat.get("hp_current"),1) or not DTO.whole(combat.get("hp_max"),1) or combat["hp_current"]>combat["hp_max"]:
 		return false
 	if not combat.get("conditions") is Array or not combat.get("active_effects") is Array or not DTO.whole(combat.get("exhaustion"),0,5):
 		return false
@@ -121,8 +121,8 @@ static func roll_context(actor: Dictionary, kind: String, ability: String, advan
 	var conditions: Array = combat["conditions"]
 	var exhaustion = int(combat["exhaustion"])
 	var equipment = actor.get("equipment",{})
-	if not equipment is Dictionary:
-		return fail("Equipment state requires review.")
+	if not equipment is Dictionary or not equipment.get("armor_penalty") is bool:
+		return fail("Equipment proficiency state requires review.")
 	# PHB p. 144: nonproficient armor imposes disadvantage on STR/DEX checks/saves.
 	if ability in ["str","dex"] and equipment.get("armor_penalty",false)==true:
 		disadvantage=true

@@ -19,6 +19,8 @@ func validate_proposal(token: Dictionary, request_id: String, turn_id: String, p
 		return RAW.fail("Stale or mismatched action proposal.","invalid")
 	if not proposal["actions"] is Array or not proposal["rule_refs"] is Array or proposal["rule_refs"].size()>32:
 		return RAW.fail("Invalid action or rule references.","invalid")
+	if not cat.initialize():
+		return RAW.fail("The pinned 2014/2018 rules catalogue is unavailable.")
 	for rule in proposal["rule_refs"]:
 		if not RAW.ref_valid(rule,cat) or not rule in offered_refs:
 			return RAW.fail("Rule was not in the frozen context.","invalid")
@@ -47,6 +49,14 @@ func validate_proposal(token: Dictionary, request_id: String, turn_id: String, p
 	else:
 		if not DTO.exact_keys(args,[]) or not action["target_refs"].is_empty():
 			return RAW.fail("Unexpected action operands.","invalid")
+	var required = RAW.refs_for(kind)
+	if kind in ["ability_check","saving_throw"]:
+		if not RAW.actor_ready(token["actor"]):
+			return RAW.fail("Actor edition, revision, statistics or effects require review.")
+		required=RAW.refs_for(kind,args["ability"],args["skill"],token["actor"])
+	for rule in required:
+		if not rule in offered_refs or not RAW.ref_valid(rule,cat):
+			return RAW.fail("Required verified rule was not in the frozen context.")
 	return {"ok":true,"action":action}
 
 # Local approval binds the exact interpreted action and snapshot. It is
@@ -70,7 +80,7 @@ func prepare(token: Dictionary, turn_id: String, action: Dictionary, approval: V
 	var result: Dictionary = {}
 	var time: Dictionary = {}
 	if kind in ["ability_check","saving_throw"]:
-		if not DTO.exact_keys(ruling,["difficulty","effect_dc","advantage","disadvantage","seconds","establish_clock","optional_features_resolved"]) or not ruling["advantage"] is bool or not ruling["disadvantage"] is bool or not ruling["establish_clock"] is bool or ruling["optional_features_resolved"]!=true:
+		if not DTO.exact_keys(ruling,["difficulty","effect_dc","advantage","disadvantage","seconds","establish_clock","optional_features_resolved"]) or not ruling["advantage"] is bool or not ruling["disadvantage"] is bool or not ruling["establish_clock"] is bool or not ruling["optional_features_resolved"] is bool or ruling["optional_features_resolved"]!=true:
 			return RAW.fail("Check/save needs a locally approved challenge, circumstances and feature handling.","clarification")
 		var dc: int
 		if kind=="ability_check" and RAW.DIFFICULTY.has(ruling["difficulty"]) and ruling["effect_dc"]==null:
@@ -118,7 +128,7 @@ func prepare(token: Dictionary, turn_id: String, action: Dictionary, approval: V
 		receipt["effects"].append({"kind":"movement","segments":[{"from_id":token["location_id"],"to_id":args["destination_id"],"route_id":args["route_id"],"distance_miles":route["distance"],"elapsed_seconds":seconds,"precision":route["row"]["precision"],"points":route["points"]}]})
 		receipt["rule_refs"]=RAW.refs_for(kind)
 	elif kind in ["observe","wait"]:
-		if not DTO.exact_keys(ruling,["seconds","establish_clock","safe_nonmechanical"]) or ruling["safe_nonmechanical"]!=true or not ruling["establish_clock"] is bool or (kind=="wait" and not DTO.whole(ruling["seconds"],1,RAW.MAX_WALK_SECONDS)):
+		if not DTO.exact_keys(ruling,["seconds","establish_clock","safe_nonmechanical"]) or not ruling["safe_nonmechanical"] is bool or ruling["safe_nonmechanical"]!=true or not ruling["establish_clock"] is bool or (kind=="wait" and not DTO.whole(ruling["seconds"],1,RAW.MAX_WALK_SECONDS)):
 			return RAW.fail("Local duration and absence of unresolved effects required.","clarification")
 		time=time_effect(ruling["seconds"],ruling["establish_clock"])
 		result={"kind":kind,"outcome":"completed"}
@@ -142,7 +152,8 @@ func resolve(id: String, token: Dictionary, request_id: String, turn_id: String,
 	if prior.get("found",false):
 		if prior["receipt"]["actor_id"]!=token.get("actor_id"):
 			return RAW.fail("Stored receipt actor mismatch.","invalid")
-		unresolved.erase(id)
+		if unresolved.has(id) and unresolved[id]["receipt"]["turn_id"]==turn_id:
+			unresolved.erase(id)
 		return {"ok":true,"replayed":true,"receipt":prior["receipt"],"narration_event_id":prior["narration_event_id"]}
 	if unresolved.has(id):
 		var pending = unresolved[id]

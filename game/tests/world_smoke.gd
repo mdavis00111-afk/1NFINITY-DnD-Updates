@@ -43,7 +43,7 @@ func run() -> void:
 		return
 	var players = PLAYER.new()
 	var master_id = players.make_id()
-	var error = players.save_record({"id":master_id,"name":"World fixture","status":"ready","ruleset":"5e-2014-2018","level":1,"ability_scores":{"str":10,"dex":14,"con":12,"int":10,"wis":12,"cha":10},"ability_modifiers":{"str":0,"dex":2,"con":1,"int":0,"wis":1,"cha":0},"proficiency_bonus":2,"proficiency_ids":["skill-stealth","saving-throw-dex"],"expertise_ids":["skill-stealth"],"skills":{"stealth":{"ability":"dex","proficient":true,"expertise":true,"modifier":6}},"saving_throws":{"str":0,"dex":4,"con":1,"int":0,"wis":1,"cha":0},"coins":{"pp":0,"gp":10,"ep":0,"sp":0,"cp":0},"carrying_capacity_lb":150,"equipment":{"armor_penalty":false},"inventory":[{"item_id":"dagger","quantity":2,"equipped":true}],"combat":{"hp_current":7,"hp_max":8,"speed_feet":30,"size":"Medium","passive_perception":11,"conditions":[],"exhaustion":0,"active_effects":[]}})
+	var error = players.save_record({"id":master_id,"name":"World fixture","status":"ready","ruleset":"5e-2014-2018","catalog_revision":CAT.REVISION,"level":1,"ability_scores":{"str":10,"dex":14,"con":12,"int":10,"wis":12,"cha":10},"ability_modifiers":{"str":0,"dex":2,"con":1,"int":0,"wis":1,"cha":0},"proficiency_bonus":2,"proficiency_ids":["skill-stealth","saving-throw-dex"],"expertise_ids":["skill-stealth"],"skills":{"stealth":{"ability":"dex","proficient":true,"expertise":true,"modifier":6}},"saving_throws":{"str":0,"dex":4,"con":1,"int":0,"wis":1,"cha":0},"coins":{"pp":0,"gp":10,"ep":0,"sp":0,"cp":0},"carrying_capacity_lb":150,"equipment":{"armor_penalty":false},"inventory":[{"item_id":"dagger","quantity":2,"equipped":true}],"combat":{"hp_current":7,"hp_max":8,"speed_feet":30,"size":"Medium","passive_perception":11,"conditions":[],"exhaustion":0,"active_effects":[]}})
 	expect(error.is_empty(),"Master fixture save failed")
 	if not error.is_empty():
 		finish()
@@ -121,6 +121,16 @@ func run() -> void:
 	var resolver = RESOLVER.new()
 	var catalogue = CAT.new()
 	expect(RAW.selected_die([2,19],"advantage")==19 and RAW.selected_die([2,19],"disadvantage")==2 and RAW.selected_die([20],"normal")==20 and RAW.selected_die([1.5],"normal")==null,"d20 selection invalid")
+	var natural_one = {"roll_id":players.make_id(),"kind":"ability_check","sides":20,"mode":"normal","values":[1],"selected":1,"modifier":6,"total":7,"target":5,"result":"success"}
+	expect(RAW.roll_valid(natural_one,"ability_check","normal",6,5),"Natural 1 incorrectly forces check failure")
+	var natural_twenty = {"roll_id":players.make_id(),"kind":"saving_throw","sides":20,"mode":"normal","values":[20],"selected":20,"modifier":0,"total":20,"target":25,"result":"failure"}
+	expect(RAW.roll_valid(natural_twenty,"saving_throw","normal",0,25),"Natural 20 incorrectly forces save success")
+	var forged = natural_one.duplicate(true)
+	forged["total"]=99
+	expect(not RAW.roll_valid(forged,"ability_check","normal",6,5),"Forged dice total accepted")
+	var advantage_roll = RAW.roll_receipt("ability_check","advantage",2,15)
+	expect(RAW.roll_valid(advantage_roll,"ability_check","advantage",2,15) and advantage_roll["values"].size()==2,"Advantage receipt invalid")
+	expect(RAW.time_after({"kind":"time","seconds":60,"establish_clock":false},{"elapsed_seconds":null})==null and RAW.time_after({"kind":"time","seconds":null,"establish_clock":false},{"elapsed_seconds":60})==null and not RAW.time_valid({"kind":"time","seconds":60,"establish_clock":true},{"elapsed_seconds":60}),"Unknown or established clock silently reset")
 	expect(RAW.travel_seconds(3.0,"normal",false)==3600 and RAW.travel_seconds(3.0,"normal",true)==7200 and RAW.travel_seconds(4.0,"fast",false)==3600 and RAW.travel_seconds(2.0,"slow",false)==3600 and RAW.travel_seconds(32.0,"fast",false)==null,"PHB hourly pace invalid")
 	var mod = RAW.modifier_for(token["actor"],"ability_check","dex","stealth",catalogue)
 	expect(mod.get("modifier")==6,"Expertise not doubled exactly once")
@@ -144,6 +154,10 @@ func run() -> void:
 	invalid["actions"][0]["arguments"]["distance_miles"]=99
 	expect(not resolver.resolve(id,token,request_id,turn_id,invalid,action["reference_refs"],approval).get("ok",false),"Provider distance accepted")
 	expect(not resolver.resolve(id,token,request_id,turn_id,packet,action["reference_refs"],{}).get("ok",false),"Travel without local approval accepted")
+	var no_refs = packet.duplicate(true)
+	no_refs["rule_refs"]=[]
+	no_refs["actions"][0]["reference_refs"]=[]
+	expect(not resolver.validate_proposal(token,request_id,turn_id,no_refs,[]).get("ok",false),"Required rules absent from frozen context accepted")
 	var prepared = resolver.prepare(token,turn_id,action,approval)
 	expect(prepared.get("ok",false),"Travel plan failed: "+str(prepared.get("error","")))
 	if not prepared.get("ok",false):
