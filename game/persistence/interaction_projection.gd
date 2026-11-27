@@ -150,7 +150,9 @@ func committed_events(rows: Array) -> Array:
 				text=RAW.summary(receipt)
 			output.append({"id":event_id,"subsequence":1,"turn":turn,"kind":"mechanical_summary","text":text})
 		elif DTO.bounded_text(data.get("text"),12000):
-			output.append({"id":event_id,"subsequence":0,"turn":turn,"kind":"mechanical_summary" if kind=="gameplay_change" else kind,"text":data["text"]})
+			if kind=="narration" and DTO.id_valid(data.get("standalone_request_id")) and DTO.bounded_text(data.get("player_text"),2000):
+				output.append({"id":event_id,"subsequence":0,"turn":turn,"kind":"player_action","text":data["player_text"]})
+			output.append({"id":event_id,"subsequence":1 if kind=="narration" and data.has("standalone_request_id") else 0,"turn":turn,"kind":"mechanical_summary" if kind=="gameplay_change" else kind,"text":data["text"]})
 	return output
 
 func project(snapshot: Dictionary,sets: Array) -> Dictionary:

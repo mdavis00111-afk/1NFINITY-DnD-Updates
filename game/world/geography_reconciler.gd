@@ -29,6 +29,7 @@ var accepted_aliases: Array = []
 var accepted_relations: Array = []
 var db_error = false
 var offered_ids: Array = []
+var source_event_sql=EVENT
 
 func make_id() -> String:
 	return Crypto.new().generate_random_bytes(16).hex_encode()
@@ -107,15 +108,15 @@ func bind(ref: Dictionary, row: Dictionary) -> bool:
 
 func record(index: int, status: String, subject: Variant, detail: String) -> void:
 	audit.append({"index":index,"status":status,"subject":subject,"detail":detail})
-	commands.append(SQL.stmt("INSERT INTO geography_audit(id,request_id,source_event_id,proposal_index,revision,status,subject_id,detail) VALUES(?,?,"+EVENT+",?,?,?,?,?)",[make_id(),packet["request_id"],packet["turn_id"],index,token["revision"]+1,status,subject,JSON.stringify({"reason":detail,"proposal":packet["facts"][index]})]))
+	commands.append(SQL.stmt("INSERT INTO geography_audit(id,request_id,source_event_id,proposal_index,revision,status,subject_id,detail) VALUES(?,?,"+source_event_sql+",?,?,?,?,?)",[make_id(),packet["request_id"],packet["turn_id"],index,token["revision"]+1,status,subject,JSON.stringify({"reason":detail,"proposal":packet["facts"][index]})]))
 
 func discover(kind: String, row: Dictionary, status: String) -> void:
 	var col = {"place":"location_id","route":"route_id","terrain_region":"region_id"}[kind]
 	var current = str(row.get("status","unknown"))
 	if RANK.get(current,0)>=RANK[status]:
 		return
-	commands.append(SQL.stmt("UPDATE world_discovery SET status=?,first_event_id=COALESCE(first_event_id,"+EVENT+") WHERE "+col+"=? AND visibility='player' AND status IN ('reported','observed')",[status,packet["turn_id"],row["id"]]))
-	commands.append(SQL.stmt("INSERT INTO world_discovery(id,"+col+",status,visibility,first_event_id) SELECT ?,?,?,'player',"+EVENT+" WHERE NOT EXISTS(SELECT 1 FROM world_discovery WHERE "+col+"=?)",[make_id(),row["id"],status,packet["turn_id"],row["id"]]))
+	commands.append(SQL.stmt("UPDATE world_discovery SET status=?,first_event_id=COALESCE(first_event_id,"+source_event_sql+") WHERE "+col+"=? AND visibility='player' AND status IN ('reported','observed')",[status,packet["turn_id"],row["id"]]))
+	commands.append(SQL.stmt("INSERT INTO world_discovery(id,"+col+",status,visibility,first_event_id) SELECT ?,?,?,'player',"+source_event_sql+" WHERE NOT EXISTS(SELECT 1 FROM world_discovery WHERE "+col+"=?)",[make_id(),row["id"],status,packet["turn_id"],row["id"]]))
 	row["status"]=status
 	row["visibility"]="player"
 
@@ -233,9 +234,9 @@ func place_or_region(f: Dictionary, index: int) -> bool:
 		return true
 	if kind=="place":
 		commands.append(SQL.stmt("INSERT INTO locations(id,parent_id,kind,name,x,y,payload) VALUES(?,?,?,?,NULL,NULL,'{}')",[id,parent_id,type,name]))
-		commands.append(SQL.stmt("INSERT INTO world_places(location_id,region_id,precision,description,public_description,source_event_id) VALUES(?,?,'provisional',?,?,"+EVENT+")",[id,region_id,description,description,packet["turn_id"]]))
+		commands.append(SQL.stmt("INSERT INTO world_places(location_id,region_id,precision,description,public_description,source_event_id) VALUES(?,?,'provisional',?,?,"+source_event_sql+")",[id,region_id,description,description,packet["turn_id"]]))
 	else:
-		commands.append(SQL.stmt("INSERT INTO terrain_regions(id,parent_id,name,kind,precision,description,public_description,source_event_id) VALUES(?,?,?,?,'provisional',?,?,"+EVENT+")",[id,parent_id,name,type,description,description,packet["turn_id"]]))
+		commands.append(SQL.stmt("INSERT INTO terrain_regions(id,parent_id,name,kind,precision,description,public_description,source_event_id) VALUES(?,?,?,?,'provisional',?,?,"+source_event_sql+")",[id,parent_id,name,type,description,description,packet["turn_id"]]))
 	discover(kind,row,"reported")
 	var extras = f.get("population")!=null or f.get("elevation_feet")!=null or f.get("terrain")!=null or f.get("asset_id")!=null or f.get("occupancy","unknown")!="unknown" or (f.get("description")!=null and description.is_empty())
 	record(index,"deferred" if extras else "accepted",id,"Named entity recorded with unresolved coordinates; unverified optional fields deferred." if extras else "New named entity, unresolved coordinates.")
@@ -344,7 +345,7 @@ func relation_or_route(f: Dictionary,index: int) -> bool:
 			record(index,"accepted",rows[0]["id"],"Existing relationship reused.")
 		else:
 			var id = make_id()
-			commands.append(SQL.stmt("INSERT INTO geographic_relationships(id,from_id,to_id,kind,direction,distance_miles,precision,visibility,source_event_id) VALUES(?,?,?,?,?,?,'provisional','player',"+EVENT+")",[id,a["id"],b["id"],kind,direction,dist,packet["turn_id"]]))
+			commands.append(SQL.stmt("INSERT INTO geographic_relationships(id,from_id,to_id,kind,direction,distance_miles,precision,visibility,source_event_id) VALUES(?,?,?,?,?,?,'provisional','player',"+source_event_sql+")",[id,a["id"],b["id"],kind,direction,dist,packet["turn_id"]]))
 			accepted_relations.append({"id":id,"from_id":a["id"],"to_id":b["id"],"kind":kind,"direction":direction,"distance_miles":str(dist) if dist!=null else null,"visibility":"player"})
 			record(index,"accepted",id,"Established relative knowledge; no absolute coordinates.")
 		if kind=="bank" and direction!=null:
@@ -387,7 +388,7 @@ func relation_or_route(f: Dictionary,index: int) -> bool:
 		if not bind(ref,row):
 			record(index,"conflict",null,"Proposal-local key collision.")
 			return true
-		commands.append(SQL.stmt("INSERT INTO world_routes(id,from_id,to_id,name,kind,precision,distance_miles,source_event_id) VALUES(?,?,?,?,?,'provisional',?,"+EVENT+")",[id,a["id"],b["id"],name,kind,dist,packet["turn_id"]]))
+		commands.append(SQL.stmt("INSERT INTO world_routes(id,from_id,to_id,name,kind,precision,distance_miles,source_event_id) VALUES(?,?,?,?,?,'provisional',?,"+source_event_sql+")",[id,a["id"],b["id"],name,kind,dist,packet["turn_id"]]))
 		discover("route",row,"reported")
 		record(index,"accepted",id,"Known route proposal; not traveled or mechanically cleared.")
 	lines.append(name+" connects "+a["name"]+" and "+b["name"]+((" ("+str(dist)+" miles)") if dist!=null else "")+".")
@@ -450,7 +451,7 @@ func npc_fact(f: Dictionary,index: int) -> bool:
 			return true
 		var data = {"id":id,"name":name,"occupation":occupation,"location_id":location["id"],"descriptive_only":true,"public":true}
 		commands.append(SQL.stmt("INSERT INTO actors(id,kind,location_id,payload) VALUES(?,'npc',?,?)",[id,location["id"],JSON.stringify(data)]))
-		commands.append(SQL.stmt("INSERT INTO world_links(id,location_id,actor_id,source_event_id) VALUES(?,?,?,"+EVENT+")",[make_id(),location["id"],id,packet["turn_id"]]))
+		commands.append(SQL.stmt("INSERT INTO world_links(id,location_id,actor_id,source_event_id) VALUES(?,?,?,"+source_event_sql+")",[make_id(),location["id"],id,packet["turn_id"]]))
 		record(index,"accepted",id,"Descriptive NPC introduced at current location.")
 	lines.append(name+" — "+occupation+".")
 	return true
@@ -486,17 +487,18 @@ func other_fact(f: Dictionary,index: int) -> bool:
 		record(index,"conflict",null,"Alias unavailable.")
 		return true
 	if prior.is_empty() and not accepted_aliases.any(func(other): return other["location_id"]==row["id"] and norm(other["alias"])==norm(alias)):
-		commands.append(SQL.stmt("INSERT INTO location_aliases(location_id,alias,visibility,source_event_id) VALUES(?,?,'player',"+EVENT+")",[row["id"],alias,packet["turn_id"]]))
+		commands.append(SQL.stmt("INSERT INTO location_aliases(location_id,alias,visibility,source_event_id) VALUES(?,?,'player',"+source_event_sql+")",[row["id"],alias,packet["turn_id"]]))
 		accepted_aliases.append({"location_id":row["id"],"alias":alias})
 	record(index,"accepted",row["id"],"Alias reconciled.")
 	lines.append(row["name"]+" is also known as "+alias+".")
 	return true
 
-func plan(state: Dictionary, proposal: Dictionary, text: String, known_ids: Array) -> Dictionary:
+func plan(state: Dictionary, proposal: Dictionary, text: String, known_ids: Array, standalone_id: String = "") -> Dictionary:
 	token=state
 	packet=proposal
+	source_event_sql=EVENT if standalone_id.is_empty() else "(SELECT CAST(value AS INTEGER) FROM meta WHERE key='c5_narration:'||?)"
 	offered_ids=known_ids.duplicate()
-	if not PACK.valid_geography(proposal,PACK.identity(state,proposal.get("turn_id",""),proposal.get("request_id","")),text,known_ids) or proposal["turn_id"]!=state["pending_turn_id"]:
+	if not PACK.valid_geography(proposal,PACK.identity(state,proposal.get("turn_id",""),proposal.get("request_id","")),text,known_ids) or proposal["turn_id"]!=(state["pending_turn_id"] if standalone_id.is_empty() else standalone_id):
 		return {"ok":false,"error":"Invalid geography envelope."}
 	var pending: Array = []
 	for i in range(proposal["facts"].size()):
@@ -605,3 +607,54 @@ func commit_bundle(id: String, bundle: Dictionary, known_ids: Array, reviewed_pr
 			return {"ok":true,"replayed":true}
 		return {"ok":false,"error":"World/narration transaction rejected. Receipt retained; retry reconciliation."}
 	return {"ok":true,"revision":state["revision"]+1,"audit_count":planned["audit"].size()}
+
+# Standalone C3 action narration has its own source-linked idempotency marker,
+# not a fake turn receipt or turn_narrations entry. Trusted C5 only.
+func standalone_event(id: String,request_id: String) -> Dictionary:
+	var session=preload("res://persistence/gameplay_session.gd").new()
+	var state=session.token(id)
+	if not state.get("ok",false) or not DTO.id_valid(request_id):
+		return {"ok":false,"error":"Standalone narration identity unavailable."}
+	var read=session.read(state,[SQL.stmt("SELECT e.id,e.kind,e.payload FROM meta m JOIN events e ON e.id=CAST(m.value AS INTEGER) WHERE m.key=?",["c5_narration:"+request_id])])
+	if not read.get("ok",false):
+		return read
+	if read["sets"][0].is_empty():
+		return {"ok":true,"found":false}
+	var row=read["sets"][0][0]
+	var data=JSON.parse_string(row["payload"])
+	if row["kind"]!="narration" or not data is Dictionary or data.get("standalone_request_id")!=request_id:
+		return {"ok":false,"error":"Standalone narration provenance corrupt."}
+	return {"ok":true,"found":true,"event_id":DTO.sql_int(row["id"]),"text":data["text"]}
+
+func commit_standalone(id: String,request: Dictionary,candidate: Dictionary,geography: Dictionary,known_ids: Array,player_text: String,reviewed: bool) -> Dictionary:
+	var session=preload("res://persistence/gameplay_session.gd").new()
+	if not reviewed or not session.request_valid(request) or request["campaign_id"]!=id:
+		return {"ok":false,"error":"Independent standalone review required."}
+	var rid=request["request_id"]
+	var prior=standalone_event(id,rid)
+	if not prior.get("ok",false) or prior.get("found",false):
+		return prior
+	var state=session.token(id)
+	var settled=session.settlement(id,rid)
+	if not state.get("ok",false) or not settled.get("found",false) or settled["status"]!="committed" or settled["request"]!=request or settled["logical_turn_id"]!=null or state["pending_turn_id"]!=null or settled["revision"]!=state["revision"]:
+		return {"ok":false,"error":"Standalone settlement or revision mismatch."}
+	var source=session.source(state,settled["event_id"])
+	if not session.public_source(source) or not PACK.valid_narration(candidate,PACK.identity(state,rid,candidate.get("request_id",""))) or geography.get("request_id")==candidate.get("request_id"):
+		return {"ok":false,"error":"Standalone source or narrative envelope invalid."}
+	var planned=plan(state,geography,candidate["text"],known_ids,rid)
+	if not planned.get("ok",false):
+		return planned
+	# Do not silently substitute already-visible prose when geography conflicts.
+	for audit_row in planned["audit"]:
+		if audit_row["status"]!="accepted":
+			return {"ok":false,"error":"Deferred world proposal conflicts; review required."}
+	var key="c5_narration:"+rid
+	var game_time="Unspecified" if state["elapsed_seconds"]==null else "Elapsed "+str(state["elapsed_seconds"])+" seconds (tracked epoch)"
+	var batch=[TURN.new().guard(state),SQL.stmt("INSERT INTO meta(key,value) VALUES('c5_standalone_guard',(SELECT 'ok' FROM gameplay_requests WHERE request_id=? AND status='committed' AND logical_turn_id IS NULL AND event_id=? AND settled_revision=? AND NOT EXISTS(SELECT 1 FROM gameplay_requests WHERE status='accepted_pending')))",[rid,settled["event_id"],state["revision"]]),SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(?,?,'narration',?)",[state["turn"],game_time,JSON.stringify({"standalone_request_id":rid,"source_event_id":settled["event_id"],"location_id":state["location_id"],"text":candidate["text"],"player_text":player_text,"b4_reconciled":true,"visibility":"player"})]),SQL.stmt("INSERT INTO meta(key,value) VALUES(?,CAST(last_insert_rowid() AS TEXT))",[key])]
+	batch.append_array(planned["commands"])
+	batch.append(SQL.stmt("UPDATE world_state SET revision=revision+1 WHERE campaign_id=?",[id]))
+	batch.append(SQL.stmt("DELETE FROM meta WHERE key='c5_standalone_guard'"))
+	batch.append(SQL.stmt("DELETE FROM meta WHERE key='turn_write_guard'"))
+	SQL.run(session.path(id),batch)
+	var confirmed=standalone_event(id,rid)
+	return confirmed if confirmed.get("found",false) else {"ok":false,"error":"Standalone narration commit unconfirmed."}

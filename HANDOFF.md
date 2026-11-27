@@ -325,3 +325,6 @@ C4 final remote source audit at 46b1bbd: 11 changed/added paths from 6f90143; ze
 
 ## C5 stage 1 — asynchronous Gemini semantic adapter (unpublished)
 Read live godot fcfb629 and branch 0ddb4d6 Brain/Handoff/Testing and C5 assignment (live-only at start), C1–C4/B3/B4/turn contracts. Copied exact C5 assignment to feature branch. Added explicit Gemini adapter using existing selected model and transport, bounded query batches and shape repair, stage identity/cancel/failure, free-form existing Narrator.build and latency instrumentation. Not bound to production; further controller and trusted review work required. Native/live provider not run.
+
+## C5 stage 2 — independent local review and standalone narration persistence
+Added conservative trusted policy (explicit selection/no-effect path; other context requires independent local reviewer, not Gemini approval), B4 standalone source-linked narration with exact committed C3 settlement and atomic meta marker/geography transaction, no fabricated B2 turn. Extended public event projection for original standalone player input. Full creative prose still requires independent trusted reviewer; deterministic fallback only static sensory grammar. No native acceptance or publication.
