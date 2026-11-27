@@ -561,3 +561,7 @@ Production adapter accepts interpret/narrate only, one transport call per stage,
 
 ## v0.0.27 checkpoint 3b.2b — recovery and descriptive authorization
 Base and standalone recovery regenerate narration from durable receipts instead of dispatching legacy review stages. Existing reconcile and settlement guards retained. Retry clears obsolete contextual stage markers. Descriptive clearance derived locally from staged cursor, committed public narration evidence, exact durable request and current revision, then existing policy and registry validators; no transfer/resource clearance. Source anchors checked, native/provider tests not run. Exact transformed discovery arguments and legacy fixture compatibility require regression review; no publication. Context insufficiency remains checkpoint 4.
+
+
+## v0.0.27 checkpoint 3b.3a — transport count regression implementation
+Instrumented existing mock generate entry point; production controller/workspace/SQLite fixture now exercises conversation, equip, rejected equip, malformed response and deterministic refresh counts. Historical scenarios retained as inactive migration reference for 3b.3b/c, not passing coverage. Native execution unavailable; no simulated or live tests executed. Deterministic mutation zero-call case and exact once mechanical execution need stronger assertions in next checkpoint. Manifest unchanged.

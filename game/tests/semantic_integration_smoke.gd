@@ -33,14 +33,18 @@ var session=SESSION.new()
 var ctrl
 var workspace
 var failures: Array[String]=[]
+var outbound: Array=[]
 
 class MockTransport:
 	extends Node
 	signal completed(ok: bool,message: String)
 	var prompt=""
 	var cancelled=false
+	var recorder: Callable
 	func generate(value: String,_key: String="",_model: String="",_complete: bool=false,_schema: Dictionary={},_chars: int=4000,_tokens: int=2048,_temperature: float=0.8) -> void:
 		prompt=value
+		if recorder.is_valid():
+			recorder.call(value)
 	func cancel_generation() -> void:
 		cancelled=true
 	func reply(value: Variant) -> void:
@@ -78,7 +82,9 @@ func money(gp: int) -> Dictionary:
 
 
 func factory() -> Node:
-	return MockTransport.new()
+	var mock=MockTransport.new()
+	mock.recorder=func(value: String): outbound.append({"stage":ctrl.inflight.get("stage"),"prompt":value})
+	return mock
 
 func bind(id: String) -> bool:
 	ctrl=CTRL.new()
@@ -217,6 +223,84 @@ func run() -> void:
 	if not expect(not shield.is_empty(),"Owned shield"):
 		finish()
 		return
+	await request_count_cases(id,shield)
+	expect(players.load_record(master)==original and base.gameplay_view(b["id"])==sibling,"Master and sibling isolation")
+	ctrl.close_session()
+	workspace.queue_free()
+	ctrl.queue_free()
+	finish()
+
+func wait_frames() -> void:
+	for i in range(12):
+		await process_frame
+
+func combined(text: String) -> Dictionary:
+	return {"text":text,"geography":geography(),"story":[],"discoveries":[]}
+
+func request_count_cases(id: String,shield: String) -> void:
+	var start=outbound.size()
+	workspace.composer.text=TALK
+	workspace.submit_chat()
+	if not await pump("interpret"):
+		return
+	reply({"kind":"conversation","args":{"text":TALK}})
+	if not await pump("narrate"):
+		return
+	reply(combined(TALK))
+	if not await pump("idle"):
+		return
+	expect(outbound.size()-start==2,"Conversation exactly two actual generate calls")
+	start=outbound.size()
+	workspace.composer.text=INPUT
+	workspace.submit_chat()
+	if not await pump("interpret"):
+		return
+	var rid=ctrl.inflight["request_id"]
+	var equip={"kind":"equip","args":{"instance_id":shield,"slot":"shield","grip":"one_handed"},"assessment":{"disposition":"supported","intent_evidence":INPUT,"context":[],"ruling":{},"reason":"Owned shield and explicit equip intent."}}
+	reply(equip)
+	if not await pump("narrate"):
+		return
+	var settled=session.settlement(id,rid)
+	expect(settled.get("status")=="committed" and workspace.actor["combat"]["armor_class"]==14,"Equip committed before narration")
+	reply(combined("The shield settles against your arm."))
+	if not await pump("idle"):
+		return
+	expect(outbound.size()-start==2 and session.settlement(id,rid)==settled,"Equip two calls and exact unchanged settlement")
+	start=outbound.size()
+	workspace.composer.text="Equip a shield I do not own."
+	workspace.submit_chat()
+	if not await pump("interpret"):
+		return
+	var before=session.token(id)
+	var invalid=equip.duplicate(true)
+	invalid["args"]["instance_id"]=session.make_id()
+	invalid["assessment"]["intent_evidence"]="Equip a shield I do not own."
+	reply(invalid)
+	await wait_frames()
+	expect(outbound.size()-start==1 and session.token(id)["actor"]==before["actor"],"Rejected equip one call and unchanged actor")
+	# Clear only the rejected pending request using the production cancellation path.
+	if not ctrl.active().is_empty():
+		ctrl.cancel()
+	await wait_frames()
+	start=outbound.size()
+	workspace.composer.text="Malformed response fixture"
+	workspace.submit_chat()
+	if not await pump("interpret"):
+		return
+	reply("not JSON")
+	await wait_frames()
+	expect(outbound.size()-start==1,"Malformed response never automatically resubmitted")
+	if not ctrl.active().is_empty():
+		ctrl.cancel()
+	await wait_frames()
+	start=outbound.size()
+	ctrl.refresh()
+	await wait_frames()
+	expect(outbound.size()==start,"Deterministic workspace refresh zero provider calls")
+
+# Historical safety scenarios retained for migration in 3b.3b/c.
+# This function is not executed: its old provider protocol is obsolete.
+func legacy_scenarios(id: String,shield: String,mara: String,master: String,original: Dictionary,b: Dictionary,sibling: Dictionary,players) -> void:
 	workspace.composer.text=INPUT
 	workspace.submit_chat()
 	if not await pump("interpret"):
