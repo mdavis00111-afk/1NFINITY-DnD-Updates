@@ -47,6 +47,10 @@ func official_definition(id: String,category: String = "equipment") -> Dictionar
 	var weight: Variant = null
 	if category=="equipment":
 		weight=DISPLAY.unit_weight(cat,id)
+	elif id=="potion-of-healing-common":
+		# PHB 2014 p.151 ordinary healing potion (0.5 lb). Other variants
+		# retain unknown weight where catalogue lacks it.
+		weight=0.5
 	var key = id if category=="equipment" else "magic:"+id
 	return {"id":key,"origin":"official","catalog_category":category,"catalog_id":id,"catalog_revision":CAT.REVISION,"name":str(data.get("name",id)),"unit_weight_lb":weight,"attributes":data,"source_event_id":null}
 
@@ -118,6 +122,11 @@ func physical_options(definition: Dictionary) -> Array:
 		var data = definition.get("attributes",{})
 		if custom_valid(data) and data.get("mechanical_attributes") is Dictionary:
 			return data["mechanical_attributes"]["physical_options"].duplicate(true)
+		return []
+	if definition.get("origin")=="official" and definition.get("catalog_category")=="magic-items":
+		match definition.get("catalog_id",definition.get("id","").trim_prefix("magic:")):
+			"ring-of-protection": return [{"slot":"ring","grip":"worn"}]
+			"cloak-of-protection": return [{"slot":"cloak","grip":"worn"}]
 		return []
 	if definition.get("origin")!="official" or definition.get("catalog_category")!="equipment":
 		return []

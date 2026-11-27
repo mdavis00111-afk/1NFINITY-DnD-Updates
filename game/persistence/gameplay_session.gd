@@ -9,6 +9,8 @@ const DTO = preload("res://world/world_dto.gd")
 const UI = preload("res://gameplay/ui_intents.gd")
 const EVENT = "(SELECT event_id FROM gameplay_requests WHERE request_id=?)"
 const VERSION = "2"
+# Local trusted adapter only. Default C2 administrative operations take no time.
+var action_seconds: int = 0
 
 func fail(message: String) -> Dictionary:
 	return {"ok":false,"error":message}
@@ -103,11 +105,17 @@ func _commit(context: Dictionary,commands: Array,result_data: Dictionary,message
 	var batch: Array = [turn.guard(state)]
 	batch.append_array(turn.inventory_guards(state))
 	batch.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('c2_request_guard',(SELECT 'ok' WHERE EXISTS(SELECT 1 FROM meta WHERE key='gameplay_schema' AND value='1') AND NOT EXISTS(SELECT 1 FROM gameplay_requests WHERE status='accepted_pending' OR request_id=?)))",[rid]))
-	var game_time = "Unspecified" if state["elapsed_seconds"]==null else "Elapsed "+str(state["elapsed_seconds"])+" seconds (tracked epoch)"
+	if not DTO.whole(action_seconds,0,86400) or (state["elapsed_seconds"]!=null and not DTO.whole(int(state["elapsed_seconds"])+action_seconds)):
+		return fail("Invalid deterministic action duration.")
+	var elapsed = null if state["elapsed_seconds"]==null else int(state["elapsed_seconds"])+action_seconds
+	var game_time = "Unspecified" if elapsed==null else "Elapsed "+str(elapsed)+" seconds (tracked epoch)"
+	if action_seconds>0:
+		result_data=result_data.duplicate(true)
+		result_data["elapsed_seconds"]=action_seconds
 	batch.append(SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(?,?,'gameplay_change',?)",[state["turn"],game_time,JSON.stringify({"request_id":rid,"kind":request["kind"],"text":message,"visibility":visibility,"location_id":state["location_id"]})]))
 	batch.append(SQL.stmt("INSERT INTO gameplay_requests(request_id,actor_id,kind,expected_revision,status,request_payload,result_payload,settled_revision,event_id) VALUES(?,?,?,?,'committed',?,?,?,last_insert_rowid())",[rid,state["actor_id"],request["kind"],state["revision"],JSON.stringify(request),JSON.stringify(result_data),state["revision"]+1]))
 	batch.append_array(commands)
-	batch.append(SQL.stmt("UPDATE world_state SET revision=revision+1 WHERE campaign_id=?",[id]))
+	batch.append(SQL.stmt("UPDATE world_state SET revision=revision+1,elapsed_seconds=? WHERE campaign_id=?",[elapsed,id]))
 	batch.append(SQL.stmt("DELETE FROM meta WHERE key='c2_request_guard'"))
 	batch.append(SQL.stmt("DELETE FROM meta WHERE key='turn_write_guard'"))
 	var saved = SQL.run(path(id),batch)

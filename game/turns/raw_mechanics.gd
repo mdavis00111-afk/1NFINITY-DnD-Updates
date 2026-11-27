@@ -90,6 +90,10 @@ static func modifier_for(actor: Dictionary, kind: String, ability: String, skill
 			return fail("A saving throw does not use a skill.","invalid")
 		if "saving-throw-"+ability in profs:
 			modifier+=int(pb)
+		var protection = actor.get("equipment",{}).get("protection_bonus",0)
+		if not DTO.whole(protection,0,2):
+			return fail("Protection bonus requires review.")
+		modifier+=int(protection)
 		if not DTO.whole(saves.get(ability),-5,30) or saves[ability]!=modifier:
 			return fail("Saving throw has missing or unsupported modifiers.")
 	elif skill!=null:
