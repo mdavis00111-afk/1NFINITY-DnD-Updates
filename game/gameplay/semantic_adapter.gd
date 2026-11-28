@@ -58,8 +58,26 @@ func current() -> bool:
 	return is_instance_valid(controller) and not controller.closed and not identity.is_empty() and controller.inflight==identity
 
 func schema() -> Dictionary:
-	# JSON object transport; exact stage and registry schemas validated locally.
-	return {"type":"object"}
+	var text = PACK.str_schema()
+	match identity.get("stage"):
+		"interpret":
+			var subjects: Dictionary = {}
+			for category in REG.SUBJECT_CATEGORIES:
+				subjects[category]=PACK.arr(text,8)
+			return {"type":"object","properties":subjects,"additionalProperties":false}
+		"attribute":
+			return PACK.obj({"inscription":text})
+		"narrate":
+			var expected = {"schema_version":"1","campaign_id":identity["campaign_id"],"actor_id":identity["actor_id"],"turn_id":payload["turn_id"],"request_id":identity["attempt_id"],"expected_revision":identity["revision"]}
+			var props = {"text":text,"recap":text,"geography":PACK.geo_schema(expected),"story":PACK.arr(PACK.obj({"evidence":text,"args":{"type":"object"}}),8),"discoveries":PACK.arr(PACK.obj({"evidence":text,"kind":text,"args":{"type":"object"}}),8),"requires_world_update":{"type":"boolean"}}
+			var narration = {"type":"object","properties":props,"required":["text"],"additionalProperties":false}
+			if not payload.get("unresolved_intent",false):
+				return narration
+			var check = PACK.obj({"ability":PACK.enum_text(["str","dex","con","int","wis","cha"]),"skill":PACK.nullable(text),"difficulty":PACK.enum_text(["very_easy","easy","medium","hard","very_hard","nearly_impossible"])})
+			var item = PACK.obj({"kind":PACK.enum_text(["item_use"]),"args":PACK.obj({"instance_id":text,"quantity":{"type":"integer"},"target_id":PACK.nullable(text)})})
+			var spell = PACK.obj({"kind":PACK.enum_text(["spell_cast"]),"args":PACK.obj({"spell_id":text,"source":PACK.enum_text(REG.SPELL_SOURCES),"slot_level":{"type":"integer"},"target_id":PACK.nullable(text)})})
+			return {"anyOf":[narration,PACK.obj({"mechanics":{"anyOf":[item,spell]}}),PACK.obj({"check":check}),PACK.obj({"check":check,"branches":PACK.obj({"success":text,"failure":text})})]}
+	return {}
 
 func instruction(stage: String) -> String:
 	if stage!="interpret":
@@ -67,7 +85,7 @@ func instruction(stage: String) -> String:
 	return "Translate only lookup subjects from the exact player command. Return a JSON object with any of these optional keys: spells, items, skills, abilities, features, resources, rules, world. Each value is an array of short names copied from or canonically identifying subjects in the command. Use {} when no lookup is needed. Do not select actions, plan mechanics, infer ownership, adjudicate, rewrite, narrate or ask for clarification."
 
 static func world_contract() -> String:
-	return "Extract persistent facts from the natural prose, resolving names, pronouns, quantities and synonyms using the supplied catalogue and public context. Report only established, player-disclosed facts, not guesses, negations or future possibilities. Return {geography,story,discoveries}; geography must have exact provided identity, source_event_id:null and facts matching the supplied B4 schema. Story entries {evidence,args} use story_update args excluding source_event_id. discoveries entries {evidence,kind,args} propose define_official, define_custom, actor_generate or loot_discover (source_event_id omitted; actor_generate also omits generation_key; loot definition_id may be @0 referring to an earlier definition at index 0 in this list); never auto-pickup or transfer. Reuse established location, actor and item identities from the supplied context; do not create a replacement merely because a name is mentioned again. Prefer existing official equivalents and stable identities. Do not invent missing mechanical stats; custom attributes are proposals only. Map updates belong in geography.facts. Give a new named place a unique local_key, then reuse it to link routes and relationships in the same reply. Use existing IDs for established places. Quote both endpoint names in the evidence for each route or relationship. State relative directions explicitly and only include a distance stated in the prose. Leave absolute coordinates null and geometry arrays empty. Disclosing a place does not travel there. If mechanics are pending, submit geography with the final narration. Use exact evidence excerpts. Empty arrays are valid."
+	return "Extract persistent facts from the natural prose, resolving names, pronouns, quantities and synonyms using the supplied catalogue and public context. Report only established, player-disclosed facts, not guesses, negations or future possibilities. Optional updates go in geography, story and discoveries. When supplied, geography must have exact provided identity, source_event_id:null and facts matching the supplied B4 schema. Story entries {evidence,args} use story_update args excluding source_event_id. discoveries entries {evidence,kind,args} propose define_official, define_custom, actor_generate or loot_discover (source_event_id omitted; actor_generate also omits generation_key; loot definition_id may be @0 referring to an earlier definition at index 0 in this list); never auto-pickup or transfer. Reuse established location, actor and item identities from the supplied context; do not create a replacement merely because a name is mentioned again. Prefer existing official equivalents and stable identities. Do not invent missing mechanical stats; custom attributes are proposals only. Map updates belong in geography.facts. Give a new named place a unique local_key, then reuse it to link routes and relationships in the same reply. Use existing IDs for established places. Quote both endpoint names in the evidence for each route or relationship. State relative directions explicitly and only include a distance stated in the prose. Leave absolute coordinates null and geometry arrays empty. Disclosing a place does not travel there. If mechanics are pending, submit geography with the final narration. Use exact evidence excerpts. Empty arrays are valid."
 
 func prompt() -> String:
 	var stage=str(identity["stage"])
@@ -93,7 +111,7 @@ static func narration_prompt(payload: Dictionary,identity: Dictionary) -> String
 	var expected={"schema_version":"1","campaign_id":identity["campaign_id"],"actor_id":identity["actor_id"],"turn_id":payload["turn_id"],"request_id":identity["attempt_id"],"expected_revision":identity["revision"]}
 	context["WORLD UPDATE SCHEMA"]=PACK.geo_schema(expected)
 	context["WORLD TOOL CATALOGUE"]=payload.get("world_catalogue",{})
-	return NARRATOR.build(str(payload.get("maturity_id","standard")),context,{},"Return one JSON object with text (natural storyteller prose), recap (a concise updated narrative memory, at most 3000 characters, preserving established significant people, relationships, facts and unresolved threads from previous recap and this move), geography, story and discoveries. The recap is memory only, not permission to change mechanics or canon. "+world_contract()+" Extract from your own text. Narrate only verified outcomes. Follow any correction in the context. Pending consequence is not yet completed. For a settled continuation narrate the new outcome without repeating the original turn or granting another effect. If proposing a new consequential effect, leave it unresolved for adjudication."+stage_requirements)
+	return NARRATOR.build(str(payload.get("maturity_id","standard")),context,{},"For narration return a JSON object with nonempty text. Optional recap preserves significant people, relationships, facts and unresolved threads in at most 3000 characters. Include geography, story and discoveries only when needed. Set requires_world_update to true if the prose depends on an accompanying persistent proposal being committed. The recap is memory only, not permission to change mechanics or canon. "+world_contract()+" Extract from your own text. Narrate only verified outcomes. Follow any correction in the context. Pending consequence is not yet completed. For a settled continuation narrate the new outcome without repeating the original turn or granting another effect. If proposing a new consequential effect, leave it unresolved for adjudication."+stage_requirements)
 
 func send() -> void:
 	if not current():
@@ -128,6 +146,21 @@ func diagnostic(code: String) -> void:
 		return
 	print("SEMANTIC_QA ",code," stage=",identity.get("stage","none"))
 
+# Log shape only. Unknown keys and value text may contain campaign data.
+func boundary(code: String,expected: String,actual: Variant) -> void:
+	var fields: Dictionary = {}
+	if actual is Dictionary:
+		for key in ["spells","items","skills","abilities","features","resources","rules","world","text","recap","geography","story","discoveries","requires_world_update","mechanics","check","branches","inscription"]:
+			if actual.has(key):
+				fields[key]=type_string(typeof(actual[key]))
+		fields["unknown_count"]=actual.size()-fields.size()
+	else:
+		fields["type_code"]=actual
+	var state = controller.data.get("state",{})
+	var sent = controller.last_dm_packet if identity.get("stage")=="narrate" else {}
+	var committed = "yes" if state.get("pending_turn_id")!=null or sent.has("settlement") or sent.has("receipt") else "no verified commit"
+	print("SEMANTIC_BOUNDARY ",JSON.stringify({"request_id":identity.get("request_id"),"attempt_id":identity.get("attempt_id"),"stage":identity.get("stage"),"boundary":code,"expected":expected,"actual_shape":fields,"recoverable":true,"mechanics_committed":committed}))
+
 func received(epoch: int,clock: int,ok: bool,message: String) -> void:
 	if epoch!=serial or not current():
 		diagnostic("response_stale")
@@ -136,6 +169,7 @@ func received(epoch: int,clock: int,ok: bool,message: String) -> void:
 	metrics=metrics.slice(maxi(0,metrics.size()-64))
 	retire()
 	if not ok:
+		boundary("provider_transport","complete provider response",TYPE_NIL)
 		failed(message)
 		return
 	# Invalid provider JSON is an expected recoverable input, not an engine error.
@@ -143,16 +177,10 @@ func received(epoch: int,clock: int,ok: bool,message: String) -> void:
 	var parse_status=parser.parse(message)
 	var parsed=parser.data
 	if parse_status!=OK or not parsed is Dictionary:
-		diagnostic("response_not_json_object")
-		repair("Return one complete JSON object.")
+		boundary("response_json","JSON object",typeof(parsed))
+		failed("The provider returned unreadable JSON.")
 		return
-	match identity["stage"]:
-		"narrate":
-			if DTO.exact_keys(parsed,["mechanics"]) or DTO.exact_keys(parsed,["check"]) or DTO.exact_keys(parsed,["check","branches"]):
-				pass # Controller authorizes a single request at the live revision.
-			elif not DTO.exact_keys(parsed,["text","recap","geography","story","discoveries"]) or not DTO.bounded_text(parsed["recap"],3000) or not DTO.bounded_text(parsed["text"],12000):
-				failed("Invalid combined narration envelope.")
-				return
+
 	deliver(parsed)
 
 func repair(message: String) -> void:

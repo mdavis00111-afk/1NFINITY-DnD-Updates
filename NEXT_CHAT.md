@@ -1,3 +1,7 @@
+## v0.0.31 response boundary correction
+
+Read channel.json and the current PROJECT_BRAIN.md, HANDOFF.md and TESTING.md entries. Start with the owner's live Windows observation. On a failed input, check the SEMANTIC_BOUNDARY line in game.log and match the attempt ID. Use the published release's existing Update path. Unsupported mechanics and broader combat remain deferred; preserve ordinary conversation, typed invitations and verified conditional checks.
+
 ## Typed NPC invitations
 
 Typed NPC invitations on the DM-first branch now use one Gemini call when the named NPC is uniquely resolved locally. v0.0.30 remains live. General Windows latency still needs measurement.

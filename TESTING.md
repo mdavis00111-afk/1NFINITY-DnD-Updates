@@ -1,3 +1,9 @@
+## v0.0.31 response boundary correction
+
+Godot 4.7.2 Linux controller check-only, the native AI profile smoke, standalone GDScript parsing and Git whitespace checks passed. The focused integration suite uses mock Gemini and an isolated test-only SQLite bridge, with no production Python dependency. Provider-format coverage includes five ordinary prompts, empty translation, prose-only replies, empty world envelopes, malformed optional world fields, a blocked consequential proposal, duplicate replies, exact prompt hash and save isolation. The DM-first, conditional-check, DM-map and typed-invite modes cover owned and missing items and spells, Mage Hand lookup with no slot requirement, a real leveled healing roll and slot debit, reopen and inscription, a selected check branch, valid geography and one-call invitation.
+
+Owner Windows acceptance: click Update, open an existing campaign, try the five dialogue prompts, invite a known local NPC and try a known healing spell or ration in a disposable campaign. Confirm ordinary replies arrive, the expected roll/debit happens once, and saved characters, portraits, settings and map remain intact. If a provider reply fails, retain the SEMANTIC_BOUNDARY line from game.log. Windows runtime, live Gemini schema acceptance, real latency and installer execution were not run in Codex Cloud.
+
 ## Typed NPC invitations
 
 Godot 4.7.2 Linux --typed-invite passed with mock Gemini and test-only SQLite bridge. Exact composer input reached the DM once and the NPC replied without altering the saved roster. Controller check-only and whitespace checks passed. Windows wall-clock latency and live Gemini acceptance are unmeasured.

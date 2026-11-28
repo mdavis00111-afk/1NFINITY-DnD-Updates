@@ -1,3 +1,11 @@
+## v0.0.31 response boundary correction
+
+The DM-first response correction now sends stage-specific Gemini schemas. AI 1 accepts an object of optional lookup subject arrays, including {}. The DM can return text without a recap or world updates. Optional geography and story entries are validated separately. Discoveries are validated as a group to preserve definition references. Invalid optional data is excluded from the save while independent prose can commit. Replies that declare a dependency on unverifiable world changes stop in recovery. Geography reconciliation still checks semantic conflicts before committing.
+
+SEMANTIC_BOUNDARY entries include request/attempt IDs, stage, expected shape, sanitized actual field types and known commit status. The confirmed software defects were the generic provider schema and the all-or-nothing narration envelope. Raw output from the reported laptop session was unavailable, so its exact failure is not established.
+
+Alpha scope includes the typed invitation, native narrator/content controls, basic conditional dice checks and map integration. Combat remains deferred. Broader movement, saves, damage and contextual mechanics remain outside the supported DM operation set. Existing transaction paths keep state authoritative. The updater manifest is the authority on the published version.
+
 ## Typed NPC invitations
 
 Typed local NPC invitations can go straight to the DM when the spoken command uniquely names a disclosed local NPC. Preserve the exact original player input and route ambiguous names through normal lookup translation. The DM responds as the NPC. Party membership still requires a separate validated state operation.

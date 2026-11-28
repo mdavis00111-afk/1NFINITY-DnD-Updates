@@ -198,7 +198,8 @@ func receive_interpreter_envelope(identity: Dictionary,envelope: Dictionary) -> 
 		stop("clarification","Resolve the earlier saved action before submitting a new command.")
 		return failure(status)
 	if not registry.lookup_subjects_valid(envelope) or JSON.stringify(envelope).length()>4096:
-		stop("clarification","Invalid lookup translation.")
+		adapter.boundary("lookup_shape","object of optional subject arrays",envelope)
+		stop("retry","The lookup provider returned an invalid format. Retry the saved request.")
 		return failure(status)
 	var clock = Time.get_ticks_msec()
 	var text = job["intent"]["args"].get("text","")
@@ -247,7 +248,8 @@ func receive_unresolved_dm(identity: Dictionary,result: Dictionary,job: Dictiona
 		var check = result["check"]
 		var branches = result.get("branches",{})
 		if not registry.dm_check_valid(check) or (result.has("branches") and (not DTO.exact_keys(branches,["success","failure"]) or not DTO.bounded_text(branches["success"],2000) or not DTO.bounded_text(branches["failure"],2000))):
-			stop("clarification","Invalid check or conditional narration.")
+			adapter.boundary("check_shape","check and optional success/failure prose",result)
+			stop("retry","The DM returned an invalid check format. Retry the saved request.")
 			return failure(status)
 		var context = scene_context(state)
 		if not context.get("ok",false):
@@ -274,8 +276,11 @@ func receive_unresolved_dm(identity: Dictionary,result: Dictionary,job: Dictiona
 			return failure(status)
 	else:
 		var scene = scene_context(state)
-		if not scene.get("ok",false) or not combined_valid(result,state,job["turn_id"],identity["attempt_id"],scene["ids"]):
-			stop("retry","DM response failed world and narration validation.")
+		if not scene.get("ok",false):
+			stop("retry","Current scene unavailable.")
+			return failure(status)
+		result=normalize_narration(result,state,job["turn_id"],identity["attempt_id"],scene["ids"])
+		if result.is_empty():
 			return failure(status)
 		# Record the proposed prose before the engine creates the no-effect
 		# receipt. Recovery can finish that same narration without Gemini.
@@ -292,7 +297,56 @@ func receive_unresolved_dm(identity: Dictionary,result: Dictionary,job: Dictiona
 	return {"ok":true}
 
 func combined_valid(result: Dictionary,state: Dictionary,turn_id: String,attempt: String,known: Array) -> bool:
-	return DTO.exact_keys(result,["text","recap","geography","story","discoveries"]) and DTO.bounded_text(result["recap"],3000) and DTO.bounded_text(result["text"],12000) and PACK.valid_geography(result["geography"],PACK.identity(state,turn_id,attempt),result["text"],known) and valid_story(result["story"],result["text"]) and valid_discoveries(result["discoveries"],result["text"])
+	return DTO.exact_keys(result,["text","recap","geography","story","discoveries"]) and (result["recap"]=="" or DTO.bounded_text(result["recap"],3000)) and DTO.bounded_text(result["text"],12000) and PACK.valid_geography(result["geography"],PACK.identity(state,turn_id,attempt),result["text"],known) and valid_story(result["story"],result["text"]) and valid_discoveries(result["discoveries"],result["text"])
+
+func normalize_narration(result: Dictionary,state: Dictionary,turn_id: String,attempt: String,known: Array) -> Dictionary:
+	var allowed_keys = ["text","recap","geography","story","discoveries","requires_world_update"]
+	if not DTO.bounded_text(result.get("text"),12000) or not result.get("requires_world_update",false) is bool or result.keys().any(func(key): return not key in allowed_keys):
+		adapter.boundary("narration_shape","nonempty text with optional world proposals",result)
+		stop("retry","The DM returned an invalid narration format. Retry the saved request.")
+		return {}
+	var text = result["text"]
+	var expected = PACK.identity(state,turn_id,attempt)
+	var geo = expected.duplicate(true)
+	geo.merge({"source_event_id":null,"facts":[]})
+	var dropped: Array = []
+	if result.has("geography"):
+		var original = result["geography"]
+		if original is Dictionary and PACK.identity_matches(original,expected) and original.has("source_event_id") and original["source_event_id"]==null and original.get("facts") is Array and original["facts"].size()<=32:
+			for fact in original["facts"]:
+				var single = geo.duplicate(true)
+				single["facts"]=[fact]
+				if PACK.valid_geography(single,expected,text,known):
+					geo["facts"].append(fact)
+				elif not "geography" in dropped:
+					dropped.append("geography")
+		else:
+			dropped.append("geography")
+	var story: Array = []
+	var proposed_story = result.get("story",[])
+	if proposed_story is Array and proposed_story.size()<=8:
+		for entry in proposed_story:
+			if valid_story([entry],text):
+				story.append(entry)
+			elif not "story" in dropped:
+				dropped.append("story")
+	else:
+		dropped.append("story")
+	var discoveries = result.get("discoveries",[])
+	if not valid_discoveries(discoveries,text):
+		# Definitions and @index references are one group. Filtering would
+		# change which definition an otherwise valid reference points to.
+		dropped.append("discoveries")
+		discoveries=[]
+	if not dropped.is_empty():
+		adapter.boundary("optional_"+ "_".join(dropped),"source-bound world proposals",result)
+	if result.get("requires_world_update",false) and (not dropped.is_empty() or geo["facts"].is_empty() or not story.is_empty() or not discoveries.is_empty()):
+		stop("retry","The DM's narration depends on a world update that cannot be verified with this reply. Retry the saved request.")
+		return {}
+	var recap = result.get("recap","")
+	if not DTO.bounded_text(recap,3000):
+		recap=""
+	return {"text":text,"recap":recap,"geography":geo,"story":story,"discoveries":discoveries}
 
 # Retain the fixture entry point while enforcing the same live boundary.
 func receive_interpretation(identity: Dictionary,result: Dictionary,_selected: Array) -> Dictionary:
@@ -435,12 +489,15 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 	var job=active().duplicate(true)
 	if stage=="narrate" and job["tool"].is_empty() and job.has("lookup_revision"):
 		return receive_unresolved_dm(identity,result,job)
-	if stage=="narrate" and result.has("geography"):
+	if stage=="narrate":
 		var context=scene_context(data["state"])
-		if not context.get("ok",false) or not combined_valid(result,data["state"],job["turn_id"],identity["attempt_id"],context["ids"]):
-			stop("retry","Combined narration/world proposal failed validation.")
+		if not context.get("ok",false):
+			stop("retry","Current scene unavailable.")
 			return failure(status)
-		return accept_combined(job,result,identity["attempt_id"])
+		var normalized = normalize_narration(result,data["state"],job["turn_id"],identity["attempt_id"],context["ids"])
+		if normalized.is_empty():
+			return failure(status)
+		return accept_combined(job,normalized,identity["attempt_id"])
 	if stage=="adjudicate":
 		stop("clarification","Obsolete provider assessment cannot authorize an action.")
 		return failure(status)

@@ -52,10 +52,12 @@ class MockTransport:
 	extends Node
 	signal completed(ok: bool,message: String)
 	var prompt=""
+	var supplied_schema: Dictionary={}
 	var cancelled=false
 	var recorder: Callable
 	func generate(value: String,_key: String="",_model: String="",_complete: bool=false,_schema: Dictionary={},_chars: int=4000,_tokens: int=2048,_temperature: float=0.8) -> void:
 		prompt=value
+		supplied_schema=_schema.duplicate(true)
 		if recorder.is_valid():
 			recorder.call(value)
 	func cancel_generation() -> void:
@@ -238,6 +240,14 @@ func run() -> void:
 	if not expect(not shield.is_empty(),"Owned shield"):
 		finish()
 		return
+	if "--provider-format" in OS.get_cmdline_user_args():
+		await provider_format_case(id)
+		expect(players.load_record(master)==original and base.gameplay_view(b["id"])==sibling,"Independent master and sibling saves unchanged")
+		ctrl.close_session()
+		workspace.queue_free()
+		ctrl.queue_free()
+		finish()
+		return
 	if "--typed-invite" in OS.get_cmdline_user_args():
 		await typed_invite_case(id,mara)
 		ctrl.close_session()
@@ -293,6 +303,52 @@ func run() -> void:
 	workspace.queue_free()
 	ctrl.queue_free()
 	finish()
+
+func provider_format_case(id: String) -> void:
+	var inputs = ["Hello.","I look around.","What can I see?","I ask the innkeeper about the town.","I sit down and have a conversation."]
+	for index in range(inputs.size()):
+		var intent = pipeline_intent(id,inputs[index])
+		var calls = outbound.size()
+		expect(ctrl.submit(intent).get("ok",false),"Natural input submitted")
+		if not await pump("interpret"):
+			return
+		var schema: Dictionary = ctrl.adapter.transport.supplied_schema
+		expect(schema["properties"].has("items") and schema.get("required",[]).is_empty(),"Translator transport schema accepts empty lookup object")
+		reply({})
+		if not await pump("narrate"):
+			return
+		var packet = ctrl.inspect_dm_packet()
+		var attempt = ctrl.inflight.duplicate(true)
+		expect(packet.get("player_text")==inputs[index] and packet["outbound"]["sha256"]==outbound.back()["prompt"].sha256_text() and packet["outbound"]["attempt_id"]==attempt["attempt_id"],"Exact command, prompt hash and attempt survive to DM")
+		expect(ctrl.adapter.transport.supplied_schema.has("anyOf"),"DM gets a stage-specific response schema")
+		var text = "The innkeeper turns toward the table."
+		var response = {"text":text}
+		if index==1:
+			response.merge({"geography":{"facts":[{"kind":"unsupported"}]},"story":[{}],"discoveries":[{}]})
+		if index==2:
+			response=combined(text)
+		reply(response)
+		if not await pump("idle"):
+			return
+		var settled = session.settlement(id,intent["request_id"])
+		var token = session.token(id)
+		var source = session.source(token,settled.get("event_id"))
+		expect(settled.get("status")=="committed" and source.get("data",{}).get("text")==text and outbound.size()-calls==2,"Prose commits in two calls with or without optional world data")
+		expect(not ctrl.receive(attempt,response).get("ok",false) and session.token(id)["revision"]==token["revision"],"Duplicate response cannot mutate settled turn")
+	var guarded = pipeline_intent(id,"I ask whether the road is open.")
+	expect(ctrl.submit(guarded).get("ok",false),"Consequential response test submitted")
+	if not await pump("interpret"):
+		return
+	reply({})
+	if not await pump("narrate"):
+		return
+	var before = session.token(id)
+	reply({"text":"The party is in another town.","requires_world_update":true,"geography":{}})
+	for _i in range(40):
+		await process_frame
+		if ctrl.active().get("stage")=="retry":
+			break
+	expect(ctrl.active().get("stage")=="retry" and session.token(id)["revision"]==before["revision"],"Invalid consequential proposal holds before any commit")
 
 func typed_invite_case(id: String,mara: String) -> void:
 	var original = "  I invite Mara to join my party.  "
