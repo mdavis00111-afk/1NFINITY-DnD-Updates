@@ -238,6 +238,13 @@ func run() -> void:
 	if not expect(not shield.is_empty(),"Owned shield"):
 		finish()
 		return
+	if "--typed-invite" in OS.get_cmdline_user_args():
+		await typed_invite_case(id,mara)
+		ctrl.close_session()
+		workspace.queue_free()
+		ctrl.queue_free()
+		finish()
+		return
 	if "--dm-map" in OS.get_cmdline_user_args():
 		await persistent_npc_location(id)
 		ctrl.close_session()
@@ -286,6 +293,25 @@ func run() -> void:
 	workspace.queue_free()
 	ctrl.queue_free()
 	finish()
+
+func typed_invite_case(id: String,mara: String) -> void:
+	var original = "  I invite Mara to join my party.  "
+	var before = session.token(id)
+	var calls = outbound.size()
+	workspace.composer.text=original
+	workspace.submit_chat()
+	if not await pump("narrate"):
+		return
+	var packet = ctrl.inspect_dm_packet()
+	expect(packet.get("player_text")==original and packet.get("lookup_facts",[])[0]["invited_npc"]["id"]==mara,"Typed invitation reaches DM with exact command and visible NPC")
+	expect(outbound.size()-calls==1 and outbound.back()["stage"]=="narrate","Invitation uses one provider call")
+	reply(combined("Mara smiles. ‘Thanks, but I’m staying here tonight.’"))
+	if not await pump("idle"):
+		return
+	var after = session.token(id)
+	var rows = SQL.run(session.path(id),[SQL.stmt("SELECT actor_id FROM party_members WHERE actor_id=? AND status='member'",[mara])],true)
+	expect(after["actor"]==before["actor"] and rows.get("ok",false) and rows["results"][0].is_empty(),"Invitation settles without changing the actor or roster")
+	expect(outbound.size()-calls==1,"No second provider call after NPC responds")
 
 func conditional_check_case(id: String) -> void:
 	var intent = pipeline_intent(id,"I try to work out what the inn's carved emblem represents.")

@@ -1,3 +1,7 @@
+## Typed NPC invitations
+
+Godot 4.7.2 Linux --typed-invite passed with mock Gemini and test-only SQLite bridge. Exact composer input reached the DM once and the NPC replied without altering the saved roster. Controller check-only and whitespace checks passed. Windows wall-clock latency and live Gemini acceptance are unmeasured.
+
 ## Direction-only map sketch
 
 The focused Godot 4.7.2 Linux --dm-map fixture passed with mock Gemini and the test-only SQLite bridge. It confirmed the DM-reported place reaches the sketch north of the party while authoritative coordinates remain null. Visual layout and Windows rendering were not exercised.

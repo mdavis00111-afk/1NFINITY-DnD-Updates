@@ -67,6 +67,36 @@ func interpreter_context(state: Dictionary,job: Dictionary) -> Dictionary:
 	sample("interpreter_context_build",Time.get_ticks_msec()-clock)
 	return packet
 
+# A plainly worded invitation to a uniquely named visible NPC is already
+# resolved as a reference. Send the exact input straight to the DM.
+func ask_interpreter(state: Dictionary,job: Dictionary) -> void:
+	var text = str(job["intent"]["args"].get("text","")).strip_edges().to_lower().trim_suffix(".").trim_suffix("!").trim_suffix("?")
+	var prefix = "i invite " if text.begins_with("i invite ") else "invite "
+	if job["intent"]["kind"]!="chat" or not text.begins_with(prefix):
+		super.ask_interpreter(state,job)
+		return
+	var target = text.trim_prefix(prefix)
+	for suffix in [" to join my party"," to join our party"," to join the party"," to join me"," to join us"," to come with me"," to come with us"]:
+		if target.ends_with(suffix):
+			target=target.trim_suffix(suffix)
+			break
+	var packet = interpreter_context(state,job)
+	if packet.is_empty():
+		stop("retry","Revision-consistent invitation context unavailable.")
+		return
+	var candidates: Array = packet["references"]["npcs"].filter(func(row): return str(row["name"]).to_lower()==target)
+	if candidates.size()!=1:
+		# Unresolved references keep the normal lookup-only path.
+		ask("interpret",job,packet)
+		return
+	job["lookup_facts"]=[{"category":"world","subject":candidates[0]["name"],"invited_npc":candidates[0],"status":"invitation awaiting NPC response"}]
+	job["lookup_revision"]=state["revision"]
+	job["turn_id"]=job["intent"]["request_id"]
+	job["stage"]="narrate"
+	job["attempt"]={}
+	if update_active(job):
+		recover_active()
+
 func prepare_dispatch(stage: String,payload: Dictionary,identity: Dictionary) -> Dictionary:
 	if stage!="narrate":
 		return super.prepare_dispatch(stage,payload,identity)

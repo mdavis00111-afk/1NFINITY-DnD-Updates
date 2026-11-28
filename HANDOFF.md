@@ -1,3 +1,7 @@
+## Typed NPC invitations
+
+Owner reported typed invite rejection and visible lag. Updated semantic_controller.gd, semantic_adapter.gd and the focused semantic fixture on feature/v031-dm-first. No release or unrelated mechanics changes.
+
 ## Direction-only map sketch
 
 Updated map_model.gd, map_canvas.gd and the --dm-map fixture. The canvas fallback uses disclosed relative relations only. No map layout coordinates persist to SQLite.

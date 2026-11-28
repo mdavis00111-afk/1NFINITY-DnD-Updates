@@ -1,3 +1,7 @@
+## Typed NPC invitations
+
+Typed NPC invitations on the DM-first branch now use one Gemini call when the named NPC is uniquely resolved locally. v0.0.30 remains live. General Windows latency still needs measurement.
+
 ## Direction-only map sketch
 
 The DM map now renders a direction-only sketch from committed relative geography while coordinates are unresolved. Combat remains deferred.

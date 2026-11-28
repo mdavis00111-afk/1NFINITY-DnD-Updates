@@ -1,3 +1,7 @@
+## Typed NPC invitations
+
+Typed local NPC invitations can go straight to the DM when the spoken command uniquely names a disclosed local NPC. Preserve the exact original player input and route ambiguous names through normal lookup translation. The DM responds as the NPC. Party membership still requires a separate validated state operation.
+
 ## Direction-only map sketch
 
 The map draws an unscaled direction sketch when no plotted geometry is available and committed relative geography connects places to the current party location. Sketch positions are screen-only. Missing or conflicting directions have no plotted marker. Distance measurement and world coordinates still require plotted geometry.
