@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.30",
-  "source_commit": "63651d647db1546c9a67c7a0d14bc7bed1c69cc8",
-  "notes": "Separates compact intent interpretation from the complete, verified DM packet. Includes local lookup selection, inspectable outbound narration binding and preserved inscription recovery. See TESTING.md for owner Windows acceptance.",
+  "version": "0.0.31",
+  "source_commit": "4cb48a261d1132426eb3bd1a511b78863250dd23",
+  "notes": "DM-first alpha. Corrected lookup and narration response contracts for ordinary dialogue, optional world proposals, and supported mechanics. Includes editable content controls, conditional checks, and map sketch. See TESTING.md for Windows acceptance.",
   "files": [
     {
       "path": "art/arcane.svg",
@@ -38,7 +38,7 @@
     },
     {
       "path": "campaigns/campaign_manager.gd",
-      "blob": "9aa255a51bf49712cda4e7c377186630e4fbdc7a"
+      "blob": "c3ba36fcc25c539d0d5694a8eb622ec3ab2aa8e6"
     },
     {
       "path": "campaigns/campaign_starts.gd",
@@ -50,11 +50,11 @@
     },
     {
       "path": "campaigns/maturity_profiles.gd",
-      "blob": "f0562ffd24c235ece5bf62c5843e3cfa9121899d"
+      "blob": "330a4b7c5cb4f5b3a362a23c51701d93ac7834f4"
     },
     {
       "path": "campaigns/narrator_prompt.gd",
-      "blob": "d752953042ac2e832fd4182ed0f5bdefc107c432"
+      "blob": "4a14f107b24482017429824a816857cc58b103fb"
     },
     {
       "path": "campaigns/opening_scene.gd",
@@ -62,7 +62,7 @@
     },
     {
       "path": "campaigns/prompt_sharing.gd",
-      "blob": "4263c5c13de5bb2d22ee4aabd59868c5f0f53f11"
+      "blob": "d2c10920d5eb85aefc9711d050daf1aa40f10a06"
     },
     {
       "path": "campaigns/prompt_sharing_dialog.gd",
@@ -1082,11 +1082,11 @@
     },
     {
       "path": "cartography/map_canvas.gd",
-      "blob": "1b618e93fe53bcf3767f54f4d0c890edd374c12d"
+      "blob": "d9a7f5e491ae8c287bebc39aa2ccaa4efd35cea9"
     },
     {
       "path": "cartography/map_model.gd",
-      "blob": "245fe6195275fe1b9d4e055a804799fd0f207c41"
+      "blob": "b5a4e22cc7b845084ff6a18a09710a5d7f66bd80"
     },
     {
       "path": "cartography/map_window.gd",
@@ -1238,23 +1238,23 @@
     },
     {
       "path": "gameplay/semantic_adapter.gd",
-      "blob": "e3fe782ceb5355812d7544d77f5860ee65bf2ecd"
+      "blob": "85b82944d6690c9bff23490d27fba93f9e5f277c"
     },
     {
       "path": "gameplay/semantic_controller.gd",
-      "blob": "87f2489041c262bf22eee9695621b7a220a4253c"
+      "blob": "4079a2fb97d634e5e8fb18e76075dc43e6849cbd"
     },
     {
       "path": "gameplay/semantic_policy.gd",
-      "blob": "0102946e4fe640833dcd52f32b18713c41aa7968"
+      "blob": "2db1de815a250cc0eca60d45b088750dbd82bd15"
     },
     {
       "path": "gameplay/tool_registry.gd",
-      "blob": "642f5d850d69cd026c2cf20d1eb3555eef94767f"
+      "blob": "25fe8b2179a5b03c0417ecd5b42bf9d7c45e4568"
     },
     {
       "path": "gameplay/turn_context.gd",
-      "blob": "1a73156fd804d704a07d2808a7cba178cdb6cc85"
+      "blob": "cc6cbef4c2ca3afa560ed9b073f3c9b731054b11"
     },
     {
       "path": "gameplay/ui_intents.gd",
@@ -1266,7 +1266,7 @@
     },
     {
       "path": "main.gd",
-      "blob": "3826072594c566719da8ad75d21f953d116b91aa"
+      "blob": "7ba3dfc8a5f0769d6ebb98d0ada05b37b3b67a41"
     },
     {
       "path": "main.tscn",
@@ -1346,7 +1346,7 @@
     },
     {
       "path": "project.godot",
-      "blob": "c445856e0e36a793a1ef23c9a61bc143cea3d731"
+      "blob": "355ced740fb080782eceb4e7960e13cf83e73251"
     },
     {
       "path": "rules/MASTER_REFERENCE.md",
@@ -1402,7 +1402,7 @@
     },
     {
       "path": "systems/gemini.gd",
-      "blob": "81668d8e412e3afb82cbfc864d081fb8f2b6f48c"
+      "blob": "b75ef7e8a6347372c2a1fdd689028a52f9c44943"
     },
     {
       "path": "systems/sqlite.gd",
@@ -1418,7 +1418,7 @@
     },
     {
       "path": "tests/ai_profile_smoke.gd",
-      "blob": "3147cda7918c1ac62016575393fa18a6882a15f5"
+      "blob": "21b433d036f0e29907b389a0bbe267fdc27f67b6"
     },
     {
       "path": "tests/assets_smoke.gd",
@@ -1466,7 +1466,7 @@
     },
     {
       "path": "tests/semantic_integration_smoke.gd",
-      "blob": "e0855623fdf2ed15abdcb21ca0fd5bc689857684"
+      "blob": "811725a40d8e3b00ec8706846fde0feddee97fdf"
     },
     {
       "path": "tests/sqlite_smoke.gd",
@@ -1558,7 +1558,7 @@
     },
     {
       "path": "turns/turn_coordinator.gd",
-      "blob": "3a71b1466c98a6f18a0bf0c9fb4dbcfe67a36afa"
+      "blob": "5bfc870e646c114032e7bed438de7394f246e095"
     },
     {
       "path": "turns/turn_resolver.gd",
@@ -1570,7 +1570,7 @@
     },
     {
       "path": "version.txt",
-      "blob": "f092e2be2a89b3b6bc7a0cfc5c9e754ca2da3258"
+      "blob": "d788d433572b266a2927bb1e6a450a630da9cbe0"
     },
     {
       "path": "world/geography_reconciler.gd",
