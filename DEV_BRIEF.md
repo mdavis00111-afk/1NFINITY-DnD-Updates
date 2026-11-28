@@ -76,3 +76,6 @@ Reviewed 7e649fad37e7fed5e880f1459cf4b62edd54451c. Developer artifact evidence i
 
 ## Oversight milestone — numeric correction workflow located (2026-11-28)
 Owner supplied run 46088962585 for expected 7e649fad37e7fed5e880f1459cf4b62edd54451c. Linux job 140805117491 and Windows job 140805117268 both executing native suites; checkout/setup/archive verification passed. No artifacts yet; exact source pin and results pending. Existing implementation authorization and release hold unchanged.
+
+## Oversight milestone — numeric retest artifact and equipment diagnosis (2026-11-28)
+Linux artifact 15240452068 now available for run 46088962585; metadata confirms exact 7e649fad37e7fed5e880f1459cf4b62edd54451c. Both jobs still reported running; outcomes not inspected. Independently confirmed noncombat_store.gd same_gear raw saving_throws dictionary comparison; plausible but unproven equipment rejection cause. Retrieve artifact now, establish failing equipment field, preserve all guard semantics and reject genuine stat mismatches. Existing restart/resource and harness corrections remain outstanding. No integration/publication, live v0.0.26.
