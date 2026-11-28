@@ -30,6 +30,11 @@ func read(state: Dictionary, statements: Array) -> Dictionary:
 func request_valid(request: Variant,version: String = VERSION) -> bool:
 	return DTO.exact_keys(request,["schema_version","campaign_id","actor_id","expected_revision","request_id","kind","args"]) and request["schema_version"]==version and DTO.id_valid(request["campaign_id"]) and DTO.id_valid(request["actor_id"]) and DTO.id_valid(request["request_id"]) and DTO.whole(request["expected_revision"],0,DTO.MAX_INT-2) and DTO.bounded_text(request["kind"],80) and request["args"] is Dictionary and JSON.stringify(request).length()<=65536
 
+# Compare requests in the same JSON representation used by durable storage.
+# Godot JSON decodes numbers as floats, including nested integer operands.
+func same_request(a: Dictionary,b: Dictionary) -> bool:
+	return JSON.parse_string(JSON.stringify(a))==JSON.parse_string(JSON.stringify(b))
+
 func settlement(id: String,request_id: String) -> Dictionary:
 	if not DTO.id_valid(request_id):
 		return fail("Invalid request identity.")
@@ -77,7 +82,7 @@ func begin(id: String,request: Dictionary,kind: String,fields: Array) -> Diction
 	if not prior.get("ok",false):
 		return prior
 	if prior.get("found",false):
-		if prior["request"]!=request:
+		if not same_request(prior["request"],request):
 			return fail("Request ID already used with different arguments.")
 		return {"ok":true,"replayed":true,"settlement":prior,"result":prior["result"]}
 	if state["revision"]!=request["expected_revision"] or state["pending_turn_id"]!=null:
@@ -130,12 +135,12 @@ func _commit(context: Dictionary,commands: Array,result_data: Dictionary,message
 	var saved = SQL.run(path(id),batch)
 	if not saved.get("ok",false):
 		var prior = settlement(id,rid)
-		if prior.get("found",false) and prior["request"]==request and prior["status"]=="committed":
+		if prior.get("found",false) and same_request(prior["request"],request) and prior["status"]=="committed":
 			return {"ok":true,"replayed":true,"result":prior["result"],"revision":prior["revision"]}
 		return fail("Transaction rejected or unconfirmed; look up request before retry.")
 	var confirmed=settlement(id,rid)
-	if not confirmed.get("found",false) or confirmed["request"]!=request or confirmed["status"]!="committed":
-		return fail("Transaction acknowledged but settlement readback unavailable; recover by request ID.")
+	if not confirmed.get("found",false) or not same_request(confirmed["request"],request) or confirmed["status"]!="committed":
+		return fail("Transaction acknowledged but settlement readback unavailable; recover by request ID. "+str(confirmed.get("error","Request identity or status mismatch.")))
 	return {"ok":true,"replayed":false,"result":confirmed["result"],"revision":confirmed["revision"],"event_id":confirmed["event_id"]}
 
 # C3/C4 durable adoption only. A local controller must first validate the exact
@@ -162,13 +167,13 @@ func _adopt(id: String,request: Dictionary,turn_id: String) -> Dictionary:
 	if not prior.get("ok",false):
 		return prior
 	if prior.get("found",false):
-		return prior if prior["request"]==request and prior["logical_turn_id"]==turn_id else fail("Request already bound.")
+		return prior if same_request(prior["request"],request) and prior["logical_turn_id"]==turn_id else fail("Request already bound.")
 	if state["revision"]!=request["expected_revision"] or state["pending_turn_id"]!=null:
 		return fail("Cannot adopt stale or pending request.")
 	var batch = [TURN.new().guard(state),SQL.stmt("INSERT INTO meta(key,value) VALUES('c2_adopt_guard',(SELECT 'ok' WHERE NOT EXISTS(SELECT 1 FROM gameplay_requests WHERE status='accepted_pending' OR logical_turn_id=?) AND NOT EXISTS(SELECT 1 FROM turn_receipts WHERE turn_id=?)))",[turn_id,turn_id]),SQL.stmt("INSERT INTO gameplay_requests(request_id,actor_id,kind,expected_revision,logical_turn_id,status,request_payload,result_payload,settled_revision) VALUES(?,?,?,?,?,'accepted_pending',?,'{}',?)",[request["request_id"],state["actor_id"],request["kind"],state["revision"],turn_id,JSON.stringify(request),state["revision"]]),SQL.stmt("DELETE FROM meta WHERE key='c2_adopt_guard'"),SQL.stmt("DELETE FROM meta WHERE key='turn_write_guard'")]
 	var saved = SQL.run(path(id),batch)
 	var confirmed = settlement(id,request["request_id"])
-	if confirmed.get("found",false) and confirmed["request"]==request and confirmed["logical_turn_id"]==turn_id:
+	if confirmed.get("found",false) and same_request(confirmed["request"],request) and confirmed["logical_turn_id"]==turn_id:
 		return confirmed
 	return fail("Adoption not confirmed; reconcile request before resolving.") if not saved.get("ok",false) else fail("Adoption readback unavailable.")
 
@@ -234,6 +239,6 @@ func _reuse(ctx: Dictionary,result_data: Dictionary,event_id: Variant) -> Dictio
 	var batch = [TURN.new().guard(state),SQL.stmt("INSERT INTO meta(key,value) VALUES('c2_reuse_guard',(SELECT 'ok' WHERE NOT EXISTS(SELECT 1 FROM gameplay_requests WHERE status='accepted_pending' OR request_id=?)))",[request["request_id"]]),SQL.stmt("INSERT INTO gameplay_requests(request_id,actor_id,kind,expected_revision,status,request_payload,result_payload,settled_revision,event_id) VALUES(?,?,?,?,'committed',?,?,?,?)",[request["request_id"],state["actor_id"],request["kind"],state["revision"],JSON.stringify(request),JSON.stringify(result_data),state["revision"],int(event_id)]),SQL.stmt("DELETE FROM meta WHERE key='c2_reuse_guard'"),SQL.stmt("DELETE FROM meta WHERE key='turn_write_guard'")]
 	SQL.run(path(state["campaign_id"]),batch)
 	var prior = settlement(state["campaign_id"],request["request_id"])
-	if prior.get("found",false) and prior["request"]==request and prior["status"]=="committed":
+	if prior.get("found",false) and same_request(prior["request"],request) and prior["status"]=="committed":
 		return {"ok":true,"replayed":true,"result":prior["result"],"revision":prior["revision"]}
 	return fail("Reuse settlement not confirmed.")
