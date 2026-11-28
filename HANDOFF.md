@@ -1,3 +1,7 @@
+## Gameplay GUI redesign (owner-authorized)
+
+ChatGPT Project lead, connector environment. Base `98fc7277c0ee26a823a797bb2df35153113d068c`; scoped branch `feature/gameplay-gui-redesign`. Presentation/navigation only: gameplay workspace, main/campaign navigation, focused UI fixtures. Keep the performance-log workstream separate; its remote branch is not yet present at this check. No changes to controllers, SQL, prompts or cartography engine. Recheck godot and reconcile any overlapping diagnostic changes before publication. Status: implementation in progress; Windows acceptance by owner.
+
 ## Screen and turn performance diagnostics
 
 Codex Cloud is instrumenting screen and gameplay waits on `feature/performance-log` from `godot` publication `f37785ac52341b02d437a7253e995928abdf92da` (v0.0.34). Scope is bounded safe timing records and Copy log, including screen construction, campaign and rules reads, Gemini wait and committed reply presentation. The live release remains v0.0.34 while the diagnostic changes are developed.
