@@ -65,6 +65,20 @@ func run() -> void:
 	if not opening.is_empty():
 		expect(base.commit_opening(id,opening["previous"],JSON.stringify({"start_id":"tavern","location_name":"Oakhaven","atmosphere":"A busy inn.","npcs":[{"name":"Mara","occupation":"Innkeeper","attitude":0}],"world_facts":["The inn has an oak door."],"thumbnail_id":"tavern"})).is_empty(),"Opening fixture failed")
 	var original_actor = base.actor_record(id)
+	var travel_fixture=original_actor.duplicate(true)
+	var travel_load={"complete":true,"known_lb":0.0}
+	for speed in [25,30,35,25.0,30.0,35.0]:
+		travel_fixture["combat"]["speed_feet"]=speed
+		expect(RAW.travel_actor(travel_fixture,[],null,travel_load).get("ok",false),"Supported travel speed rejected: "+str(speed))
+	for speed in [0,26,30.5,"30",true,null]:
+		travel_fixture["combat"]["speed_feet"]=speed
+		expect(not RAW.travel_actor(travel_fixture,[],null,travel_load).get("ok",false),"Unsupported travel speed accepted: "+str(speed))
+	travel_fixture["combat"]["speed_feet"]=30.0
+	travel_fixture["combat"]["exhaustion"]=1
+	expect(not RAW.travel_actor(travel_fixture,[],null,travel_load).get("ok",false),"Exhausted travel accepted")
+	travel_fixture["combat"]["exhaustion"]=0
+	travel_fixture["combat"]["conditions"]=["prone"]
+	expect(not RAW.travel_actor(travel_fixture,[],null,travel_load).get("ok",false),"Conditioned travel accepted")
 	var original_log = base.read_log(id)
 	var path = base.path_for(id)
 	var hidden = players.make_id()

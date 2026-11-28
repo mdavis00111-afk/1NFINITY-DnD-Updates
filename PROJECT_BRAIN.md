@@ -693,3 +693,7 @@ Linux run 46092081633 pinned ea43535: 7/14, import and C2 separate-process resta
 
 ### Rest eligibility diagnostics and cancellation regression
 Split rest eligibility guard into field-specific errors; validate persisted hit die as a whole number before integer membership check (same permitted die sizes). Add fault-injected standalone cancellation and replay regression after successful short rest; test is conditional on rest succeeding. No rest formulas changed. Native execution pending; prior Windows job still running at observation. No integration/publication.
+
+
+### Travel speed persistence boundary
+World and cartography renderer native failures on ea43535 share travel eligibility rejection. World fixture has speed 30, no conditions or exhaustion. Validate speed as a whole number before integer membership, preserving allowed 25/30/35 only. Add integer/JSON float positive and invalid speed, exhaustion and condition negative fixtures. Root cause inferred from source; native confirmation pending. No map, pace or distance changes. No integration/publication.
