@@ -1,3 +1,7 @@
+## v0.0.35 GUI publication request
+
+Owner authorized publication through the existing alpha packager. Candidate `1945dbb56c4c4b32b2592ec5dd2a072cb198b196` has exactly five game-file modifications versus the live v0.0.34 manifest (three GUI scripts, two test fixtures); no added or removed game paths, 397 total. Static source check: balanced delimiters and strings, no duplicate function names or conflict markers, all literal preload/load dependencies found, fifteen intent/inspection/transcript functions unchanged. The previous full Brain archive retains exact blob 666bdacf7b7780732ea7b557ed7bd777ffe8cb6a. Native syntax parser, Godot runtime, Windows installation and visual acceptance were not run. The packager owns version stamps and final blob verification. Separate performance diagnostics remain unmerged and live godot was unchanged at integration review.
+
 ## Gameplay GUI source review follow-up
 
 Static review retained the map's committed revision boundary, guarded deferred preview calls when the workspace is detached, removed duplicate gold display, widened Rules choices and applied the existing draft/leave guard to whichever campaign is open when an update is confirmed. Expanded the existing fixtures to cover nine tabs, pinned party and Send bounds, exact multiline input via Enter including a held-key repeat, and multiline draft reopen. Fixture execution remains unverified: no native Godot/GDScript parser or repository checkout available in this environment. No SQL, deterministic mechanics, AI or map engine changes.

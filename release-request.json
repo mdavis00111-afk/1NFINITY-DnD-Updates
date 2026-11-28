@@ -1,6 +1,6 @@
 {
-  "version": "0.0.34",
-  "source_commit": "0387e37141595c2d8a1b308d87e361e4a71d3522",
+  "version": "0.0.35",
+  "source_commit": "1945dbb56c4c4b32b2592ec5dd2a072cb198b196",
   "approved_new_paths": [],
-  "notes": "Windows playtest. Saved DM replies appear in the open campaign before deferred work. Chat updates reuse the existing workspace panels and avoid redundant database reads. Stalled requests offer Retry, and Copy log includes the installed version and newest validation detail."
+  "notes": "Gameplay GUI redesign: compact Menu, streamlined character HUD, expanded conversation, multiline input, nine information tabs and permanently positioned party. Existing gameplay systems retained. Windows visual and runtime acceptance pending; separate gameplay hang not addressed."
 }
