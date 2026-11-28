@@ -33,7 +33,7 @@ func bind_ai(id: String,context_reviewer: Callable=Callable(),prose_reviewer: Ca
 	return bind_campaign(id,policy.review,policy.review_prose)
 
 func matches(identity: Dictionary,stage: String) -> bool:
-	return not closed and not running and not notifying and reload() and not active().is_empty() and identity==inflight and identity==active().get("attempt") and identity.get("stage")==stage and active().get("stage")==stage and identity.get("revision")==data["state"]["revision"]
+	return not closed and not running and not notifying and reload() and not active().is_empty() and identity==inflight and registry.session.typed_equal(identity,active().get("attempt")) and identity.get("stage")==stage and active().get("stage")==stage and identity.get("revision")==data["state"]["revision"]
 
 func scene_context(state: Dictionary) -> Dictionary:
 	var key=[state["campaign_id"],state["actor_id"],state["revision"],state["pending_turn_id"],state["metadata"],state["location_id"]]
@@ -226,7 +226,7 @@ func outcome(job: Dictionary) -> Dictionary:
 	var req=job.get("tool",{})
 	if standalone(job):
 		var settled=registry.session.settlement(campaign_id,req["request_id"])
-		if not settled.get("found",false) or settled["request"]!=req or settled["status"]!="committed" or settled["logical_turn_id"]!=null:
+		if not settled.get("found",false) or not registry.session.same_request(settled["request"],req) or settled["status"]!="committed" or settled["logical_turn_id"]!=null:
 			return {}
 		var source=registry.session.source(data["state"],settled["event_id"])
 		if not registry.session.public_source(source):
@@ -455,7 +455,7 @@ func committed_job_source(job: Dictionary,state: Dictionary) -> bool:
 	if not DTO.id_valid(req.get("request_id")) or not DTO.whole(event_id,1) or req.get("campaign_id")!=state["campaign_id"] or req.get("actor_id")!=state["actor_id"]:
 		return false
 	var settled=registry.session.settlement(state["campaign_id"],req["request_id"])
-	if not settled.get("ok",false) or not settled.get("found",false) or settled.get("request")!=req or settled.get("status")!="committed":
+	if not settled.get("ok",false) or not settled.get("found",false) or not registry.session.same_request(settled.get("request"),req) or settled.get("status")!="committed":
 		return false
 	if standalone(job):
 		var linked=RECON.new().standalone_event(state["campaign_id"],req["request_id"])
@@ -523,7 +523,7 @@ func discovery_request_valid(req: Dictionary,job: Dictionary,state: Dictionary,s
 	if settled.is_empty():
 		if req.get("expected_revision")!=state["revision"]:
 			return false
-	elif settled.get("request")!=req or settled.get("status")!="committed" or settled.get("revision")!=state["revision"]:
+	elif not registry.session.same_request(settled.get("request"),req) or settled.get("status")!="committed" or settled.get("revision")!=state["revision"]:
 		return false
 	var expected=discovery_arguments(job,state,index,req.get("request_id",""),settled)
 	return not expected.is_empty() and req.get("args")==expected and registry.arguments_valid(expected,REG.TOOLS[req["kind"]][0])
@@ -577,13 +577,13 @@ func process_story() -> void:
 		registry.execute(campaign_id,req,review_tool)
 		running=false
 		prior=registry.session.settlement(campaign_id,req["request_id"])
-	if not prior.get("found",false) or prior["request"]!=req or prior["status"]!="committed" or not reload():
+	if not prior.get("found",false) or not registry.session.same_request(prior["request"],req) or prior["status"]!="committed" or not reload():
 		stop("retry","Discovery not committed; independent review or explicit skip required.")
 		return
 	# Recovery of an already-present row must prove the EXACT request committed,
 	# just as the fresh-execution branch does. Never advance a deferred cursor
 	# after a rejected/cancelled request or a different request using this ID.
-	if not prior.get("ok",false) or not prior.get("found",false) or prior.get("request")!=req or prior.get("status")!="committed":
+	if not prior.get("ok",false) or not prior.get("found",false) or not registry.session.same_request(prior.get("request"),req) or prior.get("status")!="committed":
 		stop("retry","Deferred settlement differs or was not committed; preserve the pending work.")
 		return
 	if not discovery_request_valid(req,job,data["state"],prior):
@@ -743,7 +743,7 @@ func process_consequence() -> void:
 		stop("retry","Continuation source unavailable.")
 		return
 	var root=registry.session.settlement(campaign_id,job["tool"]["request_id"])
-	if not root.get("found",false) or root["status"]!="committed" or root["request"]!=pending["original_request"] or state["pending_turn_id"]!=null or not idle_database():
+	if not root.get("found",false) or root["status"]!="committed" or not registry.session.same_request(root["request"],pending["original_request"]) or state["pending_turn_id"]!=null or not idle_database():
 		stop("retry","Original action and narration must settle before continuation.")
 		return
 	var source=registry.session.source(state,job["narration_event_id"])
@@ -776,7 +776,7 @@ func process_consequence() -> void:
 		registry.execute(campaign_id,req,review_tool)
 		running=false
 		prior=registry.session.settlement(campaign_id,req["request_id"])
-	if not prior.get("found",false) or prior["request"]!=req or prior["status"]!="committed" or not reload():
+	if not prior.get("found",false) or not registry.session.same_request(prior["request"],req) or prior["status"]!="committed" or not reload():
 		stop("retry","Transfer not committed; recover or cancel without asserting acquisition.")
 		return
 	# Save the exact C3 settlement identity before narrating it. If interrupted
@@ -856,7 +856,7 @@ func prepare_review(req: Dictionary,resume_stage: String) -> bool:
 func advance() -> void:
 	if closed or running or notifying or not reload():
 		return
-	if not inflight.is_empty() and inflight==active().get("attempt"):
+	if not inflight.is_empty() and registry.session.typed_equal(inflight,active().get("attempt")):
 		return
 	var job=active().duplicate(true)
 	if job.get("stage")=="adjudicate":

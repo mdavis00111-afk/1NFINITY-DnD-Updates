@@ -701,3 +701,7 @@ World and cartography renderer native failures on ea43535 share travel eligibili
 
 ### Playable milestone campaign acceptance
 Owner clarified v0.0.27 is a development milestone, not feature complete. Existing safety and core gameplay gates retained. Campaign smoke compared full controller-enriched workspace view to bare store view; complete_controller.refresh deliberately adds interaction capabilities, queue and status fields. Compare committed campaign, actor, inventory, events, location and opening eligibility instead, with mismatch diagnostics. Preserve exact campaign selection and duplicate-opening assertions. No production campaign behavior changed; native confirmation pending. No integration/publication.
+
+
+### Semantic durable identity correction
+Owner confirmed last live GUI good; preserve design, investigate headless layout separately. Linux ea43535 semantic logs show repeated interpret stage stalls. Controller compares in-memory attempt dictionaries against JSON journal readback; use existing strict typed_equal for durable attempt identity and same_request for durable settlement request checks in semantic and complete controllers. Preserve stage/revision/actor checks and provider budgets. Root cause inferred, native validation pending. No publication.
