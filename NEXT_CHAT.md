@@ -1,3 +1,7 @@
+## Current Windows DM format report
+
+The owner reported the generic invalid narration message. The clipboard excerpt contained the Godot startup header but no semantic failure. Recover the installed version and current `SEMANTIC_BOUNDARY` from the Windows installation folder's `game.log`, then target the identified failure. The `feature/dm-log-diagnostics` checkpoint improves the validation message and makes Copy log include the newest in-memory boundary. Keep narration and authoritative consequences separate and leave the screen-lag work until the DM path is confirmed.
+
 ## Windows DM response acceptance
 
 Review the live channel and the Separate DM response forms entry in PROJECT_BRAIN.md, plus HANDOFF.md and TESTING.md. On the owner PC, recover the saved `hello` with Turn → Retry and confirm a single reply. If the DM replies, measure screen switching separately before changing the render or SQLite paths. If the turn stops again, use Copy log and inspect the matching `SEMANTIC_BOUNDARY` before altering the contract further.

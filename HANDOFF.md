@@ -6,6 +6,8 @@ Codex Cloud is working on `feature/dm-turn-timeout` from live v0.0.33. Scope is 
 
 Codex Cloud is tracing the owner's invalid narration message from live `godot` publication `6562d3f5b2cc2870a416718189ca6f7cf8ad190c` on `feature/dm-log-diagnostics`. The copied excerpt shows startup only. Scope is the exact narration rejection reason and Copy log access to the current boundary. The live captures have yet to identify the failing field on v0.0.33. Screen-transition performance remains separate.
 
+Implemented specific narration format feedback in `game/gameplay/semantic_controller.gd`, in-memory boundary retention in `semantic_adapter.gd`, and clipboard inclusion plus version stamping in `game/main.gd`. Regressions are in `game/tests/semantic_integration_smoke.gd`. The diagnostic checkpoint is separate from the v0.0.33 updater manifest. Next evidence is the installed version and newest boundary from the laptop's `game.log` beside the updater.
+
 ## v0.0.32 Windows DM response follow-up
 
 Codex Cloud is investigating the owner's live `narration_shape` failure from `godot` publication `09514e1a0d6ba5ff2691e78fccbf4165f66cdf4a` on `feature/dm-response-variants`. Scope is the provider schema, the unresolved-DM boundary, focused mocks and development records. Screen-transition performance follows successful Windows DM acceptance.

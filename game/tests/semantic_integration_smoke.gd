@@ -8,6 +8,7 @@ const SESSION=preload("res://persistence/gameplay_session.gd")
 const SQL=preload("res://systems/sqlite.gd")
 const MIGRATION=preload("res://persistence/gameplay_migration.gd")
 const CTRL=preload("res://gameplay/semantic_controller.gd")
+const ADAPTER=preload("res://gameplay/semantic_adapter.gd")
 const WORKSPACE=preload("res://gameplay/game_workspace.gd")
 const PACK=preload("res://turns/agent_packets.gd")
 const RECON=preload("res://world/geography_reconciler.gd")
@@ -331,6 +332,10 @@ func menu_shortcuts_case(id: String) -> void:
 	await process_frame
 	var installed_log = game.install_root().path_join("game.log")
 	expect(game.game_log_path()==installed_log and game.read_recent_log(installed_log).contains("Godot Engine"),"Copy log reads the installed engine log")
+	ADAPTER.latest_boundary_line="SEMANTIC_BOUNDARY {\"boundary\":\"fixture_still_buffered\"}"
+	var copied: String = game.log_for_clipboard()
+	expect(copied.begins_with("1NFINITY D&D v"+game.version+"\n") and copied.contains("Godot Engine") and copied.ends_with(ADAPTER.latest_boundary_line),"Clipboard includes installed version and current in-memory boundary")
+	ADAPTER.latest_boundary_line=""
 	var large_path = "user://log-copy-fixture.log"
 	var log_file = FileAccess.open(large_path,FileAccess.WRITE)
 	log_file.store_string("older entry\n"+"x".repeat(2*game.LOG_COPY_LIMIT)+"\nLatest log line.\n")
@@ -513,6 +518,25 @@ func provider_format_case(id: String) -> void:
 			break
 	expect(ctrl.active().get("stage")=="retry" and ctrl.status.contains("combined narration and mechanics") and session.token(id)["revision"]==unchanged["revision"] and not session.settlement(id,mixed["request_id"]).get("found",false),"A populated mechanical field beside prose leaves the turn uncommitted")
 	if not expect(ctrl.cancel().get("ok",false),"Uncommitted mixed reply can be canceled"):
+		return
+	var incomplete = pipeline_intent(id,"Is anyone else here?")
+	expect(ctrl.submit(incomplete).get("ok",false),"Narration format diagnostic test submitted")
+	if not await pump("interpret"):
+		return
+	reply({})
+	if not await pump("narrate"):
+		return
+	var before_format = session.token(id)
+	reply({"recap":"fixture private recap","requires_world_update":"false","fixture private unexpected key":"fixture private value"})
+	for _i in range(40):
+		await process_frame
+		if ctrl.active().get("stage")=="retry":
+			break
+	var log_line = ADAPTER.latest_boundary_line
+	var diagnostic = JSON.parse_string(log_line.trim_prefix("SEMANTIC_BOUNDARY "))
+	expect(diagnostic is Dictionary and diagnostic.get("validation",{}).get("problems")==["missing narration text","world-update flag has the wrong type","unexpected reply fields"] and not log_line.contains("fixture private"),"Missing text, malformed flag and unexpected fields are diagnosed without copying private keys or values")
+	expect(ctrl.active().get("stage")=="retry" and ctrl.status.contains("missing narration text") and session.token(id)["revision"]==before_format["revision"],"Invalid reply shows a specific cause and leaves the saved turn uncommitted")
+	if not expect(ctrl.cancel().get("ok",false),"Invalid narration reply can be canceled"):
 		return
 	var guarded = pipeline_intent(id,"I ask whether the road is open.")
 	expect(ctrl.submit(guarded).get("ok",false),"Consequential response test submitted")

@@ -314,11 +314,24 @@ func combined_valid(result: Dictionary,state: Dictionary,turn_id: String,attempt
 
 func normalize_narration(result: Dictionary,state: Dictionary,turn_id: String,attempt: String,known: Array) -> Dictionary:
 	var allowed_keys = ["text","recap","geography","story","discoveries","requires_world_update"]
-	if not DTO.bounded_text(result.get("text"),12000) or not result.get("requires_world_update",false) is bool or result.keys().any(func(key): return not key in allowed_keys):
-		adapter.boundary("narration_shape","nonempty text with optional world proposals",result)
-		stop("retry","The DM returned an invalid narration format. Retry the saved request.")
+	var text = result.get("text")
+	var problems: Array[String] = []
+	if not result.has("text"):
+		problems.append("missing narration text")
+	elif not text is String:
+		problems.append("narration text has the wrong type")
+	elif text.strip_edges().is_empty():
+		problems.append("empty narration text")
+	elif text.length()>12000:
+		problems.append("narration exceeds 12000 characters")
+	if not result.get("requires_world_update",false) is bool:
+		problems.append("world-update flag has the wrong type")
+	if result.keys().any(func(key): return not key in allowed_keys):
+		problems.append("unexpected reply fields")
+	if not problems.is_empty():
+		adapter.boundary("narration_shape","nonempty text with optional world proposals",result,{"problems":problems,"text_characters":text.length() if text is String else null})
+		stop("retry","The DM reply could not be read ("+", ".join(problems)+"). Your turn is saved. Use Retry.")
 		return {}
-	var text = result["text"]
 	var expected = PACK.identity(state,turn_id,attempt)
 	var geo = expected.duplicate(true)
 	geo.merge({"source_event_id":null,"facts":[]})

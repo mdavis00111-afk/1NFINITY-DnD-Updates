@@ -1,3 +1,9 @@
+## DM validation detail and Copy log
+
+The latest Windows report after v0.0.33 publication showed the generic narration-format message and a clipboard excerpt containing startup lines only. The narration boundary now identifies missing, malformed, blank or oversized text, an invalid world-update flag, and unexpected fields without logging the underlying reply or any unknown key names. Validation and settlement rules are unchanged.
+
+Copy log prefixes the installed version and includes the newest sanitized semantic boundary directly from memory when the installed log file has not recorded it yet. The latest boundary is kept only for the running process. The v0.0.33 rejection still needs a matching boundary from the owner PC before the failing field can be confirmed.
+
 ## Separate DM response forms
 
 The v0.0.32 Windows log showed Gemini delivered a JSON object containing both prose and mechanical keys. At that boundary, the flat provider schema allowed the combination, which Godot could not settle. The unresolved DM schema now offers three shallow, mutually exclusive forms for prose, a check with optional branches, or a mechanical request. The prompt also asks Gemini to omit unused forms.

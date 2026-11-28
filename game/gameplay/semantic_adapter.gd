@@ -8,6 +8,7 @@ const DTO=preload("res://world/world_dto.gd")
 const PACK=preload("res://turns/agent_packets.gd")
 const MAX_CALLS=1
 const MAX_CONTEXT=90000
+static var latest_boundary_line: String = ""
 var controller: Node
 var transport: Node
 var identity: Dictionary={}
@@ -16,6 +17,7 @@ var calls=0
 var metrics: Array=[]
 var factory: Callable
 var serial=0
+var response_transport: Dictionary={}
 
 func attach(value: Node,transport_factory: Callable=Callable()) -> bool:
 	if not is_inside_tree() or is_instance_valid(controller) or not is_instance_valid(value):
@@ -44,6 +46,7 @@ func _exit_tree() -> void:
 
 func start(stage: String,packet: Dictionary) -> void:
 	retire()
+	response_transport={}
 	identity=packet["identity"].duplicate(true)
 	payload=packet["data"].duplicate(true)
 	if stage!=identity.get("stage") or not current():
@@ -149,7 +152,7 @@ func diagnostic(code: String) -> void:
 	print("SEMANTIC_QA ",code," stage=",identity.get("stage","none"))
 
 # Log shape only. Unknown keys and value text may contain campaign data.
-func boundary(code: String,expected: String,actual: Variant,details: Dictionary={}) -> void:
+func boundary(code: String,expected: String,actual: Variant,validation: Dictionary={}) -> void:
 	var fields: Dictionary = {}
 	if actual is Dictionary:
 		for key in ["spells","items","skills","abilities","features","resources","rules","world","text","recap","geography","story","discoveries","requires_world_update","mechanics","check","branches","inscription"]:
@@ -163,17 +166,22 @@ func boundary(code: String,expected: String,actual: Variant,details: Dictionary=
 	var state = controller.data.get("state",{})
 	var sent = controller.last_dm_packet if identity.get("stage")=="narrate" else {}
 	var committed = "yes" if state.get("pending_turn_id")!=null or sent.has("settlement") or sent.has("receipt") else "no verified commit"
-	print("SEMANTIC_BOUNDARY ",JSON.stringify({"request_id":identity.get("request_id"),"attempt_id":identity.get("attempt_id"),"stage":identity.get("stage"),"boundary":code,"expected":expected,"actual_shape":fields,"recoverable":true,"mechanics_committed":committed,"transport":details}))
+	var event = {"request_id":identity.get("request_id"),"attempt_id":identity.get("attempt_id"),"stage":identity.get("stage"),"boundary":code,"expected":expected,"actual_shape":fields,"recoverable":true,"mechanics_committed":committed,"transport":response_transport}
+	if not validation.is_empty():
+		event["validation"]=validation
+	latest_boundary_line="SEMANTIC_BOUNDARY "+JSON.stringify(event)
+	print(latest_boundary_line)
 
 func received(epoch: int,clock: int,ok: bool,message: String,details: Dictionary={}) -> void:
 	if epoch!=serial or not current():
 		diagnostic("response_stale")
 		return
+	response_transport=details
 	metrics.append({"stage":identity["stage"],"call":calls,"elapsed_ms":Time.get_ticks_msec()-clock,"ok":ok})
 	metrics=metrics.slice(maxi(0,metrics.size()-64))
 	retire()
 	if not ok:
-		boundary("provider_transport","complete provider response",TYPE_NIL,details)
+		boundary("provider_transport","complete provider response",TYPE_NIL)
 		failed(message)
 		return
 	# Invalid provider JSON is an expected recoverable input, not an engine error.
