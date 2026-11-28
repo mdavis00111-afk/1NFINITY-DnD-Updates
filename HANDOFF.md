@@ -564,3 +564,7 @@ Owner authorized live testing instead of mandatory GitHub gameplay regression. L
 ## v0.0.32 owner test release coordination
 
 Codex Cloud is preparing the owner-authorized test update from live `godot` at `b85b5abdab863404fb9d93e2986254c58d1bf9a3`. `feature/log-and-menu-shortcuts` incorporates the verified `812032dbce5ef8efe7517b55ccef4d891b8506e9` narration recovery checkpoint, then adds the Copy log button and Esc navigation. Scope is the affected UI, handover, validation and the existing release request. No overlapping work is recorded. This coordination record keeps v0.0.31 live until the packager publishes the next manifest.
+
+
+### Alpha 0.0.32 packaging
+Owner authorized live testing instead of mandatory GitHub gameplay regression. Latest Linux baseline 12/14; semantic corrections unverified; GUI owner-managed. No claim of native or live acceptance. Packaging only.
