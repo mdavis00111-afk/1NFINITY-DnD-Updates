@@ -1,3 +1,7 @@
+# OWNER DIRECTIVE — RUNTIME TESTING
+
+All Godot runtime, Windows installation and live gameplay testing is performed by the owner on their PC. The AI developer performs available static source, dependency, schema, SQL and integration checks. Absence of local Godot is not a development or publication blocker. Complete authorized changes and publish through the existing updater for owner testing. No mandatory GitHub Actions gameplay tests or Codex handoff. Preserve existing integrity and safety requirements.
+
 # ACTIVE TASK — OWNER-AUTHORIZED v0.0.29 AI PIPELINE REPLACEMENT
 
 Execute this task now, as sole lead developer. This supersedes conflicting historical task queues and assessment protocols. The owner has already authorized all ten steps, source changes, wiring and publication. Do not ask for routine approval, return another plan, or stop after reading. Continue through implementation, integration and publication in the same session where tools permit. Current baseline v0.0.28; verify channel.json and HEAD first. Step 1 architectural decision complete; steps 2–10 outstanding. No v0.0.29 runtime changes have been made by this handover.
