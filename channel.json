@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.33",
-  "source_commit": "c4d52a28cd5fb1a4dc57f21c5f6cc73d632694bd",
-  "notes": "Windows playtest. Separates the Gemini DM's narration, check and mechanical request replies. Valid narration can recover from empty response placeholders. Genuine mechanical requests still go through Godot. Reopen the affected campaign and use Turn > Retry to recover the saved message.",
+  "version": "0.0.34",
+  "source_commit": "257feb6442d176b8125c64ab6aa2212b71eb85c6",
+  "notes": "Windows playtest. Saved DM replies appear in the open campaign before deferred work. Chat updates reuse the existing workspace panels and avoid redundant database reads. Stalled requests offer Retry, and Copy log includes the installed version and newest validation detail.",
   "files": [
     {
       "path": "art/arcane.svg",
@@ -1194,7 +1194,7 @@
     },
     {
       "path": "gameplay/complete_controller.gd",
-      "blob": "e59d2f2ab7bd386ba95849a02bd99daef1d989e9"
+      "blob": "eb313a05c3a21755ebc93f62495341bfe81a8115"
     },
     {
       "path": "gameplay/display_values.gd",
@@ -1202,7 +1202,7 @@
     },
     {
       "path": "gameplay/game_workspace.gd",
-      "blob": "64f7be2c0f80c28624b82ba530774407b52eba24"
+      "blob": "f71d6ee053d8b83fa0d45bb49aff18714d6d9db7"
     },
     {
       "path": "gameplay/independent_review.gd",
@@ -1238,11 +1238,11 @@
     },
     {
       "path": "gameplay/semantic_adapter.gd",
-      "blob": "51fafdfd128fea796002648a5734849229253794"
+      "blob": "b85ea3a8cc0c39bba958d03c8a05c15ea9222d18"
     },
     {
       "path": "gameplay/semantic_controller.gd",
-      "blob": "a7ea8ab57e3caad76d480f77a384ff4338af9f96"
+      "blob": "0327810344e8edec6a528bb8ad872bbc89e030a8"
     },
     {
       "path": "gameplay/semantic_policy.gd",
@@ -1266,7 +1266,7 @@
     },
     {
       "path": "main.gd",
-      "blob": "1214f668c75957ffd7526b7d3a5998b9140295d1"
+      "blob": "0dba89917933d94b8f96dbf115a026aa771953d6"
     },
     {
       "path": "main.tscn",
@@ -1346,7 +1346,7 @@
     },
     {
       "path": "project.godot",
-      "blob": "c05b84b32c2196d0103ffd18107b951cbbff4b47"
+      "blob": "81e4fcad398c265ce12c390ca634bfdaeb8eae8a"
     },
     {
       "path": "rules/MASTER_REFERENCE.md",
@@ -1402,7 +1402,7 @@
     },
     {
       "path": "systems/gemini.gd",
-      "blob": "26c410bafe21e5a1f243cff76c5f988cd2bfcc43"
+      "blob": "f8fbd4fdc4542fd8eb9ff94244c501bf17a699bb"
     },
     {
       "path": "systems/sqlite.gd",
@@ -1466,7 +1466,7 @@
     },
     {
       "path": "tests/semantic_integration_smoke.gd",
-      "blob": "ccea3572cb637101464e15796f8ad7aeb69c7b97"
+      "blob": "2c090e5d8558053b00d8729ca1bfdbfca083d76f"
     },
     {
       "path": "tests/sqlite_smoke.gd",
@@ -1570,7 +1570,7 @@
     },
     {
       "path": "version.txt",
-      "blob": "cd9d21e61aa04bf3c8b84fa5de1f3c3181056fed"
+      "blob": "bb951c884e30d8f7580c6ee59a74312a8350275b"
     },
     {
       "path": "world/geography_reconciler.gd",
