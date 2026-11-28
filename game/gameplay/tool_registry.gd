@@ -17,6 +17,9 @@ const UI = preload("res://gameplay/ui_intents.gd")
 const MATERIAL_AC = {"cloth":11,"paper":11,"rope":11,"crystal":13,"glass":13,"ice":13,"wood":15,"bone":15,"stone":17,"iron":19,"steel":19,"mithral":21,"adamantine":23}
 const OBJECT_HP = {"tiny":[2,5],"small":[3,10],"medium":[4,18],"large":[5,27]}
 const ADOPTED = ["ability_check","skill_check","saving_throw","object_check","conversation","observe","wait","move","travel"]
+# Execution-only outcomes. The interpreter cannot submit these codes.
+const MISSING_CUSTOM_ATTRIBUTES = "missing_custom_attributes"
+const ITEM_REJECTIONS = ["ineligible","eligibility_unknown","invalid_data","insufficient_resources"]
 const EQUIPMENT = ["equip","quick_equip","swap","unequip","attune","unattune"]
 const QUERY_TYPES = {"rules_search":{"category":"text","query":"text"},"rule_record":{"category":"text","id":"text"},"actors":{"location_id":"id"},"actor_sheet":{"actor_id":"id"},"actor_template":{"template_id":"text"},"item_definition":{"definition_id":"text"},"inventory":{"actor_id":"id"},"geography":{"page":"integer"},"story":{"kind":"text?","location_id":"id?","participant_id":"id?"},"story_history":{"record_id":"id"},"history":{"location_id":"id?","before_event_id":"positive?"},"overview":{},"loot":{"container_id":"id?"},"settlement":{"request_id":"id"},"object_profile":{"material":"material","size":"object_size","resilience":"resilience"},"equipment_options":{"instance_id":"id"}}
 const TOOLS = {"equip":[{"instance_id":"id","slot":"slot","grip":"grip"},"Equip a selected owned instance in a chosen compatible slot and grip.",["wearing-and-wielding-items","time"]],"quick_equip":[{"instance_id":"id","slot":"slot","grip":"grip"},"Equip an instance in an explicitly chosen compatible slot; never implicitly displace gear.",["wearing-and-wielding-items","time"]],"swap":[{"instance_id":"id","slot":"slot","grip":"grip","replace_instance_ids":"ids"},"Atomically replace exactly the selected displaced instances.",["wearing-and-wielding-items","time"]],"unequip":[{"instance_id":"id","slot":"slot"},"Unequip an actual slot assignment and update derived statistics.",["wearing-and-wielding-items","time"]],"attune":[{"instance_id":"id"},"Attune supported protection item during a focused short rest.",["attunement","resting"]],"unattune":[{"instance_id":"id"},"End supported attunement during a focused short rest.",["attunement","resting"]],"item_use":[{"instance_id":"id","quantity":"positive","target_id":"id?"},"Consume one supported healing potion or daily ration on explicit self target.",["activating-an-item","damage-and-healing"]],"item_drop":[{"instance_id":"id","quantity":"positive"},"Drop an owned unequipped possession into a recoverable local container.",["movement","time"]],"item_transfer":[{"from_actor_id":"id","to_actor_id":"id","instance_id":"id","quantity":"positive"},"Transfer an actual item with consent between player and local NPC.",["movement","time"]],"currency_transfer":[{"from_actor_id":"id","to_actor_id":"id","coins":"coins"},"Transfer explicit coin denominations.",["standard-exchange-rates","movement"]],"loot_pickup":[{"container_id":"id","source_event_id":"positive","items":"selections","coins":"coins"},"Collect selected unclaimed loot and coin amounts.",["movement","standard-exchange-rates"]],"loot_take_all":[{"container_id":"id","source_event_id":"positive"},"Collect every remaining eligible possession or reject atomically.",["movement","standard-exchange-rates"]],"loot_discover":[{"source_event_id":"positive","location_id":"id","name":"text","items":"possessions","coins":"coins"},"Record verified local discovery; no automatic award.",["objects"]],"define_official":[{"category":"text","catalog_id":"text","source_event_id":"positive"},"Register an immutable pinned definition.",[]],"define_custom":[{"definition":"definition","source_event_id":"positive","official_equivalent_id":"text?"},"Validate proposed custom item attributes; prefer actual official equivalent.",["objects"]],"spell_cast":[{"spell_id":"text","source":"spell_source","slot_level":"slot_level","target_id":"id?"},"Resolve supported self-healing spell and debit actual slot.",["casting-a-spell","damage-and-healing"]],"spell_prepare":[{"spell_id":"text","prepared_ids":"texts"},"Choose complete new preparation list after verified long rest.",["casting-a-spell","resting"]],"spell_unprepare":[{"spell_id":"text","prepared_ids":"texts"},"Remove selected spell as part of explicit final prepared list.",["casting-a-spell","resting"]],"resource_use":[{"resource_id":"text","quantity":"positive","target_id":"id?"},"Use supported Second Wind or Lay on Hands resource.",["damage-and-healing"]],"rest":[{"rest_kind":"rest_kind","hit_dice":"integer","prepared_ids":"texts?"},"Resolve supported rest, hit dice, resources and preparation.",["resting","time"]],"ability_check":[{"ability":"ability","skill":"text?","difficulty":"difficulty","text":"text","source_event_id":"positive","circumstances":"circumstances"},"Resolve contextual uncertain task with RAW difficulty category.",["ability-checks","advantage-and-disadvantage"]],"skill_check":[{"ability":"ability","skill_id":"text","difficulty":"difficulty","text":"text","source_event_id":"positive","circumstances":"circumstances"},"Resolve contextual skill/ability check with proficiency.",["ability-checks","using-each-ability"]],"saving_throw":[{"ability":"ability","text":"text","source_event_id":"positive","circumstances":"circumstances"},"Resolve saving throw against independently verified triggering DC.",["saving-throws","advantage-and-disadvantage"]],"object_interact":[{"object_id":"id","operation":"object_operation","source_event_id":"positive"},"Open or close a verified unlocked, unobstructed local mundane object recorded as a circumstance.",["objects","time"]],"object_check":[{"object_id":"id","ability":"ability","skill":"text?","difficulty":"difficulty","text":"text","source_event_id":"positive","circumstances":"circumstances"},"Resolve check concerning established local object, without invented object damage/state.",["objects","ability-checks"]],"conversation":[{"text":"text"},"Ordinary conversation, no roll or implied effect.",["time"]],"observe":[{"text":"text"},"Routine observation without a roll or invented discovery.",["time"]],"wait":[{"seconds":"positive","text":"text"},"Advance a verified safe duration.",["time"]],"move":[{"route_id":"id","destination_id":"id","pace":"pace","fast_travel":"bool","text":"text"},"Resolve movement on canonical cleared foot route.",["movement","time"]],"travel":[{"route_id":"id","destination_id":"id","pace":"pace","fast_travel":"bool","text":"text"},"Resolve ordinary or fast travel using identical RAW pace and route rules.",["movement","time"]],"actor_generate":[{"generation_key":"id","template_ids":"texts","existing_actor_id":"id?","kind":"actor_kind","name":"text?","occupation":"text","location_id":"id","visibility":"visibility","sheet_visibility":"sheet_visibility","source_event_id":"positive","possessions":"actor_possessions","coins":"coins?","attitude":"attitude?"},"Create or reuse a verified canonical NPC/monster instance.",[]],"story_update":[{"record_id":"id?","identity_key":"text","kind":"text","title":"text","description":"text","status":"text","visibility":"visibility","certainty":"text","location_id":"id?","parent_id":"id?","source_event_id":"positive","progress_current":"integer?","progress_max":"positive?","participants":"participants"},"Record source-backed locally approved story/quest lifecycle.",[]],"party_membership":[{"member_actor_id":"id","status":"text","source_event_id":"positive"},"Record actual consent/departure, no combat or teleportation.",[]],"reconcile_legacy_slots":[{"assignments":"assignments"},"Resolve missing existing hand metadata without changing prior equipment.",["wearing-and-wielding-items"]]}
@@ -331,8 +334,36 @@ func resolve_adopted(id: String,req: Dictionary,state: Dictionary,prior: Diction
 	result["turn_id"]=turn_id
 	return result
 
+# This validates the local handoff shape and exact request binding. Authority
+# comes from the handler's revision-bound eligibility checks and SQLite reads.
+func missing_custom_attributes_valid(result: Dictionary,req: Dictionary) -> bool:
+	if not DTO.exact_keys(result,["ok","code","error","details"]) or not result["ok"] is bool or result["ok"] or result["code"]!=MISSING_CUSTOM_ATTRIBUTES or not DTO.bounded_text(result["error"],500):
+		return false
+	var details = result["details"]
+	if not DTO.exact_keys(details,["request","instance_id","definition_id","origin","quantity","missing_paths","context"]):
+		return false
+	if not session.same_request(details["request"],req) or details["origin"]!="custom" or not DTO.id_valid(details["instance_id"]) or details["instance_id"]!=req["args"].get("instance_id") or not DTO.bounded_text(details["definition_id"],100) or not DTO.whole(details["quantity"],1):
+		return false
+	var paths = details["missing_paths"]
+	if not paths is Array or paths.is_empty() or paths.size()>16 or not details["context"] is Dictionary or not session.json_safe(details["context"]):
+		return false
+	var seen: Array = []
+	for path in paths:
+		if not DTO.bounded_text(path,128) or path in seen:
+			return false
+		seen.append(path)
+	return true
+
 func execute(id: String,req: Dictionary,review: Callable) -> Dictionary:
 	var result=_execute(id,req,review)
+	if result.get("code")==MISSING_CUSTOM_ATTRIBUTES:
+		if not missing_custom_attributes_valid(result,req):
+			return error_result("unconfirmed","Missing item attribute result could not be verified.")
+		var current = validate_request(id,req)
+		if not current.get("ok",false):
+			return current
+		if current["prior"].get("found",false) or noncombat.prepared.has(id) or resolver.unresolved.has(id):
+			return error_result("unconfirmed","Outstanding execution must be recovered before attribute review.")
 	if not result.get("ok",false) and not result.has("code"):
 		result["code"]="unconfirmed" if result.get("adopted_pending",false) or noncombat.prepared.has(id) else "review_required"
 		result["details"]={"request_id":req.get("request_id")}
@@ -366,8 +397,8 @@ func _execute(id: String,req: Dictionary,review: Callable) -> Dictionary:
 		if not noncombat.quiet_context(state):
 			return error_result("unsupported","Active encounters are outside the noncombat tool phase.")
 		return resolve_adopted(id,req,state,prior,decision["ruling"])
-	if prior.get("found",false):
-		return error_result("busy","Standalone tool may not enter an adopted request.")
+	if prior.get("found",false) or resolver.unresolved.has(id):
+		return error_result("busy","Reconcile the pending logical request before standalone execution.")
 	if not decision["ruling"].is_empty():
 		return error_result("invalid","Standalone tool does not accept additional mechanical ruling fields.")
 	var catalog=ITEMS.new()

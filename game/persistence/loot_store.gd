@@ -250,6 +250,15 @@ func reveal_outcome(id: String,request: Dictionary,clearance: Dictionary) -> Dic
 
 # Atomic selective pickup or take-all. All-or-nothing, no implicit transfer on
 # reveal or victory. Caller must independently establish time/access/legal use.
+# SQL NULL is a valid stored value but cannot prove carrying eligibility.
+func capacity_weight(raw: Variant) -> Dictionary:
+	match ITEMS.weight_state(raw):
+		ITEMS.AttributeState.VALID:
+			return {"ok":true,"weight":DTO.sql_number(raw)}
+		ITEMS.AttributeState.NULLABLE:
+			return {"ok":false,"code":"eligibility_unknown","error":"Unknown item weight prevents verifying carrying capacity."}
+	return {"ok":false,"code":"invalid_data","error":"Persisted item weight is invalid."}
+
 func pickup(id: String,request: Dictionary,clearance: Dictionary) -> Dictionary:
 	var kind = str(request.get("kind",""))
 	if not kind in ["loot_pickup","loot_take_all"]:
@@ -267,7 +276,7 @@ func pickup(id: String,request: Dictionary,clearance: Dictionary) -> Dictionary:
 	var cid = args["container_id"]
 	var data = read(state,[SQL.stmt("SELECT id,source_event_id FROM loot_containers WHERE id=? AND location_id=? AND visibility='player' AND status='available'",[cid,state["location_id"]]),SQL.stmt(INSTANCE_ROWS+" WHERE i.container_id=? ORDER BY i.id",[cid]),SQL.stmt("SELECT denomination,quantity FROM loot_currency WHERE container_id=? ORDER BY denomination",[cid]),SQL.stmt(INSTANCE_ROWS+" WHERE i.actor_id=? ORDER BY i.id",[state["actor_id"]])])
 	if not data.get("ok",false):
-		return data
+		return {"ok":false,"code":"unconfirmed","error":data.get("error","Loot ownership read failed.")}
 	var sets: Array = data["sets"]
 	if sets[0].size()!=1 or DTO.sql_int(sets[0][0]["source_event_id"])!=args["source_event_id"]:
 		return fail("Loot not available at the committed location.")
@@ -297,11 +306,13 @@ func pickup(id: String,request: Dictionary,clearance: Dictionary) -> Dictionary:
 	var current_load = 0.0
 	var owned: Dictionary = {}
 	for row in sets[3]:
-		var weight = DTO.sql_number(row["unit_weight_lb"])
 		var qty = DTO.sql_int(row["quantity"])
-		if weight==null or qty==null or qty<1:
-			return fail("Owned item weight/quantity unknown; cannot verify pickup capacity.")
-		current_load+=float(weight)*qty
+		if qty==null or qty<1:
+			return {"ok":false,"code":"invalid_data","error":"Persisted owned quantity is invalid."}
+		var checked = capacity_weight(row["unit_weight_lb"])
+		if not checked["ok"]:
+			return checked
+		current_load+=float(checked["weight"])*qty
 		owned[row["definition_id"]]=int(owned.get(row["definition_id"],0))+qty
 	var items: Dictionary = {}
 	for row in state["inventory"]:
@@ -336,11 +347,17 @@ func pickup(id: String,request: Dictionary,clearance: Dictionary) -> Dictionary:
 		if row.is_empty():
 			return fail("Selected item already collected or unavailable.")
 		var qty = DTO.sql_int(row["quantity"])
-		var weight = DTO.sql_number(row["unit_weight_lb"])
 		var amount = int(choice["quantity"])
-		if qty==null or amount>qty or weight==null or row["attunement"]=="attuned" or (amount<qty and (row["charges"]!=null or row["origin"]!="official" or not row["attunement"] in ["unknown","not_required"])):
-			return fail("Quantity, weight, charges or attunement requires adjudication.")
-		current_load+=float(weight)*amount
+		if qty==null or qty<1:
+			return {"ok":false,"code":"invalid_data","error":"Persisted loot quantity is invalid."}
+		if amount>qty:
+			return {"ok":false,"code":"insufficient_resources","error":"Requested quantity exceeds available loot."}
+		if row["attunement"]=="attuned" or (amount<qty and (row["charges"]!=null or row["origin"]!="official" or not row["attunement"] in ["unknown","not_required"])):
+			return {"ok":false,"code":"ineligible","error":"Selected charges or attunement prevents this pickup."}
+		var checked = capacity_weight(row["unit_weight_lb"])
+		if not checked["ok"]:
+			return checked
+		current_load+=float(checked["weight"])*amount
 		var destination = row["id"] if amount==qty else make_id()
 		commands.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('c2_pick_guard',(SELECT 'ok' FROM item_instances WHERE id=? AND container_id=? AND quantity=CAST(? AS INTEGER)))",[row["id"],cid,qty]))
 		if amount==qty:
@@ -358,7 +375,7 @@ func pickup(id: String,request: Dictionary,clearance: Dictionary) -> Dictionary:
 		items[item_id]=current
 		selected.append({"instance_id":destination,"definition_id":item_id,"quantity":amount})
 	if current_load>float(capacity):
-		return fail("Selection exceeds established carrying capacity.")
+		return {"ok":false,"code":"insufficient_resources","error":"Selection exceeds established carrying capacity."}
 	for denom in DENOMS:
 		if coins[denom]>0:
 			commands.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('c2_coin_guard',(SELECT 'ok' FROM loot_currency WHERE container_id=? AND denomination=? AND quantity=CAST(? AS INTEGER)))",[cid,denom,available_coins[denom]]))

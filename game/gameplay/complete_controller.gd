@@ -403,7 +403,14 @@ func execute_active() -> void:
 			stop("retry","Tool acknowledgement needs recovery.")
 	else:
 		var message=str(result.get("error","Tool not resolved."))
-		if result.get("code") in ["invalid","unsupported","decision_required","review_required"] and not result.get("adopted_pending",false):
+		var code = result.get("code")
+		if code==REG.MISSING_CUSTOM_ATTRIBUTES:
+			# Step 7A stops locally. No receipt, provider call, or automatic retry.
+			if registry.missing_custom_attributes_valid(result,req):
+				reject_local(req,"Required custom item attributes are missing. "+message)
+			else:
+				stop("retry","Missing item attribute result could not be verified.")
+		elif code in ["invalid","unsupported","decision_required","review_required"]+REG.ITEM_REJECTIONS and not result.get("adopted_pending",false):
 			reject_local(req,message)
 		else:
 			stop("retry",message)

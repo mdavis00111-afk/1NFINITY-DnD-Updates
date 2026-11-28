@@ -31,7 +31,7 @@ func read_owned(state: Dictionary, owner: String) -> Dictionary:
 		SQL.stmt("SELECT id,location_id,payload,kind FROM actors WHERE id=?",[owner])
 	])
 	if not q.get("ok",false):
-		return q
+		return {"ok":false,"code":"unconfirmed","error":q.get("error","Ownership read failed.")}
 	var sets: Array = q["sets"]
 	if sets[0].size()>MAX_ITEMS or not sets[2].is_empty() or sets[4].size()!=1:
 		return fail("Incomplete ownership or unresolved legacy equipment; review required.")
@@ -43,8 +43,8 @@ func read_owned(state: Dictionary, owner: String) -> Dictionary:
 	for row in sets[0]:
 		var qty = DTO.sql_int(row["quantity"])
 		var def = {"id":row["definition_id"],"origin":row["origin"],"catalog_id":row["catalog_id"],"catalog_category":row["catalog_category"],"catalog_revision":row["catalog_revision"],"attributes":JSON.parse_string(row["attributes"]),"unit_weight_lb":DTO.sql_number(row["unit_weight_lb"])}
-		if not DTO.id_valid(row["id"]) or qty==null or qty<1 or not def["attributes"] is Dictionary:
-			return fail("Invalid owned instance.")
+		if row["actor_id"]!=owner or not DTO.id_valid(row["id"]) or not DTO.bounded_text(def["id"],100) or not def["origin"] in ["custom","official","legacy_unresolved"] or qty==null or qty<1 or not def["attributes"] is Dictionary:
+			return {"ok":false,"code":"invalid_data","error":"Invalid owned instance or item definition."}
 		var item: Dictionary = row.duplicate(true)
 		item["quantity"]=qty
 		items[row["id"]]=item
@@ -197,7 +197,7 @@ func gear_stats(pack: Dictionary,actor: Dictionary) -> Dictionary:
 		if not official(def):
 			# Novel objects may be held descriptively, but no custom equipment
 			# may silently grant armor, damage or other mechanical effects.
-			if def.get("origin")!="custom" or not slot in ["main_hand","off_hand"] or not catalogue.custom_valid(def["attributes"]) or def["attributes"].get("category") not in ["weapon","tool","gear","object"]:
+			if def.get("origin")!="custom" or not slot in ["main_hand","off_hand"] or def["attributes"].get("category") not in ITEMS.CUSTOM_HELD_CATEGORIES:
 				return {}
 		var grip = pack["slots"][slot]["grip"]
 		if slot=="off_hand" and grip=="two_handed" and slotted(pack,"main_hand")==iid:
@@ -237,7 +237,7 @@ func gear_stats(pack: Dictionary,actor: Dictionary) -> Dictionary:
 	ac+=int(bonus)
 	for hand in ["main_hand","off_hand"]:
 		var iid = slotted(pack,hand)
-		if not iid.is_empty() and pack["definitions"][iid]["attributes"].has("weapon_category") and not pack["definitions"][iid]["id"] in weapons:
+		if not iid.is_empty() and pack["definitions"][iid]["origin"]=="official" and pack["definitions"][iid]["attributes"].has("weapon_category") and not pack["definitions"][iid]["id"] in weapons:
 			weapons.append(pack["definitions"][iid]["id"])
 	var armor_proficient = armor_id.is_empty() or str(armor.get("armor_category","")).to_lower()+"-armor" in profs
 	var shield_proficient = shield_id.is_empty() or "shields" in profs
@@ -273,7 +273,8 @@ func apply_gear(actor: Dictionary,stats: Dictionary) -> void:
 	actor["saving_throws"]=stats["saving_throws"]
 
 func wear_duration(pack: Dictionary,iid: String,donning: bool) -> int:
-	var category = pack["definitions"][iid]["attributes"].get("armor_category","")
+	var def = pack["definitions"][iid]
+	var category = def["attributes"].get("armor_category","") if def["origin"]=="official" else ""
 	return int(ARMOR_SECONDS[category][0 if donning else 1]) if ARMOR_SECONDS.has(category) else 6
 
 # Structured equip/swap/unequip and attunement. C1's slot names are presentation
@@ -295,7 +296,7 @@ func equipment_action(id: String,req: Dictionary,clearance: Dictionary) -> Dicti
 		return pack
 	var iid = args["instance_id"]
 	if not DTO.id_valid(iid) or not pack["items"].has(iid):
-		return fail("Owned instance unavailable.")
+		return {"ok":false,"code":"ineligible","error":"Owned instance unavailable."}
 	var actor: Dictionary = pack["actor"].duplicate(true)
 	if not same_gear(gear_stats(pack,actor),actor):
 		return fail("Existing derived equipment stats require review before a change.")
@@ -305,7 +306,7 @@ func equipment_action(id: String,req: Dictionary,clearance: Dictionary) -> Dicti
 	var seconds = 0
 	if kind in ["attune","unattune"]:
 		if not official(def) or not def["catalog_id"] in PROTECTION or row["quantity"]!=1 or row["condition"] in ["damaged","broken"]:
-			return fail("Only verified Ring/Cloak of Protection attunement is currently supported.")
+			return {"ok":false,"code":"unsupported","error":"Only verified Ring/Cloak of Protection attunement is currently supported."}
 		var n = 0
 		for item in pack["items"].values():
 			if item["attunement"]=="attuned":
@@ -325,8 +326,16 @@ func equipment_action(id: String,req: Dictionary,clearance: Dictionary) -> Dicti
 		seconds=wear_duration(pack,iid,false)
 		clear_instance(pack,iid)
 	else:
-		if not args["slot"] in UI.SLOTS or not args["grip"] in UI.GRIPS or row["condition"] in ["damaged","broken"] or row["quantity"]<1 or not catalogue.physical_options(def).any(func(opt): return opt["slot"]==args["slot"] and opt["grip"]==args["grip"]):
-			return fail("Item cannot occupy requested slot/grip.")
+		if not args["slot"] in UI.SLOTS or not args["grip"] in UI.GRIPS or row["condition"] in ["damaged","broken"]:
+			return {"ok":false,"code":"ineligible","error":"Item cannot occupy requested slot/grip."}
+		if def["origin"]=="custom":
+			var category = def["attributes"].get("category")
+			if not category in ITEMS.CUSTOM_CATEGORIES or def["catalog_id"]!=null or def["catalog_category"]!=null or def["catalog_revision"]!=null or not DTO.whole(DTO.sql_int(row["definition_source_event_id"]),1):
+				return {"ok":false,"code":"invalid_data","error":"Custom item category or definition provenance is invalid."}
+			if not category in ITEMS.CUSTOM_HELD_CATEGORIES or not args["slot"] in ["main_hand","off_hand"] or args["grip"]=="worn" or (args["grip"]=="two_handed" and args["slot"]!="main_hand"):
+				return {"ok":false,"code":"unsupported","error":"Custom equipment is limited to descriptive held objects."}
+		elif not official(def):
+			return {"ok":false,"code":"invalid_data","error":"Pinned equipment definition could not be verified."}
 		var relevant = [args["slot"]]
 		if args["grip"]=="two_handed":
 			relevant=["main_hand","off_hand","shield"]
@@ -348,6 +357,16 @@ func equipment_action(id: String,req: Dictionary,clearance: Dictionary) -> Dicti
 			requested.sort()
 		if displaced!=requested:
 			return fail("Slot conflict changed; choose an exact atomic swap.")
+		if def["origin"]=="custom":
+			match catalogue.custom_physical_state(def["attributes"]):
+				ITEMS.AttributeState.ABSENT:
+					return {"ok":false,"code":"eligibility_unknown","error":"Persisted physical options are absent. Slot and grip eligibility could not be established."}
+				ITEMS.AttributeState.NULLABLE:
+					return {"ok":false,"code":"eligibility_unknown","error":"This definition has no mechanical attributes. Slot and grip eligibility could not be established."}
+				ITEMS.AttributeState.INVALID:
+					return {"ok":false,"code":"invalid_data","error":"Persisted physical options are malformed."}
+		if not catalogue.physical_options(def).any(func(opt): return opt["slot"]==args["slot"] and opt["grip"]==args["grip"]):
+			return {"ok":false,"code":"ineligible","error":"Item cannot occupy requested slot/grip."}
 		for other in displaced:
 			seconds+=wear_duration(pack,other,false)
 			clear_instance(pack,other)
@@ -457,18 +476,22 @@ func consume(id: String,req: Dictionary,clearance: Dictionary) -> Dictionary:
 	var state=ctx["state"]
 	var args=req["args"]
 	if args["target_id"]!=state["actor_id"] or not DTO.whole(args["quantity"],1,1) or not DTO.id_valid(args["instance_id"]):
-		return fail("Choose the explicit self target and one consumable.")
+		return {"ok":false,"code":"ineligible","error":"Choose the explicit self target and one consumable."}
 	var pack=read_owned(state,state["actor_id"])
 	if not pack.get("ok",false):
 		return pack
 	var iid=args["instance_id"]
 	if not pack["items"].has(iid) or assigned(pack,iid):
-		return fail("Consumable unavailable or equipped.")
+		return {"ok":false,"code":"ineligible","error":"Consumable unavailable or equipped."}
 	var item=pack["items"][iid]
 	var def=pack["definitions"][iid]
 	var ration=def.get("catalog_category")=="equipment" and def.get("catalog_id")=="rations-1-day"
-	if not official(def) or (not ration and not HEALING.has(def.get("catalog_id"))) or item["condition"] in ["damaged","broken"] or item["charges"]!=null or item["attunement"]=="attuned":
-		return fail("Unsupported item effect or ambiguous potion potency.")
+	if item["condition"] in ["damaged","broken"] or item["charges"]!=null or item["attunement"]=="attuned":
+		return {"ok":false,"code":"ineligible","error":"Consumable condition, charges or attunement prevents use."}
+	if def["origin"]!="official" or (not ration and not HEALING.has(def.get("catalog_id"))):
+		return {"ok":false,"code":"unsupported","error":"Only supported official rations and healing potions can be consumed."}
+	if not official(def):
+		return {"ok":false,"code":"invalid_data","error":"Pinned consumable definition could not be verified."}
 	var commands=owned_guards(pack)
 	if item["quantity"]==1:
 		pack["items"].erase(iid)
@@ -744,8 +767,10 @@ func transfer(id: String,req: Dictionary,clearance: Dictionary) -> Dictionary:
 		return fail("Local disclosed NPC unavailable; no enemy/combat transfers.")
 	var sender=read_owned(state,from_id)
 	var receiver=read_owned(state,to_id)
-	if not sender.get("ok",false) or not receiver.get("ok",false):
-		return fail("Participant ownership or mirror unavailable.")
+	if not sender.get("ok",false):
+		return sender
+	if not receiver.get("ok",false):
+		return receiver
 	var a=sender["actor"].duplicate(true)
 	var b=receiver["actor"].duplicate(true)
 	var commands=owned_guards(sender)
@@ -773,7 +798,9 @@ func transfer(id: String,req: Dictionary,clearance: Dictionary) -> Dictionary:
 		var def=sender["definitions"][iid]
 		var amount=int(args["quantity"])
 		var old=int(row["quantity"])
-		if amount>old or row["attunement"]=="attuned" or (amount<old and (row["charges"]!=null or row["origin"]!="official" or not row["attunement"] in ["unknown","not_required"])):
+		if amount>old:
+			return {"ok":false,"code":"insufficient_resources","error":"Requested quantity exceeds owned quantity."}
+		if row["attunement"]=="attuned" or (amount<old and (row["charges"]!=null or row["origin"]!="official" or not row["attunement"] in ["unknown","not_required"])):
 			return fail("Transfer quantity, charges or attunement requires review.")
 		var dest=iid if amount==old else make_id()
 		if amount==old:
@@ -793,9 +820,15 @@ func transfer(id: String,req: Dictionary,clearance: Dictionary) -> Dictionary:
 		commands.append(SQL.stmt("INSERT INTO item_transfers(id,request_id,source_instance_id,destination_instance_id,definition_id,quantity,destination_actor_id,source_event_id) VALUES(?,?,?,?,?,?,?,"+EVENT+")",[make_id(),req["request_id"],iid,dest,def["id"],amount,to_id,req["request_id"]]))
 		result["instance_id"]=dest
 		result["quantity"]=amount
+	if not coin_map(b.get("coins")) or not DTO.number(b.get("carrying_capacity_lb"),0,100000000):
+		return {"ok":false,"code":"invalid_data","error":"Recipient currency or carrying capacity is invalid."}
+	for item in receiver["items"].values():
+		var checked = capacity_weight(item["unit_weight_lb"])
+		if not checked["ok"]:
+			return checked
 	var load=weight(receiver,b)
-	if load==null or not DTO.number(b.get("carrying_capacity_lb"),0,100000000) or load>float(b["carrying_capacity_lb"]):
-		return fail("Recipient weight or carrying capacity unavailable.")
+	if load>float(b["carrying_capacity_lb"]):
+		return {"ok":false,"code":"insufficient_resources","error":"Selection exceeds the recipient's carrying capacity."}
 	commands.append_array(mirror_commands(sender,a))
 	commands.append_array(mirror_commands(receiver,b))
 	action_seconds=6

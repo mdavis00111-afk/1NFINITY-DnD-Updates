@@ -1,3 +1,9 @@
+## v0.0.29 checkpoint — Step 7A complete
+
+Development scope is unpublished. The updater still points to v0.0.28. Read the Step 7A record in PROJECT_BRAIN.md and owner cases in TESTING.md. Current handlers have no eligible actionable missing-custom case. An unknown slot, grip or weight prevents eligibility. An unsupported custom mechanic remains unsupported. Continue from the exact current godot HEAD.
+
+For Step 7B, first identify a supported mechanic with an independently provable eligibility boundary and a required custom attribute. With the current action set the proposal path stays disabled. Any future eligible path must bind to the original request, revision, actor, owned instance, definition and quantity. Recheck that binding, local prerequisites and settlement before proposal persistence or a single exact action resumption. Preserve pinned RAW, Step 6 terminal rejection and existing recovery. Keep all releases unchanged.
+
 ## v0.0.29 checkpoint — step 6 local rejection handling
 
 Unpublished. Root local policy denials and registry invalid/unsupported/decision_required/review_required results now use reject_local: reload, match active request, confirm no settlement, no prepared standalone or unresolved resolver state, no pending turn, unchanged revision and idle database before terminal rejected journal entry. Existing finish/refresh exposes reason and restores idle; queued natural input may advance after rejection. Provider failures, stale/busy/unconfirmed outcomes and post-story denials retain recovery/clarification. Generic review_required may include read failures; terminal retirement is allowed only after independent clean-state checks. No runtime/UI regression executed. Step 4 hotfixes deferred; steps 7–10 remain. Owner requires every checkpoint response to end with copyable next-step prompt. No publication.

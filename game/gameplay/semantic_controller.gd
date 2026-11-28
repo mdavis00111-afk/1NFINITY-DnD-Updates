@@ -826,7 +826,9 @@ func prepare_review(req: Dictionary,resume_stage: String) -> bool:
 	if checked.get("ok",false):
 		return true
 	var message=str(checked.get("error","Local contextual authorization unavailable."))
-	if resume_stage=="execute":
+	if checked.get("code")=="unconfirmed":
+		stop("retry",message)
+	elif resume_stage=="execute":
 		reject_local(req,message)
 	else:
 		stop("clarification",message)

@@ -1,3 +1,25 @@
+## v0.0.29 Step 7A validation
+
+Executed in Codex Cloud Linux. The standalone gdtoolkit 4.5.0 parser parsed the seven changed GDScript files. Reviewed method signatures, enum states, dictionary shapes and dispatch through local policy, registry, persistence and controller. Reviewed early returns against equipment/ownership checks, capacity checks, dice, transaction guards and Step 6 settlement recovery. Python stdlib SQLite loaded the three existing schemas in memory and exercised the existing owned-instance query against custom rows with weight zero and null, false attunement, empty arrays, an absent mechanical block and a foreign-owned instance. Foreign-key check and `git diff --check` passed. The release files were unchanged. The standalone parser and in-memory SQL check provide development checks only.
+
+Owner Windows regression cases use a disposable campaign copy with normalized inventory and authoritative item instances in agreement. Inspect the registry result when a specific code is listed.
+
+| Case | Expected |
+| --- | --- |
+| Verified custom held gear with a matching slot and grip, weight zero, false attunement and empty properties | Equip or exact swap succeeds through the normal transaction. Derived weapon and armor mechanics remain unchanged. |
+| Empty `physical_options` array | Valid stored collection. Requested placement is ineligible. |
+| Missing mechanical block or missing `physical_options` key | `eligibility_unknown` when remaining equip prerequisites pass. A null mechanical block also prevents eligibility. |
+| Present null or non-array `physical_options`, malformed entries or duplicates | `invalid_data`. No placement or attribute write. |
+| Non-owned instance, wrong actor/campaign, damaged item, or occupied slot without exact swap | Deterministic rejection. None produces a missing-attribute handoff. |
+| Official weapon with persisted damage removed | Pinned definition verification rejects the mismatched copy. No repair or provider call. Valid official equipment and self-use of official rations/potions retain their normal results. |
+| Custom consumable, magical effect, worn custom armor, or attack | Unsupported under existing mechanics. No dice or item debit. |
+| Pickup with zero weight, null weight, invalid weight, or known excess load | Zero participates normally. Null leaves eligibility unknown. Invalid weight fails validation. Excess load is insufficient resources. A full drop with unrelated unknown weight retains the nullable weight mirror. |
+| Invalid self target, excessive quantity, or insufficient resource | Existing deterministic denial. No action, debit or time advance. |
+| Revision changed, prepared execution, matching settlement, or failed ownership read | Preserve stale/recovery/replay behavior. No duplicated or reinterpreted action. |
+| Missing-custom result contract with a mismatched request ID, args or revision | Reject the envelope. The current dispatch has zero eligible producers of the actionable missing-custom outcome. |
+
+For denied actions check unchanged revision, time, quantity, slots, effects and receipts. Check the local explanation and next-input behavior after a clean rejection. Check that recovery remains pending when settlement or cleanup cannot be independently confirmed. No Godot runtime, Windows, GUI or gameplay tests were executed in this checkpoint.
+
 # CURRENT OWNER DIRECTIVE — ACTIVE ALPHA DEVELOPMENT (2026-11-28)
 
 This directive supersedes all earlier mandatory CI, release-hold, historical phase queue and architect approval instructions in repository documents. We are developing a playable alpha, not certifying a finished product.

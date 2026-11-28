@@ -74,7 +74,7 @@ func local_decision(req: Dictionary,job: Dictionary,state: Dictionary) -> Dictio
 		if args.has("instance_id"):
 			var owned=nc.read_owned(state,state["actor_id"])
 			if not owned.get("ok",false):
-				return {"ok":false,"error":"Authoritative ownership or equipment state unavailable."}
+				return {"ok":false,"code":owned.get("code","review_required"),"error":"Authoritative ownership or equipment state unavailable."}
 			if not owned["items"].has(args["instance_id"]):
 				return {"ok":false,"error":"Selected item is not owned."}
 			if args.has("quantity") and args["quantity"]>owned["items"][args["instance_id"]]["quantity"]:

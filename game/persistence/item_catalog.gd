@@ -8,6 +8,17 @@ const UI = preload("res://gameplay/ui_intents.gd")
 var cat = CAT.new()
 var last_error = ""
 
+enum AttributeState { VALID, ABSENT, NULLABLE, INVALID }
+const CUSTOM_CATEGORIES = ["gear","tool","weapon","armor","consumable","magic","container","object"]
+const CUSTOM_HELD_CATEGORIES = ["weapon","tool","gear","object"]
+
+static func weight_state(raw: Variant) -> AttributeState:
+	if raw==null:
+		return AttributeState.NULLABLE
+	if DTO.number(DTO.sql_number(raw),0,1000000):
+		return AttributeState.VALID
+	return AttributeState.INVALID
+
 # Use the checksum-verified base SQL file, not the optional private monster
 # overlay or mutable catalogue cache. No silent replacement of official stats.
 func official(category: String,id: String) -> Dictionary:
@@ -76,7 +87,7 @@ func custom_valid(proposal: Variant) -> bool:
 		keys.append("mechanical_attributes")
 	if not DTO.exact_keys(proposal,keys) or not DTO.bounded_text(proposal["name"],100) or not DTO.bounded_text(proposal["description"],2000):
 		return false
-	if not proposal["category"] in ["gear","tool","weapon","armor","consumable","magic","container","object"] or (proposal["unit_weight_lb"]!=null and not DTO.number(proposal["unit_weight_lb"],0,1000000)) or (proposal["cost_cp"]!=null and not DTO.whole(proposal["cost_cp"])) or (proposal["charges_max"]!=null and not DTO.whole(proposal["charges_max"])) or (proposal["attunement_required"]!=null and not proposal["attunement_required"] is bool):
+	if not proposal["category"] in CUSTOM_CATEGORIES or (proposal["unit_weight_lb"]!=null and not DTO.number(proposal["unit_weight_lb"],0,1000000)) or (proposal["cost_cp"]!=null and not DTO.whole(proposal["cost_cp"])) or (proposal["charges_max"]!=null and not DTO.whole(proposal["charges_max"])) or (proposal["attunement_required"]!=null and not proposal["attunement_required"] is bool):
 		return false
 	if not proposal["properties"] is Array or proposal["properties"].size()>16:
 		return false
@@ -97,17 +108,36 @@ func custom_valid(proposal: Variant) -> bool:
 		var reach = attrs["range_feet"]
 		if reach!=null and (not DTO.exact_keys(reach,["normal","long"]) or not DTO.whole(reach["normal"],1,100000) or not DTO.whole(reach["long"],int(reach["normal"]),100000)):
 			return false
-		if not attrs["physical_options"] is Array or attrs["physical_options"].size()>12:
+		if not physical_options_valid(attrs["physical_options"]):
 			return false
-		var option_keys: Array = []
-		for option in attrs["physical_options"]:
-			if not DTO.exact_keys(option,["slot","grip"]) or not option["slot"] in UI.SLOTS or not option["grip"] in UI.GRIPS:
-				return false
-			var key = str(option["slot"])+":"+str(option["grip"])
-			if key in option_keys:
-				return false
-			option_keys.append(key)
 	return true
+
+func physical_options_valid(options: Variant) -> bool:
+	if not options is Array or options.size()>12:
+		return false
+	var seen: Array = []
+	for option in options:
+		if not DTO.exact_keys(option,["slot","grip"]) or not option["slot"] in UI.SLOTS or not option["grip"] in UI.GRIPS:
+			return false
+		var key = str(option["slot"])+":"+str(option["grip"])
+		if key in seen:
+			return false
+		seen.append(key)
+	return true
+
+# Only these persisted fields govern custom physical placement. Creation
+# still requires the full custom proposal schema.
+func custom_physical_state(data: Dictionary) -> AttributeState:
+	if not data.has("mechanical_attributes"):
+		return AttributeState.ABSENT
+	var attrs = data["mechanical_attributes"]
+	if attrs==null:
+		return AttributeState.NULLABLE
+	if not attrs is Dictionary:
+		return AttributeState.INVALID
+	if not attrs.has("physical_options"):
+		return AttributeState.ABSENT
+	return AttributeState.VALID if physical_options_valid(attrs["physical_options"]) else AttributeState.INVALID
 
 func from_row(row: Dictionary) -> Dictionary:
 	var attrs = JSON.parse_string(str(row["attributes"]))
@@ -120,7 +150,7 @@ func from_row(row: Dictionary) -> Dictionary:
 func physical_options(definition: Dictionary) -> Array:
 	if definition.get("origin")=="custom":
 		var data = definition.get("attributes",{})
-		if custom_valid(data) and data.get("mechanical_attributes") is Dictionary:
+		if data is Dictionary and data.get("category") in CUSTOM_HELD_CATEGORIES and custom_physical_state(data)==AttributeState.VALID:
 			return data["mechanical_attributes"]["physical_options"].duplicate(true)
 		return []
 	if definition.get("origin")=="official" and definition.get("catalog_category")=="magic-items":

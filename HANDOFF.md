@@ -1,3 +1,9 @@
+## v0.0.29 Step 7A development checkpoint
+
+Owner-authorized Codex Cloud implementation, based on godot Step 6 `7257ad914d921045ddde558664282b0dd216fa88`, scoped locally on `feature/v029-step7a`. Source scope was game/gameplay/complete_controller.gd, semantic_controller.gd, semantic_policy.gd, tool_registry.gd and game/persistence/item_catalog.gd, loot_store.gd, noncombat_store.gd. Development records updated in PROJECT_BRAIN.md, NEXT_CHAT.md, HANDOFF.md and TESTING.md.
+
+Step 7A is integrated in the normal dispatch and controller. Current actions have no eligible producer of the actionable result. The cleared paths rely on existing SQLite ownership and revision reads and transaction guards. See TESTING.md for static evidence and remaining owner tests. Step 7B requires a verified eligible producer before any provider proposal flow may be invoked. Deferred Step 4 work and Steps 7B–10 remain outstanding. The owner restricted this task to the development branch. Keep v0.0.29 unpublished.
+
 # OWNER DIRECTIVE — RUNTIME TESTING
 
 All Godot runtime, Windows installation and live gameplay testing is performed by the owner on their PC. The AI developer performs available static source, dependency, schema, SQL and integration checks. Absence of local Godot is not a development or publication blocker. Complete authorized changes and publish through the existing updater for owner testing. No mandatory GitHub Actions gameplay tests or Codex handoff. Preserve existing integrity and safety requirements.
