@@ -742,7 +742,9 @@ func legacy_recovery_cases(id: String) -> void:
 		reply(response)
 		if not await pump("idle"):
 			return
-		expect(session.settlement(id,rid)==settled,"Legacy "+stage+" original settlement intact")
+		var after=session.settlement(id,rid)
+		# Narration may attach its durable event pointer; the original action must remain unchanged.
+		expect(after.get("ok",false) and after.get("status")=="committed" and session.same_request(after.get("request"),settled.get("request")) and session.typed_equal(after.get("result"),settled.get("result")) and session.typed_equal(after.get("event_id"),settled.get("event_id")) and session.typed_equal(after.get("logical_turn_id"),settled.get("logical_turn_id")),"Legacy "+stage+" original settlement intact")
 		await rejected_response(id,identity,response,false,"Legacy "+stage+" duplicate narration")
 
 func authority_cases(id: String,shield: String) -> void:

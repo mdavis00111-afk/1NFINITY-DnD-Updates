@@ -34,7 +34,7 @@ func rule_shape(req: Dictionary) -> Dictionary:
 func bound_request(req: Dictionary,job: Dictionary,state: Dictionary) -> bool:
 	if req.get("campaign_id")!=state["campaign_id"] or req.get("actor_id")!=state["actor_id"] or req.get("expected_revision")!=state["revision"] or not REG.TOOLS.has(req.get("kind")) or not controller.registry.arguments_valid(req["args"],REG.TOOLS[req["kind"]][0]):
 		return false
-	if req==job.get("tool") or req==job.get("story_request") or req==job.get("consequence_request"):
+	if controller.registry.session.same_request(req,job.get("tool")) or controller.registry.session.same_request(req,job.get("story_request")) or controller.registry.session.same_request(req,job.get("consequence_request")):
 		return true
 	return false
 
@@ -42,7 +42,7 @@ func direct_safe(req: Dictionary,job: Dictionary,state: Dictionary) -> bool:
 	if not bound_request(req,job,state) or not controller.registry.noncombat.quiet_context(state):
 		return false
 	var intent=job["intent"]
-	var exact=intent["kind"]==req["kind"] and intent["args"]==req["args"]
+	var exact=intent["kind"]==req["kind"] and controller.registry.session.typed_equal(intent["args"],req["args"])
 	if req["kind"] in ROUTINE and intent["kind"]=="chat" and req["args"]["text"]==intent["args"]["text"] and RAW.actor_ready(state["actor"]):
 		return true
 	return exact and req["kind"] in DIRECT_SAFE and controller.registry.noncombat.safe_actor(state)

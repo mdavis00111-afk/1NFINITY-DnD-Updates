@@ -741,3 +741,7 @@ Candidate includes canonical settlement/authorization comparisons, versioned out
 
 ### v0.0.27 consolidated validation package
 Prepared design/V027_RELEASE_CANDIDATE.md using existing native runner and release safety helper; specifies exact-SHA full suite evidence, live acceptance and updater/profile rollback gates. No new runtime dependency, no game source change, no tests executed or release published. Latest verified native baseline 10/14 both OS. Candidate awaits consolidated native evidence.
+
+
+### Native run 46099264002 follow-up
+Linux exact 3a28bef: import PASS, 397 files, 10/14; world now PASS, campaign zero assertions but two malformed JSON engine errors, complete gameplay one critical-stage timeout, semantic ten failures including three legacy post-narration settlement assertions and blocked assessment cascade; GUI eight unchanged. Windows still running at initial review. Opening validator now uses explicit parse status. Semantic policy bound_request uses canonical same_request for all three staged request slots and typed_equal for direct args, retaining all scope and rule checks. Legacy post-narration assertion compares committed action identity/result/event linkage rather than whole settlement (narration may add metadata); attribution remains provisional. Native rerun required; no GUI changes or publication.
