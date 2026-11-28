@@ -390,3 +390,39 @@ GitHub run 46084737740: verified archive, Godot 4.7.2 Windows import and pinned-
 
 ### v0.0.27 integrated validation — RELEASE BLOCKED (2026-11-28 AEDT)
 Source checkpoints 3–5 implemented; do not restart historical C1–C6. Native CI run 46084737740 pinned 62dc547008bd03c1992a9d32f7de6ed2b53b206a: both official 4.7.2 downloads and imports passed, both pinned byte audits 397/397, art 250/250 no pending clearance. Windows production bridge 3/14 pass, 9 safety-guard path spelling failures, 2 parse failures; Linux isolated QA transport 6/14 pass (sqlite, character, layout, ai_profile, coordinator, cartography_assets), 8 fail. Linux failures: campaign 8 (opening/log refresh, duplicate/lost opening, wrong campaign on settings return; negative JSON emits parse errors); gameplay 8 (1280x720 clipping and sparse/long inventory panel); world/persistence parse redeclarations; cartography_renderer travel with conditions/exhaustion/unknown speed rejected; noncombat 19 (existing derived equipment stats require review; later equipment, healing, resource/rest, object/check/conversation/wait/spell failures); complete_gameplay 1 (loot transaction acknowledged but settlement readback unavailable); semantic_integration 1 (canonical disposable NPC upgrade). None of downstream recovery/recap/two-call fixture assertions are certified from that early exit. Test infrastructure correction 7527a6505a470abf88eb41d82a911d0113c2dfb7; rerun 46084904289 in progress at observation. Do not assume remaining failures are resolved by harness fixes. Inspect exact suite logs, diagnose and correct actual defects, repeat all suites until pass; no scope expansion. Independent memory SQL 8/8 pass, not engine validation. Actual latency and live Gemini, visual/manual acceptance, updater install/rollback and save preservation across update still required. Current channel remains 0.0.26; no release or version stamp. Native testing instructions design/V027_NATIVE_QA.md.
+
+
+### v0.0.27 settlement readback correction candidate
+Corrected durable request comparison to compare both envelopes after JSON round-trip, avoiding nested integer/float representation mismatch while preserving exact fields, actor, revision and status checks. Added underlying readback diagnostic. Linux corrected run 46084904289: 6/14, import passed; persistence and loot fail at acknowledged settlement, semantic at canonical upgrade. This correction is source-derived and requires native confirmation; Windows rerun still pending at observation. No publication.
+
+
+### Scoped settlement QA candidate
+Prior run 46084904289 completed on both OS: 6/14 each, matching failures; Windows production SQLite confirms canonical upgrade and loot settlement errors. Scoped branch push trigger enabled without changing engine hashes or test isolation. Request comparison now requires valid envelopes, JSON-safe operands, successful dictionary decoding and full precision serialization; native fixture logs baseline equality and checks identity, argument, type and precision boundaries. Existing persistence replay and recovery assertions retained. Native results pending; no integration or publication. Architect DEV_BRIEF.md on godot preserved.
+
+
+### Settlement prewrite precision and recovery follow-up
+Request validation now rejects unsafe JSON operands before begin/adoption; all three durable request insert paths serialize with full precision, as do settlement results. Added canonical generation fresh-service readback, exact revision increment, immutable replay, changed-argument rejection and unsafe prewrite regression assertions. Candidate push run ID not accessible via PR-filtered connector; awaiting exact Actions run ID. No native pass claimed, no workflow change, no integration or publication.
+
+
+### Scoped native settlement follow-up
+Run 46086797815 Linux job 140798143633 pinned 8785e166: import pass, 6/14 suites, baseline raw equality false, canonical committed revision 3 from 2 and exact-once assertions passed. Windows pending. Safe integer boundary failed; added exact encoded/decoded diagnostic and fail-closed round-trip validation before writes, retaining boundary assertion. Typed numeric leaf comparison scoped to requests and custom definition reuse; no string/bool coercion. Added SQL definition count and loot ownership/currency/status/request/transfer snapshots, including rollback equality. Existing loot assertions retained. New candidate unexecuted; full process restart pending. No integration/publication.
+
+
+### Scoped QA harness contract verification
+Confirmed raw SQL.run and Windows bridge return results; world read_sets wraps as sets. Rollback assertion now explicitly requires successful reads and compares ordered result arrays, not transport metadata. No production change. Run 46086797815 Windows still in progress at observation; new push run ID unavailable via PR-filtered connector. Native validation pending; no integration/publication.
+
+
+### Native loot assertion checkpoint
+Run 46087923985 Linux artifact 15240151290 pinned 3518ac6 confirms custom reuse single row, discovery player 2 daggers/2 gp, container 3 daggers/1 custom/5 gp, failed pickup unchanged, closed player 5 daggers/1 custom/7 gp, request counts 7/9 and transfer counts 0/3. Added explicit SQL assertions and outcome balance check, projection comparison diagnostics and adjacent numeric leaf diagnostics. Original projection and boundary assertions retained pending evidence. No production changes; new tests unexecuted. Windows jobs still running at observation. Process restart outstanding; no integration/publication.
+
+
+### Native precision and projection correction
+Run 46088394508 Linux artifact 15239927487: exact decoded integer conversion succeeds at ±9007199254740991 but json_safe rejects both; adjacent lower values pass. Replace inclusive absf guard with strict signed bounds at exactly representable ±2^53. Four currency projection assertions use existing typed_equal instead of raw dictionary equality; native projection values correct and SQL assertions passed including outcome balance. No loot transaction changes. New candidate unexecuted; full process restart and equipment/resource corrections outstanding. No integration/publication.
+
+
+### Native persistence pass and scoped equipment correction
+Run 46088962585 Linux artifact 15240452068 persistence.log: C2 failures 0; ±safe boundary accepted, positive unsupported rejected. Corrected same_gear saving throw dictionary comparison only, based on calculated integer leaves versus persisted JSON numbers; native field-specific confirmation pending. Added real gear fixture positive and incorrect numeric/string negative assertions, restored raw diagnostic labels and required successful absent settlement lookup. New candidate not executed. Process restart and resource replay outstanding. No integration/publication.
+
+
+### Process restart QA and resource settlement identity
+Windows/Linux 3518ac6 both import PASS, 6/14 suites, identical five persistence failures. Added second Godot process on same isolated persistence root after successful writer, checkpoint canonical request/settlement/revision and verify replay unchanged. Scoped noncombat prepared durable settlement/cancellation request identity checks use same_request; no healing/rest rules changed. Native execution pending; resource failure attribution remains unverified. No integration/publication.

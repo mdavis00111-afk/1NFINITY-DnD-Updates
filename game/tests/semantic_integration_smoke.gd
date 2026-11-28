@@ -117,6 +117,7 @@ func pump(stage: String,after_serial: int=-1) -> bool:
 			return true
 		if stage!="idle" and ctrl.inflight.get("stage")==stage and is_instance_valid(ctrl.adapter.transport) and not ctrl.adapter.transport.prompt.is_empty() and ctrl.adapter.serial>after_serial:
 			return true
+	print("SEMANTIC_QA pump_timeout expected=",stage," active=",ctrl.active().get("stage","none")," inflight=",ctrl.inflight.get("stage","none")," calls=",outbound.size())
 	return expect(false,"Expected "+stage+"; got "+str(ctrl.active().get("stage"))+" / "+ctrl.status)
 
 func reply(value: Variant) -> void:
@@ -560,6 +561,9 @@ func candidate_reopen(id: String) -> void:
 	if not expect(ctrl.active().get("stage")=="reconcile","Valid combined candidate persisted before reconciliation"):
 		return
 	var candidate=ctrl.active().duplicate(true)
+	var hash_int=ctrl.canonical_outcome_hash({"roll":17,"nested":[2,{"spent":1}]})
+	expect(not hash_int.is_empty() and hash_int==ctrl.canonical_outcome_hash({"roll":17.0,"nested":[2.0,{"spent":1.0}]}),"Outcome hash survives numeric JSON representation")
+	expect(hash_int!=ctrl.canonical_outcome_hash({"roll":18,"nested":[2,{"spent":1}]}) and hash_int!=ctrl.canonical_outcome_hash({"roll":"17","nested":[2,{"spent":1}]}),"Outcome hash rejects changed roll and string coercion")
 	var before=durable_snapshot(id)
 	ctrl.close_session()
 	workspace.queue_free()

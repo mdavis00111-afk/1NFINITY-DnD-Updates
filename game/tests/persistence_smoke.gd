@@ -20,7 +20,10 @@ var loot = LOOT.new()
 var stories = STORY.new()
 
 func _initialize() -> void:
-	run.call_deferred()
+	if OS.get_environment("INFINITY_QA_REOPEN")=="1":
+		reopen_run.call_deferred()
+	else:
+		run.call_deferred()
 
 func expect(ok: bool,message: String) -> void:
 	if not ok:
@@ -31,6 +34,39 @@ func finish() -> void:
 		push_error(message)
 	print("C2 persistence smoke failures: ",failures.size())
 	quit(0 if failures.is_empty() else 1)
+
+func loot_sql(id: String,cid: String) -> Dictionary:
+	var aid = session.token(id)["actor_id"]
+	var result = SQL.run(base.path_for(id),[SQL.stmt("SELECT id,definition_id,actor_id,container_id,quantity FROM item_instances WHERE actor_id=? OR container_id=? ORDER BY id",[aid,cid]),SQL.stmt("SELECT payload FROM actors WHERE id=?",[aid]),SQL.stmt("SELECT status FROM loot_containers WHERE id=?",[cid]),SQL.stmt("SELECT denomination,quantity FROM loot_currency WHERE container_id=? ORDER BY denomination",[cid]),SQL.stmt("SELECT count(*) AS n FROM gameplay_requests"),SQL.stmt("SELECT count(*) AS n FROM item_transfers")],true)
+	expect(result.get("ok",false),"Authoritative loot SQL read failed")
+	return result
+
+func assert_loot_sql(id: String,cid: String,custom_id: String,collected: bool) -> void:
+	var data = loot_sql(id,cid)
+	if not data.get("ok",false) or not data.get("results") is Array or data["results"].size()!=6:
+		expect(false,"Loot SQL assertion read failed")
+		return
+	var rows = data["results"]
+	var aid = session.token(id)["actor_id"]
+	var owned = {"dagger":0,custom_id:0}
+	var stored = owned.duplicate()
+	for row in rows[0]:
+		var target = owned if row["actor_id"]==aid and row["container_id"]==null else stored
+		expect((row["actor_id"]==aid and row["container_id"]==null) or (row["actor_id"]==null and row["container_id"]==cid),"Unexpected loot ownership")
+		expect(target.has(row["definition_id"]) and str(row["quantity"]).is_valid_int(),"Unexpected loot definition or quantity")
+		if target.has(row["definition_id"]):
+			target[row["definition_id"]]+=int(row["quantity"])
+	expect(owned=={"dagger":5 if collected else 2,custom_id:1 if collected else 0},"SQL owned quantities incorrect")
+	expect(stored=={"dagger":0 if collected else 3,custom_id:0 if collected else 1},"SQL container quantities incorrect")
+	expect(rows[1].size()==1 and session.typed_equal(JSON.parse_string(rows[1][0]["payload"]).get("coins"),money(7 if collected else 2)),"SQL player currency incorrect")
+	expect(rows[2].size()==1 and rows[2][0]["status"]==("closed" if collected else "available"),"SQL container status incorrect")
+	var coins = {}
+	for row in rows[3]:
+		expect(str(row["quantity"]).is_valid_int(),"SQL container currency not integer")
+		coins[row["denomination"]]=int(row["quantity"])
+	expect(coins==money(0 if collected else 5),"SQL container currency incorrect")
+	expect(rows[4].size()==1 and rows[4][0]["n"]==("9" if collected else "7"),"SQL request count incorrect")
+	expect(rows[5].size()==1 and rows[5][0]["n"]==("3" if collected else "0"),"SQL transfer count incorrect")
 
 func money(gp: int = 0) -> Dictionary:
 	return {"cp":0,"sp":0,"ep":0,"gp":gp,"pp":0}
@@ -56,7 +92,38 @@ func actor_args(id: String,location: String,event_id: int,existing: Variant,name
 func story_args(kind: String,key: String,title: String,description: String,status: String,location: String,event_id: int) -> Dictionary:
 	return {"record_id":null,"identity_key":key,"kind":kind,"title":title,"description":description,"status":status,"visibility":"player","certainty":"fact","location_id":location,"parent_id":null,"source_event_id":event_id,"progress_current":null,"progress_max":null,"participants":[]}
 
+func request_comparison_tests() -> void:
+	var a = {"schema_version":"2","campaign_id":session.make_id(),"actor_id":session.make_id(),"request_id":session.make_id(),"expected_revision":7,"kind":"fixture","args":{"nested":[{"quantity":2,"flag":true}]}}
+	var b = JSON.parse_string(JSON.stringify(a))
+	print("Baseline raw dictionary equality: ",a==b)
+	expect(session.same_request(a,b),"Equivalent nested numeric request rejected")
+	for key in ["campaign_id","actor_id","request_id","expected_revision"]:
+		var changed = a.duplicate(true)
+		changed[key]=8 if key=="expected_revision" else session.make_id()
+		expect(not session.same_request(a,changed),"Changed request identity accepted: "+key)
+	for value in [3, "2", true, null, Vector2(2,0), INF, 9007199254740992]:
+		var changed = a.duplicate(true)
+		changed["args"]["nested"][0]["quantity"]=value
+		expect(not session.same_request(a,changed),"Changed or invalid quantity accepted: "+str(value))
+	var invalid = a.duplicate(true)
+	invalid["args"]=[]
+	expect(not session.same_request(invalid,invalid),"Invalid envelope matched itself")
+	var boundary = a.duplicate(true)
+	boundary["args"]["nested"][0]["quantity"]=9007199254740991
+	var encoded_boundary = JSON.stringify(boundary,"",true,true)
+	var decoded_boundary = JSON.parse_string(encoded_boundary)
+	print("Numeric boundary encoded: ",encoded_boundary," decoded quantity: ",str(decoded_boundary["args"]["nested"][0]["quantity"])," exact: ",session.typed_equal(boundary,decoded_boundary))
+	expect(session.same_request(boundary,decoded_boundary),"Safe integer boundary failed")
+	for n in [9007199254740989,9007199254740990,9007199254740991,9007199254740992,-9007199254740991]:
+		var decoded = JSON.parse_string(JSON.stringify(n,"",true,true))
+		print("Boundary leaf: ",n," decoded type: ",typeof(decoded)," integer conversion: ",int(decoded)," original safe: ",session.json_safe(n)," decoded safe: ",session.json_safe(decoded)," float equality: ",float(n)==float(decoded)," typed equality: ",session.typed_equal(n,decoded))
+	expect(session.json_safe(-9007199254740991) and not session.json_safe(-9007199254740992),"Negative numeric boundary incorrect")
+	var unsafe = boundary.duplicate(true)
+	unsafe["args"]["nested"][0]["quantity"]=9007199254740992
+	expect(not session.same_request(unsafe,unsafe),"Unsafe integer boundary accepted")
+
 func run() -> void:
+	request_comparison_tests()
 	var expected = OS.get_environment("INFINITY_TEST_USER_ROOT").replace("\\","/").trim_suffix("/")
 	var actual = ProjectSettings.globalize_path("user://").replace("\\","/").trim_suffix("/")
 	if expected.is_empty() or expected!=actual or FileAccess.file_exists("user://players.db") or FileAccess.file_exists("user://settings.cfg") or DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(BASE.ROOT)):
@@ -113,12 +180,29 @@ func run() -> void:
 	var args = actor_args(id,at,opening_event,mara,"Mara")
 	var generate = request(id,"actor_generate",args)
 	expect(not GENERATOR.new().generate(id,generate).get("ok",false),"Unreviewed generation accepted")
+	var before_generation = session.token(id)["revision"]
 	var generated = GENERATOR.new().generate(id,generate,true)
+	var reopened = SESSION.new().settlement(id,generate["request_id"])
+	print("Canonical upgrade durable settlement: ",reopened)
+	expect(reopened.get("ok",false) and reopened.get("found",false) and reopened.get("status")=="committed","Reopened committed generation unavailable")
 	expect(generated.get("ok",false) and generated.get("result",{}).get("actor_id")==mara,"Canonical upgrade failed: "+str(generated))
 	if not generated.get("ok",false):
 		finish()
 		return
 	expect(GENERATOR.new().generate(id,generate,true).get("replayed",false),"Generation replay not settled")
+	expect(SESSION.new().token(id)["revision"]==before_generation+1,"Generation replay advanced revision")
+	expect(SESSION.new().settlement(id,generate["request_id"])==reopened,"Reopened settlement changed after replay")
+	var changed_generation = generate.duplicate(true)
+	changed_generation["args"]["name"]="Different NPC"
+	expect(not GENERATOR.new().generate(id,changed_generation,true).get("ok",false),"Changed generation replay accepted")
+	expect(SESSION.new().token(id)["revision"]==before_generation+1,"Changed replay advanced revision")
+	var unsafe_request = generate.duplicate(true)
+	unsafe_request["request_id"]=session.make_id()
+	unsafe_request["expected_revision"]=before_generation+1
+	unsafe_request["args"]["possessions"][0]["quantity"]=9007199254740992
+	expect(not session.request_valid(unsafe_request),"Unsafe request passed prewrite validation")
+	expect(not GENERATOR.new().generate(id,unsafe_request,true).get("ok",false),"Unsafe generation accepted")
+	expect(not SESSION.new().settlement(id,unsafe_request["request_id"]).get("found",false),"Unsafe request durably written")
 	var reused = GENERATOR.new().generate(id,request(id,"actor_generate",args),true)
 	expect(reused.get("ok",false) and reused.get("result",{}).get("actor_id")==mara,"Existing individual regenerated")
 	var public_sheet = query(id,"actor_sheet",{"actor_id":mara})
@@ -134,7 +218,12 @@ func run() -> void:
 		return
 	var custom_id = custom["result"]["definition_id"]
 	var again = request(id,"define_custom",define_args)
-	expect(loot.define_custom(id,again,clearance(again,"custom_definition")).get("result",{}).get("definition_id")==custom_id,"Custom definition duplicated")
+	var reused_definition = loot.define_custom(id,again,clearance(again,"custom_definition"))
+	print("Custom definition reuse: ",reused_definition)
+	var definition_rows = SQL.run(base.path_for(id),[SQL.stmt("SELECT id,attributes FROM item_definitions WHERE name=?",[definition["name"]])],true)
+	print("Custom definition SQL rows: ",definition_rows)
+	expect(definition_rows.get("ok",false) and definition_rows["results"][0].size()==1,"Custom definition SQL identity count")
+	expect(reused_definition.get("result",{}).get("definition_id")==custom_id,"Custom definition reuse failed")
 	var equivalent = definition.duplicate(true)
 	equivalent["name"]="Dagger"
 	var official = request(id,"define_custom",{"definition":equivalent,"source_event_id":opening_event,"official_equivalent_id":null})
@@ -157,7 +246,9 @@ func run() -> void:
 		expect(false,"Visible loot projection unavailable")
 		finish()
 		return
-	expect(view["actor"]["coins"]==money(2) and view["inventory"][0]["quantity"]==2,"Loot transferred automatically")
+	assert_loot_sql(id,container_id,custom_id,false)
+	print("Discovery projection coins: ",view["actor"]["coins"]," raw equality: ",view["actor"]["coins"]==money(2)," typed equality: ",session.typed_equal(view["actor"]["coins"],money(2)))
+	expect(session.typed_equal(view["actor"]["coins"],money(2)) and view["inventory"][0]["quantity"]==2,"Loot transferred automatically")
 	var dagger_instance = ""
 	for row in extension["loot_containers"][0]["items"]:
 		if row["definition_id"]=="dagger": dagger_instance=row["instance_id"]
@@ -165,8 +256,15 @@ func run() -> void:
 	var trigger = SQL.run(base.path_for(id),[SQL.stmt("CREATE TRIGGER c2_fixture_reject BEFORE INSERT ON item_transfers BEGIN SELECT RAISE(ABORT,'fixture'); END")])
 	expect(trigger.get("ok",false),"Rollback fixture trigger failed")
 	var frozen = session.token(id)
+	var before_failed_pickup = loot_sql(id,container_id)
+	print("Before failed pickup SQL: ",before_failed_pickup)
 	expect(not loot.pickup(id,pickup,clearance(pickup,"loot_transfer")).get("ok",false),"Injected failure not rejected")
-	expect(session.token(id)["revision"]==frozen["revision"] and not session.settlement(id,pickup["request_id"]).get("found",false) and base.gameplay_view(id)["actor"]["coins"]==money(2),"Failed pickup partially persisted")
+	var absent_settlement=session.settlement(id,pickup["request_id"])
+	expect(session.token(id)["revision"]==frozen["revision"] and absent_settlement.get("ok",false) and not absent_settlement.get("found",false) and session.typed_equal(base.gameplay_view(id)["actor"]["coins"],money(2)),"Failed pickup partially persisted")
+	var after_failed_pickup = loot_sql(id,container_id)
+	print("After failed pickup SQL: ",after_failed_pickup)
+	assert_loot_sql(id,container_id,custom_id,false)
+	expect(before_failed_pickup.get("ok",false) and after_failed_pickup.get("ok",false) and before_failed_pickup.get("results") is Array and after_failed_pickup.get("results") is Array and before_failed_pickup["results"]==after_failed_pickup["results"],"Failed pickup changed authoritative SQL state or SQL read failed")
 	expect(SQL.run(base.path_for(id),[SQL.stmt("DROP TRIGGER c2_fixture_reject")]).get("ok",false),"Rollback fixture cleanup failed")
 	var collected = loot.pickup(id,pickup,clearance(pickup,"loot_transfer"))
 	expect(collected.get("ok",false) and collected.get("result",{}).get("items",[]).size()==1,"Selective pickup failed")
@@ -175,7 +273,9 @@ func run() -> void:
 	expect(loot.pickup(id,take,clearance(take,"loot_transfer")).get("ok",false),"Take all failed")
 	view=base.gameplay_view(id)
 	extension=view.get("interaction_extension",{})
-	expect(view["actor"]["coins"]==money(7) and extension.get("loot_containers",[]).is_empty(),"Currency/closed loot view incorrect")
+	assert_loot_sql(id,container_id,custom_id,true)
+	print("Closed projection coins: ",view["actor"]["coins"]," raw equality: ",view["actor"]["coins"]==money(7)," typed equality: ",session.typed_equal(view["actor"]["coins"],money(7)))
+	expect(session.typed_equal(view["actor"]["coins"],money(7)) and extension.get("loot_containers",[]).is_empty(),"Currency/closed loot view incorrect")
 	# The two pieces of the same discovered stack have identical provenance.
 	# They can be consolidated, not silently merged with the original master stack.
 	if collected.get("ok",false) and collected.get("result",{}).get("items",[]).size()==1:
@@ -244,7 +344,10 @@ func run() -> void:
 			expect(not loot.reveal_outcome(id,reveal,{}).get("ok",false),"Unverified outcome revealed possessions")
 			var result = loot.reveal_outcome(id,reveal,clearance(reveal,"eligible_outcome"))
 			expect(result.get("ok",false) and query(id,"inventory",{"actor_id":eid},true)["data"]["items"].is_empty(),"Eligible recoverable ownership not moved to loot")
-			expect(base.gameplay_view(id)["actor"]["coins"]==money(7),"Outcome auto-awarded currency")
+			var outcome_balance = SQL.run(base.path_for(id),[SQL.stmt("SELECT payload FROM actors WHERE id=?",[session.token(id)["actor_id"]])],true)
+			expect(outcome_balance.get("ok",false) and outcome_balance["results"][0].size()==1 and session.typed_equal(JSON.parse_string(outcome_balance["results"][0][0]["payload"]).get("coins"),money(7)),"SQL outcome changed player currency")
+			print("Outcome projection coins: ",base.gameplay_view(id)["actor"]["coins"])
+			expect(session.typed_equal(base.gameplay_view(id)["actor"]["coins"],money(7)),"Outcome auto-awarded currency")
 	# Quest and objective lifecycle, persistent relationship and private factors.
 	var qa = story_args("quest","ledger-quest","Missing ledger","Find the missing ledger.","active",at,opening_event)
 	var invalid = request(id,"story_update",qa)
@@ -354,4 +457,45 @@ func run() -> void:
 					var repeated_migration = MIGRATION.new().ensure(missing_id)
 					expect(repeated_migration.get("ok",false) and not repeated_migration.get("migrated",true) and base.gameplay_view(missing_id)==once,"Repeat migration changed stable repaired state")
 	expect(base.gameplay_view(b["id"])==sibling and players.load_record(master_id)==original_master,"Missing ownership fixture affected sibling/master")
+	if failures.is_empty():
+		var final_state=session.token(id)
+		if not final_state.get("ok",false) or not reopened.get("ok",false) or not reopened.get("found",false):
+			expect(false,"Restart checkpoint state unavailable")
+			finish()
+			return
+		var checkpoint=FileAccess.open("user://qa-reopen.json",FileAccess.WRITE)
+		if checkpoint==null:
+			expect(false,"Restart checkpoint write failed")
+		else:
+			checkpoint.store_string(JSON.stringify({"request":generate,"settlement":reopened,"revision":final_state["revision"]},"",true,true))
+			checkpoint.close()
 	finish()
+
+func reopen_run() -> void:
+	var expected=OS.get_environment("INFINITY_TEST_USER_ROOT").replace("\\","/").trim_suffix("/")
+	var actual=ProjectSettings.globalize_path("user://").replace("\\","/").trim_suffix("/")
+	if expected.is_empty() or expected!=actual or not FileAccess.file_exists("user://qa-reopen.json"):
+		push_error("Restart requires authorized fixture checkpoint")
+		quit(2)
+		return
+	var data=JSON.parse_string(FileAccess.get_file_as_string("user://qa-reopen.json"))
+	if not data is Dictionary or not data.get("request") is Dictionary:
+		push_error("Invalid restart checkpoint")
+		quit(2)
+		return
+	var req=data["request"]
+	var id=req["campaign_id"]
+	var prior=session.settlement(id,req["request_id"])
+	expect(prior.get("ok",false) and prior.get("found",false) and session.typed_equal(prior,data["settlement"]),"Restart durable settlement differs")
+	var before=session.token(id)
+	expect(before.get("ok",false) and before.get("revision")==data["revision"],"Restart initial state unavailable or changed")
+	var replay=GENERATOR.new().generate(id,req,true)
+	expect(replay.get("ok",false) and replay.get("replayed",false),"Restart replay failed")
+	var after=session.token(id)
+	var settled=session.settlement(id,req["request_id"])
+	expect(after.get("ok",false) and after.get("revision")==data["revision"],"Restart replay changed revision or state unavailable")
+	expect(settled.get("ok",false) and settled.get("found",false) and session.typed_equal(settled,prior),"Restart replay changed settlement")
+	for message in failures:
+		push_error(message)
+	print("C2 process restart failures: ",failures.size())
+	quit(0 if failures.is_empty() else 1)

@@ -1,7 +1,7 @@
 name: v0.0.27 isolated native QA
 on:
   push:
-    branches: [godot]
+    branches: [godot, qa/v027-settlement]
     paths:
       - 'game/**'
       - 'design/tools/**'

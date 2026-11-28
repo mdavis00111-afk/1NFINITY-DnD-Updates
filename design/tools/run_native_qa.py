@@ -155,6 +155,16 @@ def isolate(project, label, env, command, logs):
     return original, root, {**env, 'INFINITY_TEST_USER_ROOT': probed_root}
 
 
+def run_restart(command, child, logs):
+    restart_code, restart_output = execute(
+        command + ['--script', 'res://tests/persistence_smoke.gd'],
+        {**child, 'INFINITY_QA_REOPEN': '1'},
+        logs / 'persistence-restart.log', 600)
+    require_success(restart_code, restart_output, 'persistence restart')
+    if len(re.findall(r'(?m)^C2 process restart failures: 0\s*$', restart_output)) != 1:
+        raise RuntimeError('persistence restart completion missing')
+
+
 def run(args):
     repo = Path(args.repo).resolve()
     logs = Path(args.logs).resolve()
@@ -211,6 +221,8 @@ def run(args):
                 reason = ''
                 try:
                     require_suite_success(code, output, suite)
+                    if suite == 'persistence':
+                        run_restart(command, child, logs)
                     result = 'PASS'
                 except RuntimeError as exc:
                     result, reason = 'FAIL', str(exc)

@@ -120,8 +120,14 @@ func send() -> void:
 	var prose=identity["stage"]=="narrate"
 	transport.generate(input,"","",true,schema(),65536,8192 if prose else 4096,0.8 if prose else 0.2)
 
+func diagnostic(code: String) -> void:
+	if OS.get_environment("INFINITY_TEST_USER_ROOT").is_empty():
+		return
+	print("SEMANTIC_QA ",code," stage=",identity.get("stage","none"))
+
 func received(epoch: int,clock: int,ok: bool,message: String) -> void:
 	if epoch!=serial or not current():
+		diagnostic("response_stale")
 		return
 	metrics.append({"stage":identity["stage"],"call":calls,"elapsed_ms":Time.get_ticks_msec()-clock,"ok":ok})
 	metrics=metrics.slice(maxi(0,metrics.size()-64))
@@ -131,6 +137,7 @@ func received(epoch: int,clock: int,ok: bool,message: String) -> void:
 		return
 	var parsed=JSON.parse_string(message)
 	if not parsed is Dictionary:
+		diagnostic("response_not_json_object")
 		repair("Return one complete JSON object.")
 		return
 	if parsed.has("queries"):
@@ -196,9 +203,11 @@ func deliver(value: Dictionary) -> void:
 				if entry.get("result",{}).get("ok",false):
 					selected.append(entry)
 	if id["stage"]=="interpret" and controller.has_method("receive_interpretation"):
-		controller.receive_interpretation(id,value,selected)
+		var result: Dictionary=controller.receive_interpretation(id,value,selected)
+		diagnostic("interpret_accepted" if result.get("ok",false) else "interpret_rejected")
 	else:
-		controller.receive(id,value)
+		var result: Dictionary=controller.receive(id,value)
+		diagnostic("narrate_accepted" if result.get("ok",false) else "narrate_rejected")
 
 func failed(detail: String = "Provider request unavailable.") -> void:
 	if current():

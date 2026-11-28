@@ -288,7 +288,7 @@ func scene_context(state: Dictionary) -> Dictionary:
 func advance() -> void:
 	if closed or running or notifying or not reload():
 		return
-	if not inflight.is_empty() and inflight==active().get("attempt"):
+	if not inflight.is_empty() and registry.session.typed_equal(inflight,active().get("attempt")):
 		return
 	var work=data["work"]
 	if work["active"].is_empty():
@@ -348,7 +348,7 @@ func execute_active() -> void:
 		stop("retry","Settlement lookup unavailable.")
 		return
 	if prior.get("found",false):
-		if prior["request"]!=req:
+		if not registry.session.same_request(prior["request"],req):
 			stop("retry","Stored request differs; local review required.")
 			return
 		if prior["status"]=="committed":
@@ -432,7 +432,7 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 	if closed or running or notifying or not reload():
 		return failure("Controller unavailable.")
 	var job=active().duplicate(true)
-	if job.is_empty() or identity!=inflight or identity!=job.get("attempt") or identity.get("revision")!=data["state"]["revision"] or identity.get("stage")!=job["stage"] or JSON.stringify(result).length()>65536:
+	if job.is_empty() or identity!=inflight or not registry.session.typed_equal(identity,job.get("attempt")) or identity.get("revision")!=data["state"]["revision"] or identity.get("stage")!=job["stage"] or JSON.stringify(result).length()>65536:
 		return failure("Stale or invalid semantic reply.")
 	var stage=job["stage"]
 	inflight={}
@@ -618,6 +618,9 @@ func process_story() -> void:
 	var job=active().duplicate(true)
 	var stories=job.get("story",[])
 	var index=int(job.get("story_index",0))
+	if index<0:
+		stop("retry","Invalid deferred story cursor.")
+		return
 	if index>=stories.size():
 		finish("committed","Turn and deferred processing complete.")
 		return
@@ -635,24 +638,32 @@ func process_story() -> void:
 		job["story_request"]=req
 		if not update_active(job):
 			return
+	var expected_args=item["args"].duplicate(true)
+	expected_args["source_event_id"]=job["narration_event_id"]
+	if not DTO.id_valid(req.get("request_id")) or req.get("kind")!="story_update" or req.get("campaign_id")!=campaign_id or req.get("actor_id")!=actor_id or not registry.session.typed_equal(req.get("args"),expected_args):
+		stop("retry","Deferred story request differs from committed narrative proposal.")
+		return
 	var prior=registry.session.settlement(campaign_id,req["request_id"])
 	if not prior.get("ok",false):
 		stop("retry","Deferred story settlement unavailable.")
 		return
 	if not prior.get("found",false):
+		if not registry.session.typed_equal(req.get("expected_revision"),data["state"]["revision"]):
+			stop("retry","Deferred story revision changed.")
+			return
 		if not prepare_review(req,"post_story"):
 			return
 		running=true
 		registry.execute(campaign_id,req,review_tool)
 		running=false
 		prior=registry.session.settlement(campaign_id,req["request_id"])
-	if not prior.get("found",false) or prior["request"]!=req or prior["status"]!="committed" or not reload():
+	if not prior.get("found",false) or not registry.session.same_request(prior["request"],req) or prior["status"]!="committed" or not reload():
 		stop("retry","Deferred story proposal not committed; retry or explicitly skip.")
 		return
 	# Recovery of an already-present row must prove the EXACT request committed,
 	# just as the fresh-execution branch does. Never advance a deferred cursor
 	# after a rejected/cancelled request or a different request using this ID.
-	if not prior.get("ok",false) or not prior.get("found",false) or prior.get("request")!=req or prior.get("status")!="committed":
+	if not prior.get("ok",false) or not prior.get("found",false) or not registry.session.same_request(prior.get("request"),req) or prior.get("status")!="committed":
 		stop("retry","Deferred settlement differs or was not committed; preserve the pending work.")
 		return
 	job["story_index"]=index+1
@@ -749,7 +760,7 @@ func retire_attempt() -> void:
 		semantic_cancelled.emit(previous)
 
 func provider_failed(identity: Dictionary,detail: String = "Provider request unavailable.") -> Dictionary:
-	if closed or notifying or not reload() or identity!=inflight or identity!=active().get("attempt"):
+	if closed or notifying or not reload() or identity!=inflight or not registry.session.typed_equal(identity,active().get("attempt")):
 		return failure("Stale provider failure ignored.")
 	retire_attempt()
 	stop("retry",str(identity.get("stage","AI"))+": "+detail.left(600)+" Retry the saved request.")
