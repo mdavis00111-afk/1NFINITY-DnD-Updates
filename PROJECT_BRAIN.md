@@ -745,3 +745,7 @@ Prepared design/V027_RELEASE_CANDIDATE.md using existing native runner and relea
 
 ### Native run 46099264002 follow-up
 Linux exact 3a28bef: import PASS, 397 files, 10/14; world now PASS, campaign zero assertions but two malformed JSON engine errors, complete gameplay one critical-stage timeout, semantic ten failures including three legacy post-narration settlement assertions and blocked assessment cascade; GUI eight unchanged. Windows still running at initial review. Opening validator now uses explicit parse status. Semantic policy bound_request uses canonical same_request for all three staged request slots and typed_equal for direct args, retaining all scope and rule checks. Legacy post-narration assertion compares committed action identity/result/event linkage rather than whole settlement (narration may add metadata); attribution remains provisional. Native rerun required; no GUI changes or publication.
+
+
+### C4 transition and GUI diagnostic follow-up
+Source inspection confirms base recover_active always dispatched narrate even after accepted candidate advanced to critical/background. Restore stage-specific dispatch for C4 base fixture/controller; explicit semantic subclass override keeps combined production protocol at narrate/reconcile only, including legacy recovery. GUI smoke now reports exact control path, rectangle, bounds and minimum size on failure, with identical enclosure tolerance; approved GUI untouched. Native tests not executed; next run must confirm C4 progression and identify actual clipping controls. No publication.

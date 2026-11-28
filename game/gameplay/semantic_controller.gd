@@ -240,6 +240,10 @@ func outcome(job: Dictionary) -> Dictionary:
 	var recovered=registry.recover(campaign_id,req.get("request_id",""))
 	return recovered["receipt"] if recovered.get("status")=="pending_narration" else {}
 
+func legacy_review_stages() -> bool:
+	# Production combined protocol never dispatches obsolete review stages.
+	return false
+
 func recover_active() -> void:
 	if not reload():
 		return

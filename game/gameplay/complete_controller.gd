@@ -389,6 +389,9 @@ func execute_active() -> void:
 	else:
 		stop("retry",str(result.get("error","Tool not resolved.")))
 
+func legacy_review_stages() -> bool:
+	return true
+
 func recover_active() -> void:
 	if not reload():
 		return
@@ -421,6 +424,9 @@ func recover_active() -> void:
 	var payload={"receipt":PACK.public_receipt(receipt),"player_text":result.get("player_text",""),"scene":context["scene"],"maturity_id":state["campaign"].get("maturity_id","standard"),"turn_id":job["turn_id"],"public_actors":public_view.get("public_actors",[]),"public_quests":public_view.get("public_quests",[]),"story":public_view.get("story_records",[])}
 	if job.get("stage")=="reconcile":
 		reconcile(job,receipt,context["ids"])
+	elif legacy_review_stages() and job.get("stage") in ["critical","background"]:
+		payload["candidate"]=job.get("candidate",{}).duplicate(true)
+		ask(job["stage"],job,payload)
 	else:
 		# The durable receipt remains authoritative; regenerate narration only.
 		ask("narrate",job,payload)

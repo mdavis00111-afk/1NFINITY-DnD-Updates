@@ -33,7 +33,11 @@ func settle() -> void:
 	for i in range(5): await process_frame
 
 func inside(control: Control, bounds: Rect2, context: String) -> void:
-	expect(is_instance_valid(control) and control.get_global_rect().has_area() and bounds.grow(2).encloses(control.get_global_rect()),context+" is clipped or absent")
+	if not is_instance_valid(control):
+		expect(false,context+" control absent")
+		return
+	var rect=control.get_global_rect()
+	expect(rect.has_area() and bounds.grow(2).encloses(rect),context+" clipped: "+str(control.get_path())+" rect="+str(rect)+" bounds="+str(bounds)+" minimum="+str(control.get_combined_minimum_size()))
 
 func has_text(node: Node, fragment: String) -> bool:
 	if node is Label or node is Button or node is RichTextLabel:
