@@ -717,3 +717,7 @@ Active suite already excludes legacy_scenarios; do not attribute active failures
 
 ### Canonical semantic authorization and discovery recovery
 Owner authorized deferring intermediate native QA to consolidated release-candidate validation. Static review found remaining raw dictionary comparisons at combined assessment authorization, discovery definition reference recovery, deferred discovery request/argument validation and repeated dependent action detection. Use existing same_request and typed_equal helpers, retaining exact IDs, revision, source and registry checks. Six targeted substitutions verified in source; native syntax and behavioral tests outstanding. No GUI, provider budget or release changes.
+
+
+### Narration reconciliation outcome binding
+Version new local outcome fingerprints (v2) using full-precision sorted JSON roundtrip and strict typed equality before hashing. Reject unknown fingerprint versions and empty canonical hashes; retain exact legacy v1 verification for existing pending candidates. Extend active candidate reopen fixture with equivalent integer/float and changed roll/string checks. This addresses a potential representation-sensitive reconciliation failure, not a proven native root cause. Native validation deferred; no GUI or release changes.

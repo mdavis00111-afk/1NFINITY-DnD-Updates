@@ -299,7 +299,8 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 		job["definition_refs"]={}
 		job["discovery_receipts"]={}
 		job["local_candidate_hash"]=result["text"].sha256_text()
-		job["local_outcome_hash"]=JSON.stringify(verified).sha256_text()
+		job["local_outcome_hash"]=canonical_outcome_hash(verified)
+		job["local_outcome_hash_version"]=2
 		job["critical_verified"]=true
 		job["stage"]="reconcile"
 		job["attempt"]={}
@@ -899,6 +900,13 @@ func retry() -> Dictionary:
 	advance.call_deferred()
 	return {"ok":true}
 
+func canonical_outcome_hash(verified: Dictionary) -> String:
+	# Normalize through the same JSON representation used by durable work.
+	var normalized=JSON.parse_string(JSON.stringify(verified,"",true,true))
+	if not normalized is Dictionary or not registry.session.typed_equal(verified,normalized):
+		return ""
+	return JSON.stringify(normalized,"",true,true).sha256_text()
+
 func reviewed_candidate(job: Dictionary,verified: Dictionary,scene: Dictionary) -> bool:
 	if not job.get("critical_verified",false):
 		return false
@@ -911,7 +919,11 @@ func reviewed_candidate(job: Dictionary,verified: Dictionary,scene: Dictionary) 
 		var expected=str(verified.get("summary","")) if standalone(job) else RECON.new().receipt_line(verified)
 		return text==expected
 	if job.has("local_candidate_hash"):
-		return job["local_candidate_hash"]==text.sha256_text() and job.get("local_outcome_hash")==JSON.stringify(verified).sha256_text()
+		var version=job.get("local_outcome_hash_version",1)
+		if not registry.session.typed_equal(version,1) and not registry.session.typed_equal(version,2):
+			return false
+		var expected=canonical_outcome_hash(verified) if registry.session.typed_equal(version,2) else JSON.stringify(verified).sha256_text()
+		return not expected.is_empty() and job["local_candidate_hash"]==text.sha256_text() and job.get("local_outcome_hash")==expected
 	var ext=BASE.new().gameplay_view(campaign_id).get("interaction_extension",{})
 	if ext.get("revision")!=data["state"]["revision"]:
 		return false

@@ -561,6 +561,9 @@ func candidate_reopen(id: String) -> void:
 	if not expect(ctrl.active().get("stage")=="reconcile","Valid combined candidate persisted before reconciliation"):
 		return
 	var candidate=ctrl.active().duplicate(true)
+	var hash_int=ctrl.canonical_outcome_hash({"roll":17,"nested":[2,{"spent":1}]})
+	expect(not hash_int.is_empty() and hash_int==ctrl.canonical_outcome_hash({"roll":17.0,"nested":[2.0,{"spent":1.0}]}),"Outcome hash survives numeric JSON representation")
+	expect(hash_int!=ctrl.canonical_outcome_hash({"roll":18,"nested":[2,{"spent":1}]}) and hash_int!=ctrl.canonical_outcome_hash({"roll":"17","nested":[2,{"spent":1}]}),"Outcome hash rejects changed roll and string coercion")
 	var before=durable_snapshot(id)
 	ctrl.close_session()
 	workspace.queue_free()
