@@ -3,6 +3,7 @@ extends RefCounted
 ## C3 independently validates mechanics; provider assessments are never authority.
 const REG=preload("res://gameplay/tool_registry.gd")
 const DTO=preload("res://world/world_dto.gd")
+const SQL=preload("res://systems/sqlite.gd")
 const RAW=preload("res://turns/raw_mechanics.gd")
 const PACK=preload("res://turns/agent_packets.gd")
 const BASE=preload("res://campaigns/campaign_store.gd")
@@ -63,7 +64,7 @@ func local_decision(req: Dictionary,job: Dictionary,state: Dictionary) -> Dictio
 	elif direct_safe(req,job,state):
 		if kind in ROUTINE:
 			ruling={"safe_nonmechanical":true,"seconds":0,"establish_clock":false}
-	elif kind in ["equip","quick_equip","swap","unequip","item_use","item_drop","resource_use","spell_prepare","spell_unprepare"]:
+	elif kind in ["equip","quick_equip","swap","unequip","item_use","item_drop","resource_use","spell_prepare","spell_unprepare","spell_cast"]:
 		if not nc.safe_actor(state):
 			return {"ok":false,"error":"Actor outside supported noncombat mechanics."}
 		# Self-contained handlers independently validate ownership, equipment,
@@ -86,10 +87,19 @@ func local_decision(req: Dictionary,job: Dictionary,state: Dictionary) -> Dictio
 		return {"ok":false,"error":"Uninterrupted rest or attunement context is not established."}
 	elif kind in ["item_transfer","currency_transfer","party_membership"]:
 		return {"ok":false,"error":"Verified participant consent is not established; no transfer or membership change."}
-	elif kind in ["loot_pickup","loot_take_all","object_interact"]:
-		return {"ok":false,"error":"Local access, ownership rights or unobstructed object state are not established."}
-	elif kind=="spell_cast":
-		return {"ok":false,"error":"Casting context including component availability is not established locally."}
+	elif kind in ["loot_pickup","loot_take_all"]:
+		if not nc.safe_actor(state):
+			return {"ok":false,"error":"Actor outside supported pickup mechanics."}
+		# A locally created drop belonging to this actor is explicit access
+		# evidence, unlike a narrated discovery or another actor's possessions.
+		var rows=controller.registry.session.read(state,[SQL.stmt("SELECT id FROM loot_containers WHERE id=? AND location_id=? AND source_kind='drop' AND source_actor_id=? AND source_event_id=? AND visibility='player' AND status='available'",[args["container_id"],state["location_id"],state["actor_id"],args["source_event_id"]])])
+		if not rows.get("ok",false) or rows["sets"][0].size()!=1:
+			return {"ok":false,"error":"No locally established right of access to this container."}
+		var event=controller.registry.session.source(state,args["source_event_id"])
+		if event.get("kind")!="gameplay_change" or not controller.registry.session.public_source(event):
+			return {"ok":false,"error":"Committed local drop event unavailable."}
+	elif kind=="object_interact":
+		return {"ok":false,"error":"Unlocked and unobstructed object state is not established."}
 	elif kind=="wait":
 		return {"ok":false,"error":"Safe uninterrupted duration is not established locally."}
 	else:
