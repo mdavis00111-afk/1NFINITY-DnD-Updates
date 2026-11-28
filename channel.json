@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.31",
-  "source_commit": "4cb48a261d1132426eb3bd1a511b78863250dd23",
-  "notes": "DM-first alpha. Corrected lookup and narration response contracts for ordinary dialogue, optional world proposals, and supported mechanics. Includes editable content controls, conditional checks, and map sketch. See TESTING.md for Windows acceptance.",
+  "version": "0.0.32",
+  "source_commit": "fbe1474e8ebbe1add844c18832b101fe5aec80c9",
+  "notes": "Windows playtest. Retry can recover saved input after a DM connection failure. Includes clearer Gemini diagnostics, fewer duplicate campaign reads, scrollable update notes, a top-right Copy log button, and Esc to return to Main while preserving the draft.",
   "files": [
     {
       "path": "art/arcane.svg",
@@ -38,7 +38,7 @@
     },
     {
       "path": "campaigns/campaign_manager.gd",
-      "blob": "c3ba36fcc25c539d0d5694a8eb622ec3ab2aa8e6"
+      "blob": "9803428af213ac77cb58aa4e69959b34d3a01af5"
     },
     {
       "path": "campaigns/campaign_starts.gd",
@@ -1194,7 +1194,7 @@
     },
     {
       "path": "gameplay/complete_controller.gd",
-      "blob": "ac484929adfb2d9325bd44b86307f7188cfffc1f"
+      "blob": "e59d2f2ab7bd386ba95849a02bd99daef1d989e9"
     },
     {
       "path": "gameplay/display_values.gd",
@@ -1202,7 +1202,7 @@
     },
     {
       "path": "gameplay/game_workspace.gd",
-      "blob": "fc5fe0030fa14e92a5226379d0e7c1554e8f99ac"
+      "blob": "64f7be2c0f80c28624b82ba530774407b52eba24"
     },
     {
       "path": "gameplay/independent_review.gd",
@@ -1238,11 +1238,11 @@
     },
     {
       "path": "gameplay/semantic_adapter.gd",
-      "blob": "85b82944d6690c9bff23490d27fba93f9e5f277c"
+      "blob": "13acab7d549f045ffd4f2ce18431679a636335ae"
     },
     {
       "path": "gameplay/semantic_controller.gd",
-      "blob": "4079a2fb97d634e5e8fb18e76075dc43e6849cbd"
+      "blob": "ef87251a48d78d186791595b60deade1c2026227"
     },
     {
       "path": "gameplay/semantic_policy.gd",
@@ -1266,7 +1266,7 @@
     },
     {
       "path": "main.gd",
-      "blob": "7ba3dfc8a5f0769d6ebb98d0ada05b37b3b67a41"
+      "blob": "1214f668c75957ffd7526b7d3a5998b9140295d1"
     },
     {
       "path": "main.tscn",
@@ -1346,7 +1346,7 @@
     },
     {
       "path": "project.godot",
-      "blob": "355ced740fb080782eceb4e7960e13cf83e73251"
+      "blob": "aacc0b70a04e89bd8e596ff7ef38b52e3db2dd31"
     },
     {
       "path": "rules/MASTER_REFERENCE.md",
@@ -1402,7 +1402,7 @@
     },
     {
       "path": "systems/gemini.gd",
-      "blob": "b75ef7e8a6347372c2a1fdd689028a52f9c44943"
+      "blob": "26c410bafe21e5a1f243cff76c5f988cd2bfcc43"
     },
     {
       "path": "systems/sqlite.gd",
@@ -1418,7 +1418,7 @@
     },
     {
       "path": "tests/ai_profile_smoke.gd",
-      "blob": "21b433d036f0e29907b389a0bbe267fdc27f67b6"
+      "blob": "6db504adcedb061a12ba4952b9b42e3d4489550b"
     },
     {
       "path": "tests/assets_smoke.gd",
@@ -1466,7 +1466,7 @@
     },
     {
       "path": "tests/semantic_integration_smoke.gd",
-      "blob": "811725a40d8e3b00ec8706846fde0feddee97fdf"
+      "blob": "9e76a198684f8c905fc07619bbdfdbde9488f1d2"
     },
     {
       "path": "tests/sqlite_smoke.gd",
@@ -1570,7 +1570,7 @@
     },
     {
       "path": "version.txt",
-      "blob": "d788d433572b266a2927bb1e6a450a630da9cbe0"
+      "blob": "78bae5bb6d254d014e35be0b828497f1509d80bd"
     },
     {
       "path": "world/geography_reconciler.gd",
