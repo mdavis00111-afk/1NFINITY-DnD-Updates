@@ -132,6 +132,10 @@ func run() -> void:
 	expect(eq.get("ok",false),"Equip shield failed: "+str(eq.get("error","")))
 	expect(base.actor_record(id)["combat"]["armor_class"]==14,"Shield AC wrong")
 	expect(registry.execute(id,req,review).get("replayed",false),"Equip replay missing")
+	var equip_revision=session.token(id)["revision"]
+	var changed=req.duplicate(true)
+	changed["args"]["grip"]="two_handed"
+	expect(not registry.execute(id,changed,review).get("ok",false) and session.token(id)["revision"]==equip_revision,"Conflicting equip replay accepted or mutated revision")
 	var invalid_swap=action(id,"swap",{"instance_id":bag["greatsword"],"slot":"main_hand","grip":"two_handed","replace_instance_ids":[]})
 	expect(not invalid_swap.get("ok",false),"Implicit displaced shield accepted")
 	var swap=action(id,"swap",{"instance_id":bag["greatsword"],"slot":"main_hand","grip":"two_handed","replace_instance_ids":[bag["shield"]]})
@@ -143,7 +147,7 @@ func run() -> void:
 	var consumed=registry.execute(id,potion,review)
 	expect(consumed.get("ok",false) and consumed.get("result",{}).get("rolls",[]).size()==1,"Healing potion failed")
 	var replay=registry.execute(id,potion,review)
-	expect(replay.get("replayed",false) and replay.get("result")==consumed.get("result"),"Potion rerolled/replayed differently")
+	expect(replay.get("replayed",false) and session.typed_equal(replay.get("result"),consumed.get("result")),"Potion rerolled/replayed differently")
 	expect(not items(id).has("magic:potion-of-healing-common"),"Potion quantity not removed")
 	var ration=action(id,"item_use",{"instance_id":bag["rations-1-day"],"quantity":1,"target_id":actor_id})
 	expect(ration.get("ok",false) and not items(id).has("rations-1-day"),"Ration accounting failed")
@@ -159,7 +163,7 @@ func run() -> void:
 	var held=held_entry.get("result",{}).get("rolls",[])
 	SQL.run(base.path_for(id),[SQL.stmt("DROP TRIGGER c3_fixture_abort")])
 	var retried=registry.execute(id,resource,review)
-	expect(retried.get("ok",false) and retried.get("result",{}).get("rolls",[])==held and base.actor_record(id)["resources"]["second_wind"]["spent"]==1,"Prepared retry changed dice or expenditure")
+	expect(retried.get("ok",false) and session.typed_equal(retried.get("result",{}).get("rolls",[]),held) and base.actor_record(id)["resources"]["second_wind"]["spent"]==1,"Prepared retry changed dice or expenditure")
 	if retried.get("ok",false) and not held_entry.is_empty():
 		var committed_state=session.token(id)
 		var conflicting=held_entry.duplicate(true)

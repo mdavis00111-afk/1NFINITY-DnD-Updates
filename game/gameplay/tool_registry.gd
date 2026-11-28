@@ -128,7 +128,7 @@ func validate_request(id: String,req: Variant) -> Dictionary:
 	if not prior.get("ok",false):
 		return error_result("unconfirmed","Request settlement lookup failed.")
 	if prior.get("found",false):
-		if prior["request"]!=req:
+		if not session.same_request(prior["request"],req):
 			return error_result("invalid","Request ID reused with different content.")
 		return {"ok":true,"state":current,"prior":prior}
 	if current["revision"]!=req["expected_revision"]:
@@ -282,11 +282,11 @@ func _execute(id: String,req: Dictionary,review: Callable) -> Dictionary:
 		return validated
 	var prior=validated["prior"]
 	if prior.get("found",false) and prior["status"]!="accepted_pending":
-		if noncombat.prepared.has(id) and noncombat.prepared[id]["context"]["request"]==req and prior["status"]=="committed":
+		if noncombat.prepared.has(id) and session.same_request(noncombat.prepared[id]["context"]["request"],req) and prior["status"]=="committed":
 			return noncombat.retry_prepared(id,req["request_id"])
 		return {"ok":prior["status"]=="committed","replayed":true,"status":prior["status"],"result":prior["result"],"revision":prior["revision"],"request_id":req["request_id"]}
 	if noncombat.prepared.has(id):
-		if noncombat.prepared[id]["context"]["request"]!=req:
+		if not session.same_request(noncombat.prepared[id]["context"]["request"],req):
 			return error_result("busy","Reconcile the unconfirmed standalone request first.")
 		return noncombat.retry_prepared(id,req["request_id"])
 	if prior.get("found",false) and req["kind"] in ADOPTED:

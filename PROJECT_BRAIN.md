@@ -685,3 +685,7 @@ Windows/Linux 3518ac6 both import PASS, 6/14 suites, identical five persistence 
 
 ### Architect-authorized limited repair
 Restored intact b3ad69a QA runner and added isolated restart helper using literal replacement callback. Local helper syntax checked; full runner compilation and native execution remain pending. Strengthened checkpoint and restart state/settlement reads; cancellation full precision and explicit successful confirmation; added committed prepared replay/conflict fixture. No loot or resource formulas changed. Cancellation replay regression still outstanding. No integration/publication.
+
+
+### Registry replay identity correction
+Linux run 46092081633 pinned ea43535: 7/14, import and C2 separate-process restart PASS, C3 six failures. Replace three raw registry request comparisons with existing strict same_request; use typed result comparison in potion and prepared retry assertions and add conflicting equip replay guard. No mechanics changed. Candidate native validation pending; Windows prior run pending at observation. Rest and cancellation regression outstanding. No integration/publication.
