@@ -156,30 +156,13 @@ func received(epoch: int,clock: int,ok: bool,message: String) -> void:
 	deliver(parsed)
 
 func collect_lookups(requested: Variant) -> bool:
-	if not controller.registry.interpreter_queries_valid(requested):
-		failed("Invalid lookup list.")
+	var result=controller.registry.interpreter_lookups(identity["campaign_id"],identity["revision"],requested)
+	if not result.get("ok",false):
+		failed(str(result.get("error","Godot lookup unavailable.")))
 		return false
-	var feedback: Array=[]
-	for query in requested:
-		if not DTO.exact_keys(query,["kind","args","limit"]) or not REG.QUERY_TYPES.has(query["kind"]) or not controller.registry.arguments_valid(query["args"],REG.QUERY_TYPES[query["kind"]]) or not DTO.whole(query["limit"],1,16):
-			failed("Invalid Godot lookup.")
-			return false
-		var key=JSON.stringify(query)
-		if key in queries_seen:
-			continue
-		queries_seen.append(key)
-		var result=controller.registry.enquire(identity["campaign_id"],{"schema_version":"2","campaign_id":identity["campaign_id"],"expected_revision":identity["revision"],"query_id":controller.registry.session.make_id(),"kind":query["kind"],"args":query["args"],"limit":query["limit"]})
-		if not result.get("ok",false):
-			failed(str(result.get("error","Godot lookup unavailable.")))
-			return false
-		if JSON.stringify(result).length()>12000:
-			failed("Godot lookup exceeds packet limit.")
-			return false
-		feedback.append({"query":query,"result":result})
-	if JSON.stringify(feedback).length()>32000:
-		failed("Godot lookup packet exceeds limit.")
+	if not current():
 		return false
-	transcript.append(feedback)
+	transcript.append(result["selected"])
 	return true
 
 func repair(message: String) -> void:

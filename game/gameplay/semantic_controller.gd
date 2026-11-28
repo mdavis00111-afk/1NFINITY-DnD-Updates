@@ -172,7 +172,12 @@ func receive_interpretation(identity: Dictionary,result: Dictionary,selected: Ar
 	# Never carry an earlier action assessment into a fresh interpretation.
 	job.erase("context_review")
 	job["tool"]=req
-	var combined=job.get("selected_context",[])+selected
+	# Only current-revision local lookup results enter the new action context.
+	var combined=selected
+	for entry in combined:
+		if not entry is Dictionary or entry.get("revision")!=data["state"]["revision"] or not entry.get("result",{}).get("ok",false):
+			stop("clarification","Lookup context is stale or invalid.")
+			return failure(status)
 	var distinct: Array=[]
 	for entry in combined:
 		if not distinct.any(func(row): return row.get("query")==entry.get("query")):

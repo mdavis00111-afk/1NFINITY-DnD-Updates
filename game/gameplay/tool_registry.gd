@@ -177,6 +177,31 @@ func validate_request(id: String,req: Variant) -> Dictionary:
 		return error_result("busy","An adopted logical request is pending.")
 	return {"ok":true,"state":current,"prior":prior}
 
+# Execute the entire validated read-only selection at one authoritative revision.
+# Results are context only, never clearance or mechanical patches.
+func interpreter_lookups(id: String,revision: int,requested: Variant) -> Dictionary:
+	if not interpreter_queries_valid(requested):
+		return error_result("invalid","Invalid interpreter lookup selection.")
+	var state=session.token(id)
+	if not state.get("ok",false) or state.get("revision")!=revision:
+		return error_result("stale","Lookup revision unavailable.")
+	var selected: Array=[]
+	for query in requested:
+		if selected.any(func(entry): return session.typed_equal(entry["query"],query)):
+			continue
+		var result=enquire(id,{"schema_version":"2","campaign_id":id,"expected_revision":revision,"query_id":session.make_id(),"kind":query["kind"],"args":query["args"],"limit":query["limit"]})
+		if not result.get("ok",false):
+			return result
+		if JSON.stringify(result).length()>12000:
+			return error_result("invalid","Lookup result exceeds packet limit.")
+		selected.append({"query":query.duplicate(true),"result":result,"revision":revision})
+		if JSON.stringify(selected).length()>32000:
+			return error_result("invalid","Lookup selection exceeds packet limit.")
+	var current=session.token(id)
+	if not current.get("ok",false) or current.get("revision")!=revision:
+		return error_result("stale","Campaign changed during lookup selection.")
+	return {"ok":true,"selected":selected}
+
 func enquire(id: String,query: Dictionary) -> Dictionary:
 	return _enquire(id,query,false)
 
