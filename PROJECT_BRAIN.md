@@ -3127,3 +3127,5 @@ Packaged 0.0.29 source ad20368865d280560785240490ce34f16c78edd7; 397 verified Gi
 
 ### Alpha 0.0.30 packaging
 Owner authorized live testing instead of mandatory GitHub gameplay regression. Latest Linux baseline 12/14; semantic corrections unverified; GUI owner-managed. No claim of native or live acceptance. Packaging only.
+
+Packaged 0.0.30 source 63651d647db1546c9a67c7a0d14bc7bed1c69cc8; 397 verified Git blobs. Live acceptance outstanding.

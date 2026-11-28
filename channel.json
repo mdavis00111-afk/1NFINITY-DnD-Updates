@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.29",
-  "source_commit": "ad20368865d280560785240490ce34f16c78edd7",
-  "notes": "Owner live-test alpha. Includes the inspectable narration packet and descriptive inscription inspection for owned custom gear. See NEXT_CHAT.md and TESTING.md for defect triage and Windows cases.",
+  "version": "0.0.30",
+  "source_commit": "63651d647db1546c9a67c7a0d14bc7bed1c69cc8",
+  "notes": "Separates compact intent interpretation from the complete, verified DM packet. Includes local lookup selection, inspectable outbound narration binding and preserved inscription recovery. See TESTING.md for owner Windows acceptance.",
   "files": [
     {
       "path": "art/arcane.svg",
@@ -1194,7 +1194,7 @@
     },
     {
       "path": "gameplay/complete_controller.gd",
-      "blob": "726347306f5de76fedeafc02e45d29108ea55d5c"
+      "blob": "ac484929adfb2d9325bd44b86307f7188cfffc1f"
     },
     {
       "path": "gameplay/display_values.gd",
@@ -1238,11 +1238,11 @@
     },
     {
       "path": "gameplay/semantic_adapter.gd",
-      "blob": "850393d63f9cc2e5930496bd8813633fb6bc2da4"
+      "blob": "e3fe782ceb5355812d7544d77f5860ee65bf2ecd"
     },
     {
       "path": "gameplay/semantic_controller.gd",
-      "blob": "e596b36f84c717701a43b73bfa2c7716c7cf3e01"
+      "blob": "87f2489041c262bf22eee9695621b7a220a4253c"
     },
     {
       "path": "gameplay/semantic_policy.gd",
@@ -1250,11 +1250,11 @@
     },
     {
       "path": "gameplay/tool_registry.gd",
-      "blob": "2c539f5b60f2ffca3bd61faed5269ed076a919fd"
+      "blob": "642f5d850d69cd026c2cf20d1eb3555eef94767f"
     },
     {
       "path": "gameplay/turn_context.gd",
-      "blob": "1d7a04b522398229b89bf820d750b8e713d2545d"
+      "blob": "1a73156fd804d704a07d2808a7cba178cdb6cc85"
     },
     {
       "path": "gameplay/ui_intents.gd",
@@ -1346,7 +1346,7 @@
     },
     {
       "path": "project.godot",
-      "blob": "de78ad2012abb03b9e07484ec75f53dc30f6b17c"
+      "blob": "c445856e0e36a793a1ef23c9a61bc143cea3d731"
     },
     {
       "path": "rules/MASTER_REFERENCE.md",
@@ -1466,7 +1466,7 @@
     },
     {
       "path": "tests/semantic_integration_smoke.gd",
-      "blob": "a8ecaaec2c8897aca700999057d5046284ffb0cd"
+      "blob": "e0855623fdf2ed15abdcb21ca0fd5bc689857684"
     },
     {
       "path": "tests/sqlite_smoke.gd",
@@ -1570,7 +1570,7 @@
     },
     {
       "path": "version.txt",
-      "blob": "369bd4c2a47a2735a9358125fb1b95a6bcb53bb4"
+      "blob": "f092e2be2a89b3b6bc7a0cfc5c9e754ca2da3258"
     },
     {
       "path": "world/geography_reconciler.gd",
