@@ -661,8 +661,18 @@ func rest(id: String,req: Dictionary,clearance: Dictionary) -> Dictionary:
 	var args=req["args"]
 	var actor=state["actor"].duplicate(true)
 	var combat=actor["combat"]
-	if not args["rest_kind"] in ["short","long"] or not DTO.whole(args["hit_dice"],0,1) or not DTO.whole(combat.get("hit_dice_total"),1,1) or not DTO.whole(combat.get("hit_dice_spent"),0,1) or not combat.get("hit_die") in [6,8,10,12] or not DTO.whole(actor.get("ability_modifiers",{}).get("con"),-5,10) or not resource_map_valid(actor) or not slots_valid(actor) or actor["spellcasting"].get("concentration")!=null:
-		return fail("Rest hit dice, resources or effect state requires review.")
+	if not args["rest_kind"] in ["short","long"] or not DTO.whole(args["hit_dice"],0,1):
+		return fail("Rest kind or requested hit dice requires review.")
+	if not DTO.whole(combat.get("hit_dice_total"),1,1) or not DTO.whole(combat.get("hit_dice_spent"),0,1):
+		return fail("Rest hit dice accounting requires review.")
+	if not DTO.whole(combat.get("hit_die"),6,12) or not int(combat["hit_die"]) in [6,8,10,12] or not DTO.whole(actor.get("ability_modifiers",{}).get("con"),-5,10):
+		return fail("Rest hit die or Constitution modifier requires review.")
+	if not resource_map_valid(actor):
+		return fail("Rest resource map requires review.")
+	if not slots_valid(actor):
+		return fail("Rest spell slot map requires review.")
+	if actor["spellcasting"].get("concentration")!=null:
+		return fail("Rest concentration state requires review.")
 	var commands: Array=[]
 	var rolls: Array=[]
 	var restored=0

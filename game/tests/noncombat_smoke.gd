@@ -175,7 +175,18 @@ func run() -> void:
 		var replay_state=session.token(id)
 		expect(durable_replay.get("ok",false) and durable_replay.get("replayed",false) and committed_state.get("ok",false) and replay_state.get("ok",false) and replay_state["revision"]==committed_state["revision"],"Committed prepared replay failed or changed revision")
 	var short=action(id,"rest",{"rest_kind":"short","hit_dice":0,"prepared_ids":null})
-	expect(short.get("ok",false) and base.actor_record(id)["resources"]["second_wind"]["spent"]==0,"Short rest reset failed")
+	expect(short.get("ok",false) and base.actor_record(id)["resources"]["second_wind"]["spent"]==0,"Short rest reset failed: "+str(short.get("error","")))
+	if short.get("ok",false):
+		var cancel_req=request(id,"resource_use",{"resource_id":"second_wind","quantity":1,"target_id":actor_id})
+		var cancel_before=session.token(id)["revision"]
+		var cancel_fault=SQL.run(base.path_for(id),[SQL.stmt("CREATE TRIGGER c3_cancel_abort BEFORE UPDATE ON actors BEGIN SELECT RAISE(ABORT,\'fixture cancellation\'); END")])
+		expect(cancel_fault.get("ok",false),"Cancellation fault trigger failed")
+		var cancel_attempt=registry.execute(id,cancel_req,review)
+		expect(not cancel_attempt.get("ok",false) and registry.noncombat.prepared.has(id),"Cancellation fixture not prepared")
+		SQL.run(base.path_for(id),[SQL.stmt("DROP TRIGGER c3_cancel_abort")])
+		var cancelled=registry.cancel_uncommitted(id,cancel_req["request_id"])
+		var cancel_replay=registry.execute(id,cancel_req,review)
+		expect(cancelled.get("ok",false) and cancelled.get("status")=="cancelled" and cancel_replay.get("replayed",false) and not cancel_replay.get("ok",false) and cancel_replay.get("status")=="cancelled" and session.token(id)["revision"]==cancel_before and base.actor_record(id)["resources"]["second_wind"]["spent"]==0,"Cancellation replay changed state or executed")
 	# Source-backed object and contextual difficulty, no keyword matching.
 	var evidence=SQL.run(base.path_for(id),[SQL.stmt("SELECT max(id) AS id FROM events WHERE kind='gameplay_change'")],true)
 	var source_id=int(evidence["results"][0][0]["id"]) if evidence.get("ok",false) else 0

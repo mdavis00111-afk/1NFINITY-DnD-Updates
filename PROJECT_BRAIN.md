@@ -689,3 +689,7 @@ Restored intact b3ad69a QA runner and added isolated restart helper using litera
 
 ### Registry replay identity correction
 Linux run 46092081633 pinned ea43535: 7/14, import and C2 separate-process restart PASS, C3 six failures. Replace three raw registry request comparisons with existing strict same_request; use typed result comparison in potion and prepared retry assertions and add conflicting equip replay guard. No mechanics changed. Candidate native validation pending; Windows prior run pending at observation. Rest and cancellation regression outstanding. No integration/publication.
+
+
+### Rest eligibility diagnostics and cancellation regression
+Split rest eligibility guard into field-specific errors; validate persisted hit die as a whole number before integer membership check (same permitted die sizes). Add fault-injected standalone cancellation and replay regression after successful short rest; test is conditional on rest succeeding. No rest formulas changed. Native execution pending; prior Windows job still running at observation. No integration/publication.
