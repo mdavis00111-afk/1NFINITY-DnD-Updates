@@ -460,3 +460,7 @@ Confirmed raw SQL.run and Windows bridge return results; world read_sets wraps a
 
 ### Native loot assertion checkpoint
 Run 46087923985 Linux artifact 15240151290 pinned 3518ac6 confirms custom reuse single row, discovery player 2 daggers/2 gp, container 3 daggers/1 custom/5 gp, failed pickup unchanged, closed player 5 daggers/1 custom/7 gp, request counts 7/9 and transfer counts 0/3. Added explicit SQL assertions and outcome balance check, projection comparison diagnostics and adjacent numeric leaf diagnostics. Original projection and boundary assertions retained pending evidence. No production changes; new tests unexecuted. Windows jobs still running at observation. Process restart outstanding; no integration/publication.
+
+
+### Native precision and projection correction
+Run 46088394508 Linux artifact 15239927487: exact decoded integer conversion succeeds at ±9007199254740991 but json_safe rejects both; adjacent lower values pass. Replace inclusive absf guard with strict signed bounds at exactly representable ±2^53. Four currency projection assertions use existing typed_equal instead of raw dictionary equality; native projection values correct and SQL assertions passed including outcome balance. No loot transaction changes. New candidate unexecuted; full process restart and equipment/resource corrections outstanding. No integration/publication.

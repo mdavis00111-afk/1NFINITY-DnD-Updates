@@ -73,7 +73,7 @@ func json_safe(value: Variant) -> bool:
 		TYPE_NIL, TYPE_BOOL, TYPE_STRING:
 			return true
 		TYPE_INT, TYPE_FLOAT:
-			return is_finite(float(value)) and absf(float(value))<=9007199254740991.0
+			return is_finite(float(value)) and float(value)>-9007199254740992.0 and float(value)<9007199254740992.0
 		TYPE_ARRAY:
 			for item in value:
 				if not json_safe(item):

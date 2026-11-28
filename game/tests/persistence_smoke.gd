@@ -114,6 +114,7 @@ func request_comparison_tests() -> void:
 	for n in [9007199254740989,9007199254740990,9007199254740991,9007199254740992,-9007199254740991]:
 		var decoded = JSON.parse_string(JSON.stringify(n,"",true,true))
 		print("Boundary leaf: ",n," decoded type: ",typeof(decoded)," integer conversion: ",int(decoded)," original safe: ",session.json_safe(n)," decoded safe: ",session.json_safe(decoded)," float equality: ",float(n)==float(decoded)," typed equality: ",session.typed_equal(n,decoded))
+	expect(session.json_safe(-9007199254740991) and not session.json_safe(-9007199254740992),"Negative numeric boundary incorrect")
 	var unsafe = boundary.duplicate(true)
 	unsafe["args"]["nested"][0]["quantity"]=9007199254740992
 	expect(not session.same_request(unsafe,unsafe),"Unsafe integer boundary accepted")
@@ -243,8 +244,8 @@ func run() -> void:
 		finish()
 		return
 	assert_loot_sql(id,container_id,custom_id,false)
-	print("Discovery projection coins: ",view["actor"]["coins"]," raw equality: ",view["actor"]["coins"]==money(2)," typed equality: ",session.typed_equal(view["actor"]["coins"],money(2)))
-	expect(view["actor"]["coins"]==money(2) and view["inventory"][0]["quantity"]==2,"Loot transferred automatically")
+	print("Discovery projection coins: ",view["actor"]["coins"]," raw equality: ",session.typed_equal(view["actor"]["coins"],money(2))," typed equality: ",session.typed_equal(view["actor"]["coins"],money(2)))
+	expect(session.typed_equal(view["actor"]["coins"],money(2)) and view["inventory"][0]["quantity"]==2,"Loot transferred automatically")
 	var dagger_instance = ""
 	for row in extension["loot_containers"][0]["items"]:
 		if row["definition_id"]=="dagger": dagger_instance=row["instance_id"]
@@ -255,7 +256,7 @@ func run() -> void:
 	var before_failed_pickup = loot_sql(id,container_id)
 	print("Before failed pickup SQL: ",before_failed_pickup)
 	expect(not loot.pickup(id,pickup,clearance(pickup,"loot_transfer")).get("ok",false),"Injected failure not rejected")
-	expect(session.token(id)["revision"]==frozen["revision"] and not session.settlement(id,pickup["request_id"]).get("found",false) and base.gameplay_view(id)["actor"]["coins"]==money(2),"Failed pickup partially persisted")
+	expect(session.token(id)["revision"]==frozen["revision"] and not session.settlement(id,pickup["request_id"]).get("found",false) and session.typed_equal(base.gameplay_view(id)["actor"]["coins"],money(2)),"Failed pickup partially persisted")
 	var after_failed_pickup = loot_sql(id,container_id)
 	print("After failed pickup SQL: ",after_failed_pickup)
 	assert_loot_sql(id,container_id,custom_id,false)
@@ -269,8 +270,8 @@ func run() -> void:
 	view=base.gameplay_view(id)
 	extension=view.get("interaction_extension",{})
 	assert_loot_sql(id,container_id,custom_id,true)
-	print("Closed projection coins: ",view["actor"]["coins"]," raw equality: ",view["actor"]["coins"]==money(7)," typed equality: ",session.typed_equal(view["actor"]["coins"],money(7)))
-	expect(view["actor"]["coins"]==money(7) and extension.get("loot_containers",[]).is_empty(),"Currency/closed loot view incorrect")
+	print("Closed projection coins: ",view["actor"]["coins"]," raw equality: ",session.typed_equal(view["actor"]["coins"],money(7))," typed equality: ",session.typed_equal(view["actor"]["coins"],money(7)))
+	expect(session.typed_equal(view["actor"]["coins"],money(7)) and extension.get("loot_containers",[]).is_empty(),"Currency/closed loot view incorrect")
 	# The two pieces of the same discovered stack have identical provenance.
 	# They can be consolidated, not silently merged with the original master stack.
 	if collected.get("ok",false) and collected.get("result",{}).get("items",[]).size()==1:
@@ -342,7 +343,7 @@ func run() -> void:
 			var outcome_balance = SQL.run(base.path_for(id),[SQL.stmt("SELECT payload FROM actors WHERE id=?",[session.token(id)["actor_id"]])],true)
 			expect(outcome_balance.get("ok",false) and outcome_balance["results"][0].size()==1 and session.typed_equal(JSON.parse_string(outcome_balance["results"][0][0]["payload"]).get("coins"),money(7)),"SQL outcome changed player currency")
 			print("Outcome projection coins: ",base.gameplay_view(id)["actor"]["coins"])
-			expect(base.gameplay_view(id)["actor"]["coins"]==money(7),"Outcome auto-awarded currency")
+			expect(session.typed_equal(base.gameplay_view(id)["actor"]["coins"],money(7)),"Outcome auto-awarded currency")
 	# Quest and objective lifecycle, persistent relationship and private factors.
 	var qa = story_args("quest","ledger-quest","Missing ledger","Find the missing ledger.","active",at,opening_event)
 	var invalid = request(id,"story_update",qa)
