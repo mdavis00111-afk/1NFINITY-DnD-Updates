@@ -1,8 +1,6 @@
 {
-  "version": "0.0.27",
-  "source_commit": "6b74eaae48887dfd4524083963f2fa18c6df1d9e",
-  "approved_new_paths": [
-    "gameplay/turn_context.gd"
-  ],
-  "notes": "Alpha live test: persistence, semantic authorization, narration context and recovery corrections. Known semantic and GUI issues remain; use disposable campaign."
+  "version": "0.0.29",
+  "source_commit": "65ce911d3131a318238b9d26facd21ebf564b46a",
+  "approved_new_paths": [],
+  "notes": "Owner live-test alpha. Includes the inspectable narration packet and descriptive inscription inspection for owned custom gear. See NEXT_CHAT.md and TESTING.md for defect triage and Windows cases."
 }
