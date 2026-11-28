@@ -1,3 +1,7 @@
+## DM map response integration
+
+Clarified the existing geography.facts contract in semantic_adapter.gd and verified the DM-first response through the reconciler to the map projection with semantic_integration_smoke.gd. No renderer, schema, movement or release change.
+
 ## Conditional narration for basic checks
 
 Added the conditional check to semantic_adapter.gd, semantic_controller.gd, semantic_policy.gd and tool_registry.gd. The existing request journal and logical receipt provide crash recovery. The selected narration is staged against the committed roll and reused on reopen. No schema or publication updates.

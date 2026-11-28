@@ -1,3 +1,7 @@
+## DM map response integration
+
+DM map discovery on feature/v031-dm-first is wired and tested. See TESTING.md for the focused --dm-map fixture. Exact coordinates and player movement remain separate from map discovery. Combat remains deferred.
+
 ## Conditional narration for basic checks
 
 Continue the DM-first branch from its verified head. The two-call conditional check is implemented. Read TESTING.md and HANDOFF.md for its scope and recovery guarantees. Keep state changes behind Godot validation and use a follow-up only when the result requires a new DM decision.

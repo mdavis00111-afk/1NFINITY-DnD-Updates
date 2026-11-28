@@ -1,3 +1,7 @@
+## DM map response integration
+
+The DM submits map proposals in the existing geography.facts response field. New places use reply-local keys, and Godot reconciles them into durable IDs for committed routes and relationships. Reported locations remain unplaced when exact coordinates are unknown. Discovery does not move the character.
+
 ## Conditional narration for basic checks
 
 The DM-first checkpoint now supports a one-response basic check. The DM may send a bounded RAW difficulty category, ability and optional pinned skill, plus two short prose branches. Godot chooses local public evidence, verifies a quiet eligible actor, resolves exactly one deterministic check and persists only the matching prose. The branches carry no world update, resource operation or replacement recap. A check without branches returns its committed result to the DM for normal follow-up. Initial authorization covers simple checks for quiet, healthy level-one human fighters and clerics with no subclass, feats, active inspiration or review requirements.

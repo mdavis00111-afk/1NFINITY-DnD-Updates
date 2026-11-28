@@ -1,3 +1,7 @@
+## DM map response integration
+
+Godot 4.7.2 headless --dm-map passed with mock Gemini and the isolated Linux SQLite test bridge. Two provider calls disclosed Willowfen, its northward relationship to Oak Inn, and Willow Road in one reply. Godot persisted the shared target ID, kept coordinates unknown, preserved player location and returned the facts through the map projection. Windows rendering and live Gemini remain owner acceptance.
+
 ## Conditional narration for basic checks
 
 The focused --conditional-check fixture in semantic_integration_smoke.gd passed with zero failures on Godot 4.7.2 Linux with the test-only SQLite bridge and mock Gemini. It verified two calls, one committed roll, only the selected branch entering history, reopen without another call or roll, and a check-only third call with the same verified roll. Standalone parser, Godot controller check-only and Git whitespace checks passed. Windows and live Gemini remain untested.

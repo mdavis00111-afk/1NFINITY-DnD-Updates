@@ -238,6 +238,13 @@ func run() -> void:
 	if not expect(not shield.is_empty(),"Owned shield"):
 		finish()
 		return
+	if "--dm-map" in OS.get_cmdline_user_args():
+		await persistent_npc_location(id)
+		ctrl.close_session()
+		workspace.queue_free()
+		ctrl.queue_free()
+		finish()
+		return
 	if "--conditional-check" in OS.get_cmdline_user_args():
 		await conditional_check_case(id)
 		ctrl.close_session()
@@ -584,17 +591,23 @@ func persistent_npc_location(id: String) -> void:
 	workspace.submit_chat()
 	if not await pump("interpret"):
 		return
-	reply({"kind":"conversation","args":{"text":input}})
+	reply({"world":["Oak Inn"]} if "--dm-map" in OS.get_cmdline_user_args() else {"kind":"conversation","args":{"text":input}})
 	if not await pump("narrate"):
 		return
 	var location_id=session.token(id)["location_id"]
-	var place_evidence="Mara describes Willowfen, a village."
+	var place_evidence="Mara describes Willowfen, a village. Willowfen lies north of Oak Inn. The Willow Road connects Oak Inn and Willowfen."
 	var npc_evidence="Tessa, the weaver, is here."
 	var response=combined(place_evidence+" "+npc_evidence)
 	response["geography"]["facts"]=[
 		{"kind":"place","subject":{"id":null,"local_key":"willowfen"},"name":"Willowfen","place_kind":"village","parent":null,"region":null,"position":null,"precision":"provisional","uncertainty_miles":null,"elevation_feet":null,"terrain":null,"footprint":[],"population":null,"occupancy":"unknown","asset_id":null,"description":null,"visibility":"player","evidence":place_evidence},
 		{"kind":"npc_description","subject":{"id":null,"local_key":"tessa"},"location":{"id":location_id,"local_key":null},"name":"Tessa","occupation":"weaver","visibility":"player","evidence":npc_evidence}
 	]
+	if "--dm-map" in OS.get_cmdline_user_args():
+		expect(outbound.back()["prompt"].contains("Map updates belong in geography.facts"),"Existing map function is explicit in the DM prompt")
+		var origin = {"id":location_id,"local_key":null}
+		var village = {"id":null,"local_key":"willowfen"}
+		response["geography"]["facts"].append({"kind":"relationship","from":origin,"to":village,"relation_kind":"relative","direction":"north","distance_miles":null,"precision":"provisional","visibility":"player","evidence":"Willowfen lies north of Oak Inn."})
+		response["geography"]["facts"].append({"kind":"route","subject":{"id":null,"local_key":"willow-road"},"from":origin,"to":village,"name":"Willow Road","route_kind":"road","precision":"provisional","distance_miles":null,"points":[],"visibility":"player","evidence":"The Willow Road connects Oak Inn and Willowfen."})
 	reply(response)
 	if not await pump("idle"):
 		return
@@ -620,6 +633,16 @@ func persistent_npc_location(id: String) -> void:
 	var npc=JSON.parse_string(npcs[0]["payload"])
 	expect(npc is Dictionary and npc.get("id")==npcs[0]["id"] and npc.get("occupation")=="weaver","NPC persisted identity and occupation")
 	expect(SQL.run(base.path_for(id),statements,true)==persisted,"World identities stable on independent SQLite read")
+	if "--dm-map" in OS.get_cmdline_user_args():
+		var map = preload("res://world/world_store.gd").new().map_view(id)
+		if not expect(map.get("ok",false),"Read committed Godot map"):
+			return
+		var village_id = places[0]["id"]
+		expect(map["locations"].any(func(row): return row["id"]==village_id and row["status"]=="reported" and row["x"]==null),"Reported place appears on map while coordinates remain unresolved")
+		expect(map["routes"].any(func(row): return row["name"]=="Willow Road" and row["to_id"]==village_id),"Same-reply route reaches the committed map")
+		expect(map["relationships"].any(func(row): return row["to_id"]==village_id and row["direction"]=="north"),"Same-reply relative direction reaches the committed map")
+		expect(session.token(id)["location_id"]==location_id,"Map update does not move the player")
+
 
 func geography_discovery_case(id: String) -> void:
 	var rows=SQL.run(base.path_for(id),[SQL.stmt("SELECT id FROM locations WHERE name=?",["Willowfen"])],true)
