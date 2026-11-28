@@ -1,6 +1,6 @@
 {
-  "version": "0.0.31",
-  "source_commit": "0223e259562bd6da736fb28370d65c8803ce579e",
+  "version": "0.0.32",
+  "source_commit": "0bf28256e7d131ffc36c3924544d8a89d657230d",
   "approved_new_paths": [],
-  "notes": "DM-first alpha. Corrected lookup and narration response contracts for ordinary dialogue, optional world proposals, and supported mechanics. Includes editable content controls, conditional checks, and map sketch. See TESTING.md for Windows acceptance."
+  "notes": "Windows playtest. Retry can recover saved input after a DM connection failure. Includes clearer Gemini diagnostics, fewer duplicate campaign reads, scrollable update notes, a top-right Copy log button, and Esc to return to Main while preserving the draft."
 }
