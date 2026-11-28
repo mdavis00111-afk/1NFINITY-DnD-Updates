@@ -2,6 +2,7 @@ extends Node
 ## The caller chooses a model; discovery never spends generation quota or changes saved settings.
 signal completed(ok: bool, message: String)
 signal models_completed(ok: bool, models: Array, message: String)
+const MATURITY = preload("res://campaigns/maturity_profiles.gd")
 const SETTINGS = "user://settings.cfg"
 const DEFAULT_MODEL = "gemini-3.5-flash-lite"
 const BASE = "https://generativelanguage.googleapis.com/v1beta/"
@@ -15,6 +16,10 @@ var current_key = ""
 var current_model = ""
 var complete_response_required = false
 var response_limit = 4000
+var campaign_maturity = ""
+
+func set_campaign_maturity(id: String) -> void:
+	campaign_maturity = id if not id.is_empty() else MATURITY.DEFAULT_ID
 
 func _ready() -> void:
 	request = HTTPRequest.new()
@@ -52,16 +57,20 @@ func list_page(token: String) -> void:
 		fail("Could not start model discovery.")
 
 # Only trusted engine callers supply a schema. Plain-prose callers keep their existing payload.
-static func request_payload(prompt: String, response_schema: Dictionary = {}, output_tokens: int = 2048, temperature: float = 0.8) -> Dictionary:
+static func request_payload(prompt: String, response_schema: Dictionary = {}, output_tokens: int = 2048, temperature: float = 0.8, maturity_id: String = "") -> Dictionary:
 	var payload = {"contents":[{"role":"user","parts":[{"text":prompt}]}],"generationConfig":{"temperature":clampf(temperature,0.0,1.0),"maxOutputTokens":clampi(output_tokens,1,8192)}}
 	if not response_schema.is_empty():
 		payload["generationConfig"]["responseMimeType"] = "application/json"
 		payload["generationConfig"]["responseJsonSchema"] = response_schema.duplicate(true)
+	if not maturity_id.is_empty():
+		payload["safetySettings"] = MATURITY.safety_settings(maturity_id)
 	return payload
 
 func generate(prompt: String, key_override: String = "", model_override: String = "", require_complete: bool = false, response_schema: Dictionary = {}, max_chars: int = 4000, output_tokens: int = 2048, temperature: float = 0.8) -> void:
 	if active:
 		return
+	var maturity_id = campaign_maturity
+	campaign_maturity = ""
 	var cfg = ConfigFile.new()
 	cfg.load(SETTINGS)
 	var key = key_override.strip_edges() if not key_override.is_empty() else str(cfg.get_value("gemini","api_key","")).strip_edges()
@@ -75,7 +84,7 @@ func generate(prompt: String, key_override: String = "", model_override: String 
 	if valid.search(model) == null:
 		completed.emit(false,"Enter a valid Gemini model ID in Settings.")
 		return
-	var payload = request_payload(prompt,response_schema,output_tokens,temperature)
+	var payload = request_payload(prompt,response_schema,output_tokens,temperature,maturity_id)
 	response_limit = clampi(max_chars,1,65536)
 	active = true
 	mode = "generate"

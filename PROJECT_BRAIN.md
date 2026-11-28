@@ -1,3 +1,7 @@
+## Native DM prompt and content controls
+
+Ported the supplied Python Storyteller and audience controls to native Godot on the unpublished v0.0.31 branch. The existing Narrator editor holds the adapted Storyteller default. The Content Rules editor saves profile guidance and four Gemini thresholds. Campaign opening, semantic and coordinator requests use the selected profile. Existing custom guidance and narrator settings are kept. Old stock values adopt the new defaults. Provider safeguards still apply. Historical Python action schemas and rules adjudication were outside this port.
+
 ## v0.0.31 architectural correction checkpoint
 
 Feature branch only. The lookup translator accepts bounded subject lists and cannot supply actions. Godot reads pinned rules, spell availability and owned objects. Explicit named prerequisites have local rejection paths. The DM receives the exact command, verified facts, persistent context and the existing prompt before an action is settled. The packet inspection includes the actual outbound hash. A no-effect reply uses a durable observation receipt and the existing world boundary. A scoped DM request for explicit self-use or supported first-level self-healing goes through the existing transaction and narration recovery. Explicit custom inscription inspection preserves the local proposal exception.

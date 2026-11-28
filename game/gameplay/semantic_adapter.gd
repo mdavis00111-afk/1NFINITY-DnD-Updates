@@ -119,6 +119,8 @@ func send() -> void:
 	var payload_size = payload["outbound"]["payload_characters"] if prose else JSON.stringify(payload).length()
 	metrics.append({"stage":identity["stage"],"call":calls,"prompt_characters":input.length(),"payload_characters":payload_size,"phase":"dispatch"})
 	metrics=metrics.slice(maxi(0,metrics.size()-64))
+	if transport.has_method("set_campaign_maturity"):
+		transport.set_campaign_maturity(str(controller.data["state"]["campaign"].get("maturity_id","standard")))
 	transport.generate(input,"","",true,schema(),65536,8192 if prose else 4096,0.8 if prose else 0.2)
 
 func diagnostic(code: String) -> void:

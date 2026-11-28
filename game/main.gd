@@ -428,7 +428,7 @@ func prompt_screen(menu: VBoxContainer) -> void:
 	menu.add_child(menu_button("Return to Settings",func(): show_screen("Settings")))
 
 func content_rules_screen(menu: VBoxContainer) -> void:
-	var intro = make_label("Choose an audience profile and edit its guidance. Mandatory audience and provider safeguards remain in force.",19)
+	var intro = make_label("Edit narration guidance and Gemini thresholds by audience profile. Provider safeguards remain in force.",19)
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	menu.add_child(intro)
 	var profiles = MATURITY.selectable_profiles()
@@ -443,13 +443,32 @@ func content_rules_screen(menu: VBoxContainer) -> void:
 	editor.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
 	editor.text = str(MATURITY.resolve(MATURITY.DEFAULT_ID)["instructions"])
 	menu.add_child(editor)
+	var threshold_pickers: Dictionary = {}
+	for category in MATURITY.CATEGORIES:
+		var row = HBoxContainer.new()
+		row.add_child(make_label(MATURITY.CATEGORIES[category],17))
+		var options = OptionButton.new()
+		for label in ["Block low and above","Block medium and above","Block high only","No category filter"]:
+			options.add_item(label)
+		row.add_child(options)
+		menu.add_child(row)
+		threshold_pickers[category]=options
+	var show_profile = func(id: String):
+		var profile = MATURITY.resolve(id)
+		editor.text = profile["instructions"]
+		for category in threshold_pickers:
+			threshold_pickers[category].select(MATURITY.THRESHOLDS.find(profile["thresholds"][category]))
+	show_profile.call(MATURITY.DEFAULT_ID)
 	var note = make_label("Changes apply to campaigns using this profile ID. Save before switching profiles.",17)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	picker.item_selected.connect(func(i: int):
-		editor.text = str(MATURITY.resolve(str(picker.get_item_metadata(i)))["instructions"])
+		show_profile.call(str(picker.get_item_metadata(i)))
 		note.text = "Editing "+picker.get_item_text(i)+".")
 	menu.add_child(menu_button("Save Content Rules",func():
-		var error = MATURITY.save_guidance(str(picker.get_item_metadata(picker.selected)),editor.text)
+		var thresholds: Dictionary = {}
+		for category in threshold_pickers:
+			thresholds[category]=MATURITY.THRESHOLDS[threshold_pickers[category].selected]
+		var error = MATURITY.save_guidance(str(picker.get_item_metadata(picker.selected)),editor.text,thresholds)
 		if error.is_empty():
 			config.load(CONFIG_PATH)
 		note.text = "Saved locally." if error.is_empty() else error))
@@ -458,7 +477,7 @@ func content_rules_screen(menu: VBoxContainer) -> void:
 		var error = MATURITY.reset_guidance(id)
 		if error.is_empty():
 			config.load(CONFIG_PATH)
-			editor.text = str(MATURITY.resolve(id)["instructions"])
+			show_profile.call(id)
 		note.text = "Default restored." if error.is_empty() else error))
 	menu.add_child(note)
 	menu.add_child(menu_button("Return to Settings",func(): show_screen("Settings")))

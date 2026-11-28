@@ -1,3 +1,7 @@
+## Native DM prompt and content controls
+
+The native Storyteller and content-control port is on feature/v031-dm-first. Settings has Narrator guidance and per-profile Content Rules. Preserve existing settings when continuing the DM-first integration. No publication.
+
 ## v0.0.31 development handoff
 
 Continue on feature/v031-dm-first from its verified remote head. Read PROJECT_BRAIN.md, HANDOFF.md, TESTING.md and the owner's architectural brief. Verify that godot and channel.json still point at the published v0.0.30 release. Complete and test contextual mechanics routing, actual cantrip effects, supported action parity and authoritative prose consequence handling before packaging.

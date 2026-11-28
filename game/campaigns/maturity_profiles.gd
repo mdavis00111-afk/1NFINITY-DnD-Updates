@@ -1,22 +1,46 @@
 extends RefCounted
-## Single local audience registry. Provider safety settings are not modified.
+## Central campaign audience guidance and Gemini threshold preferences.
 const PATH = "user://settings.cfg"
 const SECTION = "campaign_maturity"
 const KEY = "profiles"
 const DEFAULT_ID = "standard"
 const IDS = ["family", "standard", "mature"]
+const CATEGORIES = {"HARM_CATEGORY_HARASSMENT":"Harassment","HARM_CATEGORY_HATE_SPEECH":"Hate speech","HARM_CATEGORY_SEXUALLY_EXPLICIT":"Sexual content","HARM_CATEGORY_DANGEROUS_CONTENT":"Dangerous content"}
+const THRESHOLDS = ["BLOCK_LOW_AND_ABOVE","BLOCK_MEDIUM_AND_ABOVE","BLOCK_ONLY_HIGH","BLOCK_NONE"]
 # The legacy editor supported 24 custom entries. Built-ins must not consume those slots.
 const MAX_LEGACY_PROFILES = 24
 const DEFAULTS = [
-	{"id":"family","name":"Family friendly","instructions":"Audience: children and families. No graphic violence; conflict is brief or off-screen. Friendship rather than romance. At most a mildly spooky tone."},
-	{"id":"standard","name":"Standard","instructions":"Audience: general adult table. Ordinary fantasy violence without lingering gore. Romance may be implied; sexual activity stays off-page."},
-	{"id":"mature","name":"Mature","instructions":"Audience: confirmed adult table. Dark themes, horror, profanity, more intense fantasy combat and complex relationships may be appropriate. Intimate scenes remain non-explicit."}
+	{"id":"family","name":"Family friendly","instructions":"Audience: children and families. No graphic violence; conflict is brief and off-screen. No romance beyond friendship. Nothing frightening beyond a mild spooky tone."},
+	{"id":"standard","name":"Standard","instructions":"Audience: general adult table. Violence as the rules describe it, without lingering gore. Romance can be implied. Keep sexual content off the page."},
+	{"id":"mature","name":"Mature","instructions":"Audience: adults (18 and over). Dark themes, horror, profanity and graphic combat violence are allowed. Use vivid, detailed descriptions of combat, injuries, horror, nudity and adult themes where appropriate. Adult relationships and graphic intimacy may be portrayed within provider safeguards."}
+]
+const ORIGINAL_GUIDANCE = [
+	"Audience: children and families. No graphic violence; conflict is brief or off-screen. Friendship rather than romance. At most a mildly spooky tone.",
+	"Audience: general adult table. Ordinary fantasy violence without lingering gore. Romance may be implied; sexual activity stays off-page.",
+	"Audience: confirmed adult table. Dark themes, horror, profanity, more intense fantasy combat and complex relationships may be appropriate. Intimate scenes remain non-explicit."
 ]
 # Compatibility for the old editor until specialist 01 replaces it.
 const EXAMPLE = '[{"id":"standard","name":"Standard","instructions":"Ordinary fantasy violence; sexual activity off-page."}]'
 
+static func default_thresholds(id: String) -> Dictionary:
+	var result: Dictionary = {}
+	for category in CATEGORIES:
+		result[category] = "BLOCK_NONE" if id=="mature" else "BLOCK_ONLY_HIGH"
+	return result
+
 static func default_profiles() -> Array:
-	return DEFAULTS.duplicate(true)
+	var result = DEFAULTS.duplicate(true)
+	for profile in result:
+		profile["thresholds"] = default_thresholds(profile["id"])
+	return result
+
+static func safety_settings(id: String) -> Array:
+	var profile = resolve_for_narration(id)
+	var thresholds = profile.get("thresholds",default_thresholds(DEFAULT_ID))
+	var result: Array = []
+	for category in CATEGORIES:
+		result.append({"category":category,"threshold":thresholds[category]})
+	return result
 
 static func validate(value: Variant) -> String:
 	if not value is Array:
@@ -38,6 +62,13 @@ static func validate(value: Variant) -> String:
 			return "Profile IDs must be unique lowercase identifiers."
 		if str(profile["name"]).length()>80 or str(profile["instructions"]).length()>12000:
 			return "Profile name or instructions exceed the supported length."
+		if profile.has("thresholds"):
+			var thresholds = profile["thresholds"]
+			if not thresholds is Dictionary or thresholds.size()!=CATEGORIES.size():
+				return "Set one Gemini threshold for each category."
+			for category in CATEGORIES:
+				if not thresholds.get(category) in THRESHOLDS:
+					return "Invalid Gemini safety threshold."
 		seen[id]=true
 		if not IDS.has(id):
 			legacy_count += 1
@@ -50,7 +81,10 @@ static func _merge(value: Array) -> Array:
 	for saved in value:
 		var index = IDS.find(saved["id"])
 		if index >= 0:
-			result[index]["instructions"] = saved["instructions"]
+			if saved["instructions"] != ORIGINAL_GUIDANCE[index]:
+				result[index]["instructions"] = saved["instructions"]
+			if saved.has("thresholds"):
+				result[index]["thresholds"] = saved["thresholds"].duplicate(true)
 		else:
 			# Preserve historical custom IDs for existing campaigns, not new choices.
 			result.append(saved.duplicate(true))
@@ -123,15 +157,17 @@ static func save_profiles(value: Variant) -> String:
 		return "Could not save maturity profiles."
 	return ""
 
-static func save_guidance(id: String, instructions: String) -> String:
+static func save_guidance(id: String, instructions: String, thresholds: Dictionary = {}) -> String:
 	if not IDS.has(id):
 		return "Choose a supported maturity profile."
 	var profile = resolve(id)
 	profile["instructions"] = instructions.strip_edges()
+	if not thresholds.is_empty():
+		profile["thresholds"] = thresholds.duplicate(true)
 	return save_profiles([profile])
 
 static func reset_guidance(id: String) -> String:
 	var index = IDS.find(id)
 	if index < 0:
 		return "Choose a supported maturity profile."
-	return save_profiles([DEFAULTS[index]])
+	return save_profiles([default_profiles()[index]])

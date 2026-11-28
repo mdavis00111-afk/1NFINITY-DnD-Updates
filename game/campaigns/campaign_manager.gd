@@ -434,6 +434,7 @@ func request_opening() -> void:
 	if is_instance_valid(opening_button):
 		opening_button.disabled=true
 	show_note("Generating opening… Saved campaign is safe.")
+	gemini.set_campaign_maturity(str(prepared["record"].get("maturity_id","standard")))
 	gemini.generate(prepared["prompt"],"","",true,prepared["response_schema"])
 
 func opening_received(ok: bool, message: String, source: Node) -> void:

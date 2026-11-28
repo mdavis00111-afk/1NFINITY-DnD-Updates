@@ -26,8 +26,8 @@ static func valid(bundle: Variant) -> bool:
 	return bundle["schema_version"]=="1" and bundle["role"]=="Narrator" and bundle["kind"] in ["proposal","shared"] and (bundle["revision"] is int or bundle["revision"] is float) and is_finite(float(bundle["revision"])) and floor(float(bundle["revision"]))==float(bundle["revision"]) and bundle["revision"]>=0 and bundle["revision"]<2147483647 and hash_valid(bundle["base_hash"],64) and hash_valid(bundle["prompt_hash"],64) and bundle["prompt"] is String and not bundle["prompt"].strip_edges().is_empty() and bundle["prompt"].length()<=24000 and bundle["prompt"].sha256_text()==bundle["prompt_hash"] and hash_valid(bundle["source_commit"],40) and bundle["created_utc"] is String and bundle["created_utc"].length()<=40 and bundle["summary"] is String and not bundle["summary"].strip_edges().is_empty() and bundle["summary"].length()<=500
 
 static func initial() -> Dictionary:
-	var hash=NARRATOR.DEFAULT_PROMPT.sha256_text()
-	return {"schema_version":"1","role":"Narrator","kind":"shared","revision":0,"base_hash":hash,"prompt_hash":hash,"prompt":NARRATOR.DEFAULT_PROMPT,"source_commit":INITIAL_COMMIT,"created_utc":"","summary":"Pinned original Narrator guidance."}
+	var hash=NARRATOR.ORIGINAL_PROMPT.sha256_text()
+	return {"schema_version":"1","role":"Narrator","kind":"shared","revision":0,"base_hash":hash,"prompt_hash":hash,"prompt":NARRATOR.ORIGINAL_PROMPT,"source_commit":INITIAL_COMMIT,"created_utc":"","summary":"Pinned original Narrator guidance."}
 
 static func read_file(path: String) -> Dictionary:
 	var f=FileAccess.open(path,FileAccess.READ)

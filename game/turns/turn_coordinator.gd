@@ -185,6 +185,8 @@ func send(stage: String, expected: Dictionary, prompt: String, schema: Dictionar
 	if transport!=source or generation!=epoch:
 		return fail("Request canceled.")
 	var tokens = 2048 if stage=="rules" else (4096 if stage=="narration" else 8192)
+	if source.has_method("set_campaign_maturity"):
+		source.set_campaign_maturity(str(token.get("campaign",{}).get("maturity_id","standard")))
 	source.generate(prompt,"","",true,schema,65536,tokens,temperature)
 	return {"ok":true,"request_id":expected["request_id"]}
 

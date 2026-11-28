@@ -1,3 +1,7 @@
+## Native DM prompt and content controls
+
+Codex Cloud adapted STORY_SYSTEM and content_control.py supplied by the owner. The port uses maturity_profiles.gd, narrator_prompt.gd, prompt_sharing.gd, main.gd, gemini.gd, semantic_adapter.gd, campaign_manager.gd and turn_coordinator.gd. Tests in ai_profile_smoke.gd. No runtime Python or updater change.
+
 ## v0.0.31 partial checkpoint
 
 Owner-authorized development in Codex Cloud from published godot f8d2989502d820dfb3106d0000828e7a84122fc4. Scope was semantic_adapter.gd, semantic_controller.gd, tool_registry.gd, turn_context.gd, semantic_integration_smoke.gd and these records. Proposed responses before mechanics are journaled against the original request and revision. Existing authoritative handlers remain the only route to expenditure or item use. Release inputs were left unchanged. See the blockers in PROJECT_BRAIN.md and focused checks in TESTING.md.

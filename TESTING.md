@@ -1,3 +1,7 @@
+## Native DM prompt and content controls
+
+Godot 4.7.2 Linux ai_profile_smoke.gd passed in a disposable user directory. It checks editable profile and threshold persistence, stock migration, Standard fallback, campaign transport payload and non-campaign provider defaults. GDScript parser and whitespace checks passed. Windows Settings and live Gemini validation are outstanding.
+
 ## v0.0.31 partial checkpoint validation
 
 Standalone gdtoolkit parsed the five changed scripts. Godot 4.7.2 check-only parsed the controller. The pinned SQLite catalogue contained the Mage Hand and Cure Wounds records. Git whitespace checks and release-file equality passed.
