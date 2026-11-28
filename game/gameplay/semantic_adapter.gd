@@ -135,8 +135,11 @@ func received(epoch: int,clock: int,ok: bool,message: String) -> void:
 	if not ok:
 		failed(message)
 		return
-	var parsed=JSON.parse_string(message)
-	if not parsed is Dictionary:
+	# Invalid provider JSON is an expected recoverable input, not an engine error.
+	var parser=JSON.new()
+	var parse_status=parser.parse(message)
+	var parsed=parser.data
+	if parse_status!=OK or not parsed is Dictionary:
 		diagnostic("response_not_json_object")
 		repair("Return one complete JSON object.")
 		return
