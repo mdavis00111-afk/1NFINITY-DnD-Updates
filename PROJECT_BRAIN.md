@@ -709,3 +709,7 @@ Owner confirmed last live GUI good; preserve design, investigate headless layout
 
 ### Native QA 46094317930 follow-up
 Both platforms tested 99a71aa: 10/14 suites pass; campaign, noncombat and cartography renderer now pass, persistence/restart remain green. C4 direct receive still compared journal attempt via raw dictionary inequality; use strict typed_equal as in semantic controller. World committed check replay assertion now requires successful replay and typed equality of entire receipt, preserving all dice values and rejecting type coercion. C5 fixture still contains obsolete adjudicate/critical/background provider stages; requires separate migration to combined contract, not bypassing authorization. GUI unchanged per owner. Native confirmation pending; no publication.
+
+
+### Semantic QA boundary diagnostics
+Active suite already excludes legacy_scenarios; do not attribute active failures to that dead fixture. Add fixed-code diagnostics gated by disposable QA environment for transport parse/stale response, controller acceptance, identity, assessment, combined world validation and journal write, plus fixture timeout stage and call count. No prompts, response bodies, credentials or campaign identifiers added to diagnostics. No mechanics, request budgets or GUI changes. Native rerun required; no release.

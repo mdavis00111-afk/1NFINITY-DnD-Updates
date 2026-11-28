@@ -117,6 +117,7 @@ func pump(stage: String,after_serial: int=-1) -> bool:
 			return true
 		if stage!="idle" and ctrl.inflight.get("stage")==stage and is_instance_valid(ctrl.adapter.transport) and not ctrl.adapter.transport.prompt.is_empty() and ctrl.adapter.serial>after_serial:
 			return true
+	print("SEMANTIC_QA pump_timeout expected=",stage," active=",ctrl.active().get("stage","none")," inflight=",ctrl.inflight.get("stage","none")," calls=",outbound.size())
 	return expect(false,"Expected "+stage+"; got "+str(ctrl.active().get("stage"))+" / "+ctrl.status)
 
 func reply(value: Variant) -> void:

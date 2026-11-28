@@ -146,6 +146,7 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 
 func receive_interpretation(identity: Dictionary,result: Dictionary,selected: Array) -> Dictionary:
 	if not matches(identity,"interpret") or JSON.stringify(result).length()>65536:
+		adapter.diagnostic("interpret_identity_or_size_rejected")
 		return failure("Stale interpretation.")
 	var job=active().duplicate(true)
 	if result.has("status"):
@@ -200,6 +201,7 @@ func receive_interpretation(identity: Dictionary,result: Dictionary,selected: Ar
 	if not assessment.is_empty():
 		var checked=policy.validate_assessment(req,assessment,job,data["state"])
 		if not checked.get("ok",false) and not policy.direct_safe(req,job,data["state"]):
+			adapter.diagnostic("context_assessment_rejected")
 			stop("clarification",checked.get("error","Contextual assessment unavailable."))
 			return failure(status)
 		if checked.get("ok",false):
@@ -214,6 +216,7 @@ func receive_interpretation(identity: Dictionary,result: Dictionary,selected: Ar
 	job["attempt"]={}
 	inflight={}
 	if not update_active(job):
+		adapter.diagnostic("interpret_journal_write_unconfirmed")
 		return failure("Interpretation persistence unconfirmed.")
 	refresh()
 	advance.call_deferred()
@@ -273,6 +276,7 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 	if stage=="narrate" and result.has("geography"):
 		var context=scene_context(data["state"])
 		if not DTO.exact_keys(result,["text","recap","geography","story","discoveries"]) or not DTO.bounded_text(result["recap"],3000) or not DTO.bounded_text(result["text"],12000) or not context.get("ok",false) or not PACK.valid_geography(result["geography"],PACK.identity(data["state"],job["turn_id"],identity["attempt_id"]),result["text"],context["ids"]) or not valid_story(result["story"],result["text"]) or not valid_discoveries(result["discoveries"],result["text"]):
+			adapter.diagnostic("combined_world_validation_rejected")
 			stop("retry","Combined narration/world proposal failed validation.")
 			return failure(status)
 		var verified=outcome(job)
@@ -301,6 +305,7 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 		job["attempt"]={}
 		inflight={}
 		if not update_active(job):
+			adapter.diagnostic("narration_journal_write_unconfirmed")
 			return failure("Combined narration persistence unconfirmed.")
 		refresh()
 		advance.call_deferred()
