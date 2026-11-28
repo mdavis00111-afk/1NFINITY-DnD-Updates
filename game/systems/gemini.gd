@@ -17,6 +17,10 @@ var current_model = ""
 var complete_response_required = false
 var response_limit = 4000
 var campaign_maturity = ""
+var last_response_diagnostic: Dictionary = {}
+
+func response_diagnostic() -> Dictionary:
+	return last_response_diagnostic.duplicate(true)
 
 func set_campaign_maturity(id: String) -> void:
 	campaign_maturity = id if not id.is_empty() else MATURITY.DEFAULT_ID
@@ -69,6 +73,7 @@ static func request_payload(prompt: String, response_schema: Dictionary = {}, ou
 func generate(prompt: String, key_override: String = "", model_override: String = "", require_complete: bool = false, response_schema: Dictionary = {}, max_chars: int = 4000, output_tokens: int = 2048, temperature: float = 0.8) -> void:
 	if active:
 		return
+	last_response_diagnostic={}
 	var maturity_id = campaign_maturity
 	campaign_maturity = ""
 	var cfg = ConfigFile.new()
@@ -79,9 +84,11 @@ func generate(prompt: String, key_override: String = "", model_override: String 
 	var valid = RegEx.new()
 	valid.compile("^[A-Za-z0-9._-]+$")
 	if not key_valid(key):
+		last_response_diagnostic={"category":"missing_or_invalid_key"}
 		completed.emit(false,"Save a Gemini API key in Settings first.")
 		return
 	if valid.search(model) == null:
+		last_response_diagnostic={"category":"invalid_model_id"}
 		completed.emit(false,"Enter a valid Gemini model ID in Settings.")
 		return
 	var payload = request_payload(prompt,response_schema,output_tokens,temperature,maturity_id)
@@ -93,6 +100,7 @@ func generate(prompt: String, key_override: String = "", model_override: String 
 	complete_response_required = require_complete or not response_schema.is_empty()
 	var err = request.request(BASE+"models/"+model+":generateContent",PackedStringArray(["Content-Type: application/json","x-goog-api-key: "+key]),HTTPClient.METHOD_POST,JSON.stringify(payload))
 	if err != OK:
+		last_response_diagnostic={"category":"request_start_failed","godot_error":err}
 		fail("Could not start Gemini request.")
 
 func fail(message: String) -> void:
@@ -123,11 +131,17 @@ func error_message(code: int, data: Variant) -> String:
 				detail = detail.replace(secret,"[redacted]")
 		if not detail.is_empty():
 			message += "\n"+detail.left(420)
+		var normalized = detail.to_lower()
+		if code==400 and ("schema" in normalized or "constraint" in normalized):
+			last_response_diagnostic["category"]="schema_rejected"
+		elif code==400 and "safety" in normalized:
+			last_response_diagnostic["category"]="safety_settings_rejected"
 	return message
 
 func received(result: int, code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
 	if not active:
 		return
+	last_response_diagnostic={"http_status":code,"http_result":result}
 	if result != HTTPRequest.RESULT_SUCCESS:
 		fail("Gemini connection failed or timed out.")
 		return
@@ -170,6 +184,14 @@ func received(result: int, code: int, _headers: PackedStringArray, body: PackedB
 	current_key = ""
 	current_model = ""
 	var output = generation_text(data,complete_response_required,response_limit)
+	if not output["ok"]:
+		var candidates = data.get("candidates",[])
+		var feedback = data.get("promptFeedback",{})
+		if candidates is Array and not candidates.is_empty() and candidates[0] is Dictionary:
+			var reason = candidates[0].get("finishReason","")
+			last_response_diagnostic["finish_reason"]=reason if reason in ["STOP","MAX_TOKENS","SAFETY","RECITATION","OTHER","BLOCKLIST","PROHIBITED_CONTENT","SPII","MALFORMED_FUNCTION_CALL"] else "unknown"
+		if feedback is Dictionary and feedback.has("blockReason"):
+			last_response_diagnostic["prompt_blocked"]=true
 	response_limit = 4000
 	complete_response_required = false
 	completed.emit(output["ok"],output["message"])

@@ -65,7 +65,7 @@ func bind_campaign(id: String, reviewer: Callable, prose_reviewer: Callable) -> 
 		status="Existing pending turn requires original controller recovery."
 	else:
 		status="Development controller ready."
-	refresh()
+	refresh_confirmed()
 	if not data["work"]["active"].is_empty() or not data["work"]["queued"].is_empty():
 		advance.call_deferred()
 	return {"ok":true}
@@ -107,6 +107,11 @@ func refresh() -> void:
 		return
 	if not reload():
 		block_view("Campaign work readback unavailable.")
+		return
+	refresh_confirmed()
+
+func refresh_confirmed() -> void:
+	if closed:
 		return
 	var fresh=BASE.new().gameplay_view(campaign_id)
 	var ext=fresh.get("interaction_extension",{})
@@ -220,7 +225,7 @@ func submit(intent: Dictionary) -> Dictionary:
 		# Unknown acknowledgement deliberately does not match C1 success/reject shape.
 		return {}
 	status="Input saved; processing."
-	refresh.call_deferred()
+	refresh_confirmed.call_deferred()
 	advance.call_deferred()
 	return acknowledge(intent,true,"Saved for processing, not yet resolved.")
 
@@ -268,7 +273,7 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 		return
 	inflight=identity.duplicate(true)
 	status="Processing "+stage.replace("_"," ")+"…"
-	refresh()
+	refresh_confirmed()
 	semantic_requested.emit(stage,{"identity":identity.duplicate(true),"data":dispatch.duplicate(true)})
 
 func prepare_dispatch(_stage: String,payload: Dictionary,_identity: Dictionary) -> Dictionary:
@@ -299,6 +304,9 @@ func advance() -> void:
 		return
 	if not inflight.is_empty() and registry.session.typed_equal(inflight,active().get("attempt")):
 		return
+	advance_loaded()
+
+func advance_loaded() -> void:
 	var work=data["work"]
 	if work["active"].is_empty():
 		if work["queued"].is_empty() or data["state"]["pending_turn_id"]!=null or not work["last"].get("status") in ["committed","rejected"] or not idle_database():

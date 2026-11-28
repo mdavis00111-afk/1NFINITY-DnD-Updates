@@ -32,7 +32,7 @@ func bind_ai(id: String,context_reviewer: Callable=Callable(),prose_reviewer: Ca
 	return bind_campaign(id,policy.review,policy.review_prose)
 
 func matches(identity: Dictionary,stage: String) -> bool:
-	return not closed and not running and not notifying and reload() and not active().is_empty() and identity==inflight and registry.session.typed_equal(identity,active().get("attempt")) and identity.get("stage")==stage and active().get("stage")==stage and identity.get("revision")==data["state"]["revision"]
+	return not closed and not running and not notifying and identity==inflight and reload() and not active().is_empty() and registry.session.typed_equal(identity,active().get("attempt")) and identity.get("stage")==stage and active().get("stage")==stage and identity.get("revision")==data["state"]["revision"]
 
 func scene_context(state: Dictionary) -> Dictionary:
 	var key=[state["campaign_id"],state["actor_id"],state["revision"],state["pending_turn_id"],state["metadata"],state["location_id"]]
@@ -1101,10 +1101,14 @@ func advance() -> void:
 		# Legacy pending assessment cannot authorize a write or restart an obsolete provider stage.
 		stop("clarification","Legacy contextual assessment interrupted. Recover or clarify the pending action.")
 		return
-	super.advance()
+	advance_loaded()
 
 func retry() -> Dictionary:
-	if closed or running or notifying or not reload() or active().is_empty():
+	if closed or running or notifying or not reload():
+		return failure("No recoverable request.")
+	if active().is_empty():
+		if not data["work"]["queued"].is_empty():
+			return resume_queue()
 		return failure("No recoverable request.")
 	var job=active().duplicate(true)
 	retire_attempt()
@@ -1126,7 +1130,15 @@ func retry() -> Dictionary:
 	elif not job.get("tool",{}).is_empty():
 		job["stage"]="execute"
 	elif job.has("lookup_revision"):
-		job["stage"]="narrate"
+		if job["lookup_revision"]==data["state"]["revision"]:
+			job["stage"]="narrate"
+		elif data["state"]["pending_turn_id"]==null and idle_database():
+			job.erase("lookup_revision")
+			job.erase("lookup_facts")
+			job.erase("turn_id")
+			job["stage"]="new"
+		else:
+			return failure("A saved turn must be recovered before refreshing this input.")
 	else:
 		job["stage"]="new"
 	if not update_active(job):

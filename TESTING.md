@@ -1,3 +1,11 @@
+## Narration transport recovery
+
+Godot 4.7.2 Linux passed script `--check-only` for the campaign manager, semantic controller and integration fixture after importing assets in the disposable project. `godot --headless --path game --script res://tests/ai_profile_smoke.gd` passed with a disposable user directory. It verifies a simulated HTTP 400 produces the status and failure category without recording provider text. `git diff --check` passed.
+
+`godot --headless --path <disposable-project> --script res://tests/semantic_integration_smoke.gd -- <mode>` used mock Gemini and the isolated Linux SQLite test bridge. `--transport-retry` verifies one journal read on an idle tick, no settlement after a failed DM transport call, Retry at the same revision, fresh lookup context after a revision change and one commit for the original `hello`. `--chat-recovery` verifies Retry can promote an already queued `hello` after cancellation. `--provider-format` checks the compact provider schema, exact prompt and attempt binding, ordinary conversation and optional world validation. `--conditional-check` verifies the dice outcome and interrupted recovery paths.
+
+On Windows, open the previously affected campaign, choose Turn → Retry once, and verify the saved `hello` appears and receives a single DM reply. Check whether the campaign opens faster and whether screen transitions still trigger the viewport warning. If the turn fails again, retain its new `SEMANTIC_BOUNDARY` line. Live Gemini schema acceptance, Windows SQLite timings, full screen-transition performance and the updater were outside these checks.
+
 ## Chat blocker recovery
 
 Godot 4.7.2 Linux --chat-recovery passed with mock Gemini and the isolated SQLite bridge. It queued a literal hello behind malformed provider output, preserved unsent text on blocked Enter, canceled the uncommitted turn, resumed hello, and committed the DM reply in two calls. Windows and the owner campaign were not tested.

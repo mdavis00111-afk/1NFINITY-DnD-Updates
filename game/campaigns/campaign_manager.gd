@@ -480,13 +480,16 @@ func open_workspace() -> void:
 	render()
 
 func build_workspace(parent: Container) -> void:
-	var snapshot = store.gameplay_view(str(active["id"]))
-	var error = store.last_error
-	if not snapshot.is_empty():
-		active = snapshot["campaign"]
-	elif error.is_empty():
-		error = "Campaign workspace unavailable. Return to Campaign and reopen."
-	if not snapshot.is_empty() and not snapshot.get("opening_available",false) and pending_campaign.is_empty():
+	var error = ""
+	var snapshot: Dictionary = {}
+	var needs_opening_snapshot = store.opening_eligible(active) or not pending_campaign.is_empty()
+	if needs_opening_snapshot:
+		snapshot=store.gameplay_view(str(active["id"]))
+		if not snapshot.is_empty():
+			active=snapshot["campaign"]
+	# A resumed campaign already has its metadata. The binding builds the
+	# full workspace snapshot, so avoid building an unused one first.
+	if pending_campaign.is_empty() and (not needs_opening_snapshot or (not snapshot.is_empty() and not snapshot["opening_available"])):
 		gameplay_controller=CONTROLLER.new()
 		add_child(gameplay_controller)
 		var bound: Dictionary=gameplay_controller.bind_ai(str(active["id"]))
@@ -502,6 +505,10 @@ func build_workspace(parent: Container) -> void:
 			error=str(bound.get("error","Gameplay binding failed."))
 		close_gameplay()
 		snapshot=store.gameplay_view(str(active["id"]))
+		if not snapshot.is_empty():
+			active=snapshot["campaign"]
+	if snapshot.is_empty() and error.is_empty():
+		error=store.last_error if not store.last_error.is_empty() else "Campaign workspace unavailable. Return to Campaign and reopen."
 	workspace = WORKSPACE.new()
 	workspace.configure(snapshot,active,leave,open_workspace_settings,request_opening,not pending_campaign.is_empty(),error)
 	parent.add_child(workspace)
