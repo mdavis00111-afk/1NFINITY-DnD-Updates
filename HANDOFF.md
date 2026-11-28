@@ -476,3 +476,7 @@ Windows/Linux 3518ac6 both import PASS, 6/14 suites, identical five persistence 
 
 ### Consolidated v0.0.27 integration audit
 Candidate includes canonical settlement/authorization comparisons, versioned outcome fingerprints, deferred story source binding, bounded context and prompt alignment. Verified inherited DTO dependency, QA environment gate, fixture timeout variables and typed_equal helper by source inspection. Native runner treats any ERROR line as failure; intentional malformed provider fixture used JSON.parse_string, which logs an engine error. Switch adapter to JSON.parse status handling, preserving rejection and one-call budget; do not weaken runner. Latest executed baseline remains 99a71aa, Windows/Linux 10/14. All later commits unexecuted. Release blocked pending same-SHA 14/14 both platforms, restart/replay, approved GUI visual acceptance, live Gemini request counts, release manifest/hash and updater preservation/rollback checks. Owner deferred intermediate native QA, not release gates. No publication.
+
+
+### v0.0.27 consolidated validation package
+Prepared design/V027_RELEASE_CANDIDATE.md using existing native runner and release safety helper; specifies exact-SHA full suite evidence, live acceptance and updater/profile rollback gates. No new runtime dependency, no game source change, no tests executed or release published. Latest verified native baseline 10/14 both OS. Candidate awaits consolidated native evidence.
