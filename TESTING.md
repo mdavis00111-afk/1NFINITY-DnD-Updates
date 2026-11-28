@@ -571,3 +571,7 @@ Owner authorized live testing instead of mandatory GitHub gameplay regression. L
 
 ### Alpha 0.0.33 packaging
 Owner authorized live testing instead of mandatory GitHub gameplay regression. Latest Linux baseline 12/14; semantic corrections unverified; GUI owner-managed. No claim of native or live acceptance. Packaging only.
+
+
+### Alpha 0.0.34 packaging
+Owner authorized live testing instead of mandatory GitHub gameplay regression. Latest Linux baseline 12/14; semantic corrections unverified; GUI owner-managed. No claim of native or live acceptance. Packaging only.
