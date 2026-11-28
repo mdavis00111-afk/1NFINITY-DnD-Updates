@@ -139,35 +139,24 @@ func received(epoch: int,clock: int,ok: bool,message: String) -> void:
 		diagnostic("response_not_json_object")
 		repair("Return one complete JSON object.")
 		return
-	if identity["stage"]=="interpret" and parsed.has("queries"):
-		var requested=parsed["queries"]
-		parsed.erase("queries")
-		if not collect_lookups(requested):
+	if identity["stage"]=="interpret":
+		if not controller.registry.interpreter_envelope_valid(parsed):
+			failed("Invalid typed interpretation envelope.")
 			return
+		if parsed.has("queries"):
+			var requested=parsed["queries"]
+			parsed.erase("queries")
+			if not collect_lookups(requested):
+				return
 	match identity["stage"]:
 		"narrate":
 			if not DTO.exact_keys(parsed,["text","recap","geography","story","discoveries"]) or not DTO.bounded_text(parsed["recap"],3000) or not DTO.bounded_text(parsed["text"],12000):
 				failed("Invalid combined narration envelope.")
 				return
-		"interpret":
-			if parsed.has("steps"):
-				if not DTO.exact_keys(parsed,["steps"]) or not parsed["steps"] is Array or parsed["steps"].is_empty() or parsed["steps"].size()>4:
-					repair("Invalid ordered action list.")
-					return
-				for step in parsed["steps"]:
-					if not valid_tool(step):
-						repair("Invalid action in ordered list; use exact registry types.")
-						return
-			elif not valid_tool(parsed) and not (DTO.exact_keys(parsed,["status","message"]) and parsed["status"] in ["clarification","unsupported"] and DTO.bounded_text(parsed["message"],1000)):
-				repair("Unknown tool or malformed arguments. Use catalogue types; return clarification if uncertain.")
-				return
 	deliver(parsed)
 
-func valid_tool(value: Variant) -> bool:
-	return DTO.exact_keys(value,["kind","args"]) and REG.TOOLS.has(value["kind"]) and controller.registry.arguments_valid(value["args"],REG.TOOLS[value["kind"]][0])
-
 func collect_lookups(requested: Variant) -> bool:
-	if not requested is Array or requested.size()>MAX_QUERIES:
+	if not controller.registry.interpreter_queries_valid(requested):
 		failed("Invalid lookup list.")
 		return false
 	var feedback: Array=[]

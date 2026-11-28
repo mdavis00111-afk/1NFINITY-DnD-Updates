@@ -123,7 +123,6 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 		expanded.erase("original_player_text") # exact original already in intent
 		expanded["catalogue"]=context_builder.catalogue(registry)
 		expanded["lookup_catalogue"]=REG.QUERY_TYPES
-		expanded["next_step_hint"]=job.get("remaining",[]).front() if not job.get("remaining",[]).is_empty() else null
 		expanded["completed_steps"]=job.get("completed_steps",[])
 
 	elif stage=="narrate":
@@ -144,38 +143,17 @@ func receive_interpretation(identity: Dictionary,result: Dictionary,selected: Ar
 	if not matches(identity,"interpret") or JSON.stringify(result).length()>65536:
 		adapter.diagnostic("interpret_identity_or_size_rejected")
 		return failure("Stale interpretation.")
+	if not registry.interpreter_intent_valid(result):
+		stop("clarification","Invalid typed interpretation.")
+		return failure(status)
 	var job=active().duplicate(true)
 	if result.has("status"):
 		return super.receive(identity,result)
-	var steps=result.get("steps",[result]).duplicate(true)
-	var assessment: Dictionary={}
-	if steps is Array and not steps.is_empty() and steps[0] is Dictionary:
-		var supplied=steps[0].get("assessment",{})
-		if supplied is Dictionary:
-			assessment=supplied.duplicate(true)
-		for step in steps:
-			if step is Dictionary:
-				step.erase("assessment")
-	if not steps is Array or steps.is_empty() or steps.size()>4:
-		stop("clarification","No supported ordered action.")
+	if not job.get("remaining",[]).is_empty():
+		stop("clarification","Legacy dependent interpretation interrupted; recover without reinterpreting.")
 		return failure(status)
-	for step in steps:
-		if not DTO.exact_keys(step,["kind","args"]) or not REG.TOOLS.has(step["kind"]) or not registry.arguments_valid(step["args"],REG.TOOLS[step["kind"]][0]):
-			stop("clarification","Invalid typed proposal.")
-			return failure(status)
-		# World-administrative tools may only follow verified DM output, never
-		# masquerade as an ordinary player intention.
-		if step["kind"] in DISCOVERY+["story_update","party_membership","reconcile_legacy_slots"]:
-			stop("clarification","World proposal needs an established source and independent review.")
-			return failure(status)
-	var remaining=job.get("remaining",[])
-	if not remaining.is_empty():
-		if steps.size()!=1 or steps[0]["kind"]!=remaining[0]["kind"]:
-			stop("clarification","Dependent action changed; review before proceeding.")
-			return failure(status)
-		remaining.pop_front()
-	else:
-		remaining=steps.slice(1)
+	var steps=result.get("steps",[result]).duplicate(true)
+	var remaining=steps.slice(1)
 	var first=steps[0]
 	var args=first["args"].duplicate(true)
 	if args.has("text") and job["intent"]["kind"]=="chat":
@@ -194,16 +172,6 @@ func receive_interpretation(identity: Dictionary,result: Dictionary,selected: Ar
 	# Never carry an earlier action assessment into a fresh interpretation.
 	job.erase("context_review")
 	job["tool"]=req
-	# Bind the combined interpretation/assessment to the exact local request.
-	# Existing independent interpretation remains until checkpoint 3.
-	if not assessment.is_empty():
-		var checked=policy.validate_assessment(req,assessment,job,data["state"])
-		if not checked.get("ok",false) and not policy.direct_safe(req,job,data["state"]):
-			adapter.diagnostic("context_assessment_rejected")
-			stop("clarification",checked.get("error","Contextual assessment unavailable."))
-			return failure(status)
-		if checked.get("ok",false):
-			job["context_review"]={"request":req.duplicate(true),"revision":data["state"]["revision"],"attempt_id":identity["attempt_id"],"report":assessment,"authorization_version":"combined-v027"}
 	var combined=job.get("selected_context",[])+selected
 	var distinct: Array=[]
 	for entry in combined:
@@ -314,21 +282,10 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 		advance.call_deferred()
 		return {"ok":true}
 	if stage=="adjudicate":
-		var review_req=job.get("review_request",{})
-		var checked=policy.validate_assessment(review_req,result,job,data["state"])
-		if not checked.get("ok",false):
-			stop("clarification",checked.get("error","Contextual assessment unavailable."))
-			return failure(status)
-		job["context_review"]={"request":review_req.duplicate(true),"revision":data["state"]["revision"],"attempt_id":identity["attempt_id"],"report":result.duplicate(true)}
-		job["stage"]=job["review_resume"]
-		job["attempt"]={}
-		job.erase("review_request")
-		job.erase("review_resume")
-		inflight={}
-		if not update_active(job):
-			return failure("Contextual evidence persistence unconfirmed.")
-		advance.call_deferred()
-		return {"ok":true}
+		stop("clarification","Obsolete provider assessment cannot authorize an action.")
+		return failure(status)
+	if stage=="interpret":
+		return receive_interpretation(identity,result,[])
 	if stage=="critical":
 		var verified=outcome(job)
 		var context=scene_context(data["state"])
@@ -640,7 +597,23 @@ func finish(status_code: String,message: String) -> void:
 		if done.size()>=4:
 			stop("clarification","Ordered action limit reached; remaining actions not executed.")
 			return
-		var next={"intent":job["intent"],"stage":"interpret","tool":{},"attempt":{},"remaining":job["remaining"],"completed_steps":done,"next_id":registry.session.make_id()}
+		var remaining=job["remaining"].duplicate(true)
+		var step=remaining.pop_front()
+		if not registry.interpreter_action_valid(step):
+			super.finish("cancelled","Prior steps committed; invalid stored dependent intent.")
+			return
+		var args=step["args"].duplicate(true)
+		if args.has("text") and job["intent"]["kind"]=="chat":
+			args["text"]=job["intent"]["args"]["text"]
+		var req=tool_for(job["intent"],data["state"],step["kind"],args)
+		req["request_id"]=registry.session.make_id()
+		for previous in done:
+			if previous["kind"]==req["kind"] and registry.session.typed_equal(previous["args"],req["args"]):
+				super.finish("cancelled","Prior steps committed; repeated dependent action requires new intent.")
+				return
+		var next={"intent":job["intent"],"stage":"execute","tool":req,"attempt":{},"remaining":remaining,"completed_steps":done,"selected_context":job.get("selected_context",[])}
+		if job["intent"]["kind"]=="chat":
+			next["input_evidence"]={"request":req.duplicate(true),"original":job["intent"]["args"]["text"],"revision":data["state"]["revision"]}
 		if update_active(next):
 			refresh()
 			advance.call_deferred()
@@ -854,14 +827,7 @@ func prepare_review(req: Dictionary,resume_stage: String) -> bool:
 		if checked.get("ok",false):
 			job["context_review"]={"request":req.duplicate(true),"revision":state["revision"],"attempt_id":registry.session.make_id(),"report":descriptive,"authorization_version":"committed-description-v027"}
 			return update_active(job)
-	var record=job.get("context_review",{})
-	if record.get("authorization_version")=="combined-v027" and registry.session.same_request(record.get("request"),req) and record.get("revision")==state["revision"]:
-		var checked=policy.validate_assessment(req,record.get("report"),job,state)
-		if checked.get("ok",false):
-			return true
-		stop("clarification",checked.get("error","Contextual review no longer valid."))
-		return false
-	stop("clarification","Combined Rules-Check assessment missing or stale. No unverified action executed.")
+	stop("clarification","Local contextual authorization required. No unverified action executed.")
 	return false
 
 func advance() -> void:

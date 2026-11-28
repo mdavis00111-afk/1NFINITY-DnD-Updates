@@ -118,6 +118,43 @@ func arguments_valid(args: Variant,schema: Dictionary) -> bool:
 			return false
 	return true
 
+# Shared provider boundary; mechanical eligibility remains local to execute.
+const INTERPRETER_EXCLUDED=["define_official","define_custom","actor_generate","loot_discover","story_update","party_membership","reconcile_legacy_slots"]
+
+func interpreter_action_valid(value: Variant) -> bool:
+	return DTO.exact_keys(value,["kind","args"]) and value["kind"] is String and TOOLS.has(value["kind"]) and not value["kind"] in INTERPRETER_EXCLUDED and arguments_valid(value["args"],TOOLS[value["kind"]][0])
+
+func interpreter_queries_valid(value: Variant) -> bool:
+	if not value is Array or value.size()>8:
+		return false
+	for query in value:
+		if not DTO.exact_keys(query,["kind","args","limit"]) or not query["kind"] is String or not QUERY_TYPES.has(query["kind"]) or not arguments_valid(query["args"],QUERY_TYPES[query["kind"]]) or not DTO.whole(query["limit"],1,16):
+			return false
+	return true
+
+func interpreter_intent_valid(value: Variant) -> bool:
+	if DTO.exact_keys(value,["status","message"]):
+		return value["status"] is String and value["status"] in ["clarification","unsupported"] and DTO.bounded_text(value["message"],1000)
+	if DTO.exact_keys(value,["steps"]):
+		if not value["steps"] is Array or value["steps"].is_empty() or value["steps"].size()>4:
+			return false
+		for step in value["steps"]:
+			if not interpreter_action_valid(step):
+				return false
+		return true
+	return interpreter_action_valid(value)
+
+func interpreter_envelope_valid(value: Variant) -> bool:
+	if not value is Dictionary or JSON.stringify(value).length()>65536:
+		return false
+	if value.has("status"):
+		return interpreter_intent_valid(value)
+	if not value.has("queries") or not interpreter_queries_valid(value["queries"]):
+		return false
+	var intent=value.duplicate(true)
+	intent.erase("queries")
+	return interpreter_intent_valid(intent)
+
 func validate_request(id: String,req: Variant) -> Dictionary:
 	if not session.request_valid(req) or req["campaign_id"]!=id or not TOOLS.has(req["kind"]) or not arguments_valid(req["args"],TOOLS[req["kind"]][0]):
 		return error_result("invalid","Unregistered tool, mismatched envelope or invalid typed arguments.")
