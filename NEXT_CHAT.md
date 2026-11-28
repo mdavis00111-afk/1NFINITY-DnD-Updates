@@ -1,3 +1,7 @@
+## v0.0.31 development handoff
+
+Continue on feature/v031-dm-first from its verified remote head. Read PROJECT_BRAIN.md, HANDOFF.md, TESTING.md and the owner's architectural brief. Verify that godot and channel.json still point at the published v0.0.30 release. Complete and test contextual mechanics routing, actual cantrip effects, supported action parity and authoritative prose consequence handling before packaging.
+
 ## v0.0.30 owner acceptance and defect triage
 
 Verify channel.json and read PROJECT_BRAIN.md, HANDOFF.md and TESTING.md. The normal command path now uses a compact interpreter packet, local lookups and mechanics, and a single ready-to-send DM packet. Run the owner acceptance cases in TESTING.md. If a path fails, report the exact input, expected and observed behavior, and relevant game.log or updater logs. Preserve the existing updater, player data and mechanical authority while addressing the reported defect.

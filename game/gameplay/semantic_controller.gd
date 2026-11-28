@@ -57,7 +57,7 @@ func inspect_dm_packet() -> Dictionary:
 	var binding = last_dm_packet["binding"]
 	var current = registry.session.token(campaign_id)
 	var job = active()
-	if not current.get("ok",false) or current["revision"]!=binding["revision"] or current["actor_id"]!=binding["actor_id"] or job.get("stage")!="narrate" or job.get("intent",{}).get("request_id")!=binding["intent_request_id"] or not registry.session.same_request(job.get("tool"),last_dm_packet["interpreted"]) or not registry.session.typed_equal(job.get("attempt"),inflight) or inflight.get("attempt_id")!=last_dm_packet["outbound"]["attempt_id"]:
+	if not current.get("ok",false) or current["revision"]!=binding["revision"] or current["actor_id"]!=binding["actor_id"] or job.get("stage")!="narrate" or job.get("intent",{}).get("request_id")!=binding["intent_request_id"] or not registry.session.typed_equal(job.get("tool"),last_dm_packet["interpreted"]) or not registry.session.typed_equal(job.get("attempt"),inflight) or inflight.get("attempt_id")!=last_dm_packet["outbound"]["attempt_id"]:
 		return {}
 	return last_dm_packet.duplicate(true)
 
@@ -132,13 +132,14 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	# Keep overview records in one packet field, not twice.
 	expanded["story"]=expanded["story"].filter(func(row): return not row["kind"] in ["overview","situation"])
 	expanded["selected_context"]=job.get("selected_context",[])
+	expanded["lookup_facts"]=job.get("lookup_facts",[])
 	expanded["interpreted"]=job.get("tool",{})
 	expanded["remaining_intents"]=job.get("remaining",[])
 	expanded["player_text"]=job["intent"]["args"].get("text",payload.get("player_text",""))
 	expanded["campaign_context"]={"id":campaign_id,"title":state["campaign"].get("title",""),"maturity_id":state["campaign"].get("maturity_id","standard"),"elapsed_seconds":state["elapsed_seconds"]}
-	expanded["situational_context"]=context_builder.situational(expanded["player_text"],job["tool"]["kind"],scene,ext)
+	expanded["situational_context"]=context_builder.situational(expanded["player_text"],job["tool"].get("kind",""),scene,ext)
 	expanded["local_loot"]=ext.get("loot_containers",[]).slice(0,16)
-	var rules = context_builder.rules(expanded,job["tool"]["kind"])
+	var rules = context_builder.rules(expanded,job["tool"].get("kind",""))
 	if not rules.get("ok",false):
 		stop("retry","Pinned narration rule records unavailable.")
 		return
@@ -148,7 +149,10 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	if job.has("pending_consequence"):
 		expanded["pending_for_narrator"]={"proposal":job["pending_consequence"]["proposal"],"status":"pending, not committed"}
 	expanded["world_catalogue"]=context_builder.world_catalogue(registry)
-	expanded=context_builder.dm_packet(state,job,expanded,registry)
+	if job["tool"].is_empty() and job.has("lookup_revision"):
+		expanded=context_builder.unresolved_packet(state,job,expanded,registry)
+	else:
+		expanded=context_builder.dm_packet(state,job,expanded,registry)
 	if expanded.is_empty():
 		stop("retry","Narration packet could not verify the current or earlier committed outcomes.")
 		return
@@ -157,77 +161,87 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 
 func receive_interpreter_envelope(identity: Dictionary,envelope: Dictionary) -> Dictionary:
 	if not matches(identity,"interpret"):
-		return failure("Stale interpretation.")
-	if not registry.interpreter_envelope_valid(envelope):
-		stop("clarification","Invalid typed interpretation envelope.")
+		return failure("Stale lookup translation.")
+	var job = active().duplicate(true)
+	var state = data["state"]
+	if not job["tool"].is_empty() or not job.get("completed_steps",[]).is_empty():
+		stop("clarification","Resolve the earlier saved action before submitting a new command.")
 		return failure(status)
-	var result = envelope.duplicate(true)
-	var selected: Array = []
-	if result.has("queries"):
-		var clock = Time.get_ticks_msec()
-		var lookups = registry.interpreter_lookups(identity["campaign_id"],identity["revision"],result["queries"])
-		sample("interpreter_lookups",Time.get_ticks_msec()-clock,lookups.get("selected",[]).size())
-		if not lookups.get("ok",false):
-			stop("retry",str(lookups.get("error","Godot lookup unavailable.")))
+	if not registry.lookup_subjects_valid(envelope) or JSON.stringify(envelope).length()>4096:
+		stop("clarification","Invalid lookup translation.")
+		return failure(status)
+	var clock = Time.get_ticks_msec()
+	var text = job["intent"]["args"].get("text","")
+	var lookup = registry.lookup_subjects(state,envelope,text)
+	sample("interpreter_lookups",Time.get_ticks_msec()-clock,lookup.get("facts",[]).size())
+	if not lookup.get("ok",false):
+		if lookup.get("code") in REG.ITEM_REJECTIONS:
+			finish("rejected",lookup["error"])
+		else:
+			stop("retry",lookup.get("error","Translation lookups unavailable."))
+		return failure(status)
+	job["lookup_facts"]=lookup["facts"]
+	job["lookup_revision"]=state["revision"]
+	job["turn_id"]=job["intent"]["request_id"]
+	job["stage"]="narrate"
+	var lower = text.strip_edges().to_lower()
+	if lower.begins_with("read the inscription on ") or lower.begins_with("inspect the inscription on "):
+		var target = lower.trim_prefix("read the inscription on ").trim_prefix("inspect the inscription on ").trim_suffix(".").trim_suffix("?").strip_edges()
+		var ids: Array = []
+		for fact in lookup["facts"]:
+			if fact["category"]=="items":
+				for item in fact.get("owned",[]):
+					if registry.subject_matches_name(target, item["instance_id"]) or registry.subject_matches_name(target,fact["subject"]):
+						if not item["instance_id"] in ids:
+							ids.append(item["instance_id"])
+		if ids.size()!=1:
+			finish("rejected","Use an exact, unique owned item name or instance ID.")
 			return failure(status)
-		selected=lookups["selected"]
-		result.erase("queries")
-	return receive_interpretation(identity,result,selected)
+		job["tool"]=tool_for(job["intent"],state,"inspect_inscription",{"instance_id":ids[0]})
+		job["stage"]="execute"
+	job["attempt"]={}
+	retire_attempt()
+	if not update_active(job):
+		return failure("Resolved lookup facts could not be journaled.")
+	if job["stage"]=="execute":
+		execute_active()
+	else:
+		recover_active()
+	return {"ok":true}
 
-
-func receive_interpretation(identity: Dictionary,result: Dictionary,selected: Array) -> Dictionary:
-	if not matches(identity,"interpret") or JSON.stringify(result).length()>65536:
-		adapter.diagnostic("interpret_identity_or_size_rejected")
-		return failure("Stale interpretation.")
-	if not registry.interpreter_intent_valid(result):
-		stop("clarification","Invalid typed interpretation.")
-		return failure(status)
-	var job=active().duplicate(true)
-	if result.has("status"):
-		return super.receive(identity,result)
-	if not job.get("remaining",[]).is_empty():
-		stop("clarification","Legacy dependent interpretation interrupted; recover without reinterpreting.")
-		return failure(status)
-	var steps=result.get("steps",[result]).duplicate(true)
-	var remaining=steps.slice(1)
-	var first=steps[0]
-	var args=first["args"].duplicate(true)
-	if args.has("text") and job["intent"]["kind"]=="chat":
-		args["text"]=job["intent"]["args"]["text"]
-	var req=tool_for(job["intent"],data["state"],first["kind"],args)
-	if not job.get("completed_steps",[]).is_empty():
-		req["request_id"]=job.get("next_id",registry.session.make_id())
-		for previous in job["completed_steps"]:
-			if previous["kind"]==req["kind"] and registry.session.typed_equal(previous["args"],req["args"]):
-				stop("clarification","Repeated dependent action requires explicit new intent.")
-				return failure(status)
-	job["remaining"]=remaining
-	if job["intent"]["kind"]=="chat":
-		job["input_evidence"]={"request":req.duplicate(true),"original":job["intent"]["args"]["text"],"revision":data["state"]["revision"]}
-	job.erase("input_candidate")
-	# Never carry an earlier action assessment into a fresh interpretation.
-	job.erase("context_review")
-	job["tool"]=req
-	# Only current-revision local lookup results enter the new action context.
-	var combined=selected
-	for entry in combined:
-		if not entry is Dictionary or entry.get("revision")!=data["state"]["revision"] or not entry.get("result",{}).get("ok",false):
-			stop("clarification","Lookup context is stale or invalid.")
+func receive_unresolved_dm(identity: Dictionary,result: Dictionary,job: Dictionary) -> Dictionary:
+	var state = data["state"]
+	var text = job["intent"]["args"].get("text","")
+	var operation = result.get("mechanics",{})
+	if DTO.exact_keys(result,["mechanics"]):
+		if not registry.interpreter_action_valid(operation) or operation["kind"] not in REG.DM_OPERATIONS or not registry.dm_operation_bound(operation,job["lookup_facts"],text):
+			stop("clarification","Requested mechanics have no supported local operation.")
 			return failure(status)
-	var distinct: Array=[]
-	for entry in combined:
-		if not distinct.any(func(row): return row.get("query")==entry.get("query")):
-			distinct.append(entry)
-	job["selected_context"]=distinct.slice(0,8) if JSON.stringify(distinct).length()<=32000 else []
+	else:
+		var scene = scene_context(state)
+		if not scene.get("ok",false) or not combined_valid(result,state,job["turn_id"],identity["attempt_id"],scene["ids"]):
+			stop("retry","DM response failed world and narration validation.")
+			return failure(status)
+		# Record the proposed prose before the engine creates the no-effect
+		# receipt. Recovery can finish that same narration without Gemini.
+		job["unresolved_prose"]=result.duplicate(true)
+		job["unresolved_attempt"]=identity["attempt_id"]
+		operation={"kind":"observe","args":{"text":text}}
+	job["tool"]=tool_for(job["intent"],state,operation["kind"],operation["args"])
 	job["stage"]="execute"
 	job["attempt"]={}
-	inflight={}
+	retire_attempt()
 	if not update_active(job):
-		adapter.diagnostic("interpret_journal_write_unconfirmed")
-		return failure("Interpretation persistence unconfirmed.")
-	refresh()
-	advance.call_deferred()
+		return failure("DM decision could not be journaled.")
+	execute_active()
 	return {"ok":true}
+
+func combined_valid(result: Dictionary,state: Dictionary,turn_id: String,attempt: String,known: Array) -> bool:
+	return DTO.exact_keys(result,["text","recap","geography","story","discoveries"]) and DTO.bounded_text(result["recap"],3000) and DTO.bounded_text(result["text"],12000) and PACK.valid_geography(result["geography"],PACK.identity(state,turn_id,attempt),result["text"],known) and valid_story(result["story"],result["text"]) and valid_discoveries(result["discoveries"],result["text"])
+
+# Retain the fixture entry point while enforcing the same live boundary.
+func receive_interpretation(identity: Dictionary,result: Dictionary,_selected: Array) -> Dictionary:
+	return receive_interpreter_envelope(identity,result)
 
 func standalone(job: Dictionary) -> bool:
 	return job.get("tool",{}).get("kind") in NARRATABLE
@@ -253,6 +267,32 @@ func recover_active() -> void:
 	if not reload():
 		return
 	var job=active().duplicate(true)
+	if job["tool"].is_empty() and job.has("lookup_revision"):
+		var state = data["state"]
+		var context = scene_context(state)
+		if not context.get("ok",false) or job["lookup_revision"]!=state["revision"]:
+			stop("retry","Unresolved DM context changed.")
+			return
+		ask("narrate",job,{"scene":context["scene"],"turn_id":job["turn_id"],"maturity_id":state["campaign"].get("maturity_id","standard")})
+		return
+	if job.has("unresolved_prose"):
+		var state = data["state"]
+		var recovered = registry.recover(campaign_id,job["tool"]["request_id"])
+		if recovered.get("status")!="pending_narration" or state["pending_turn_id"]!=recovered["receipt"]["turn_id"]:
+			stop("retry","Observation receipt recovery required.")
+			return
+		job["turn_id"]=recovered["receipt"]["turn_id"]
+		var proposal = job["unresolved_prose"].duplicate(true)
+		var attempt = job["unresolved_attempt"]
+		proposal["geography"].merge(PACK.identity(state,job["turn_id"],attempt),true)
+		var context = scene_context(state)
+		if not context.get("ok",false) or not combined_valid(proposal,state,job["turn_id"],attempt,context["ids"]):
+			stop("retry","Saved DM proposal no longer matches the public scene.")
+			return
+		job.erase("unresolved_prose")
+		job.erase("unresolved_attempt")
+		accept_combined(job,proposal,attempt)
+		return
 	if not standalone(job):
 		super.recover_active()
 		return
@@ -322,49 +362,19 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 	if not matches(identity,stage) or JSON.stringify(result).length()>65536:
 		return failure("Stale semantic response.")
 	var job=active().duplicate(true)
+	if stage=="narrate" and job["tool"].is_empty() and job.has("lookup_revision"):
+		return receive_unresolved_dm(identity,result,job)
 	if stage=="narrate" and result.has("geography"):
 		var context=scene_context(data["state"])
-		if not DTO.exact_keys(result,["text","recap","geography","story","discoveries"]) or not DTO.bounded_text(result["recap"],3000) or not DTO.bounded_text(result["text"],12000) or not context.get("ok",false) or not PACK.valid_geography(result["geography"],PACK.identity(data["state"],job["turn_id"],identity["attempt_id"]),result["text"],context["ids"]) or not valid_story(result["story"],result["text"]) or not valid_discoveries(result["discoveries"],result["text"]):
-			adapter.diagnostic("combined_world_validation_rejected")
+		if not context.get("ok",false) or not combined_valid(result,data["state"],job["turn_id"],identity["attempt_id"],context["ids"]):
 			stop("retry","Combined narration/world proposal failed validation.")
 			return failure(status)
-		var verified=outcome(job)
-		if verified.is_empty():
-			stop("retry","Verified outcome unavailable.")
-			return failure(status)
-		job["candidate"]=PACK.identity(data["state"],job["turn_id"],identity["attempt_id"])
-		job["candidate"]["text"]=result["text"]
-		job["narrative_recap"]=result["recap"]
-		job["local_recap_hash"]=result["recap"].sha256_text()
-		job["geography"]=result["geography"].duplicate(true)
-		# Combined transport uses one identity; the B4 local transaction uses
-		# distinct operation IDs for narration and geography. Allocate only
-		# after checking the exact provider envelope above.
-		job["geography"]["request_id"]=registry.session.make_id()
-		job["story"]=result["story"].duplicate(true)
-		job["discoveries"]=result["discoveries"].duplicate(true)
-		job["story_index"]=0
-		job["discovery_index"]=0
-		job["definition_refs"]={}
-		job["discovery_receipts"]={}
-		job["local_candidate_hash"]=result["text"].sha256_text()
-		job["local_outcome_hash"]=canonical_outcome_hash(verified)
-		job["local_outcome_hash_version"]=2
-		job["critical_verified"]=true
-		job["stage"]="reconcile"
-		job["attempt"]={}
-		inflight={}
-		if not update_active(job):
-			adapter.diagnostic("narration_journal_write_unconfirmed")
-			return failure("Combined narration persistence unconfirmed.")
-		refresh()
-		advance.call_deferred()
-		return {"ok":true}
+		return accept_combined(job,result,identity["attempt_id"])
 	if stage=="adjudicate":
 		stop("clarification","Obsolete provider assessment cannot authorize an action.")
 		return failure(status)
 	if stage=="interpret":
-		return receive_interpretation(identity,result,[])
+		return receive_interpreter_envelope(identity,result)
 	if stage=="critical":
 		var verified=outcome(job)
 		var context=scene_context(data["state"])
@@ -428,6 +438,41 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 			return failure("Discovery work persistence unconfirmed.")
 		return super.receive(identity,{"geography":result["geography"],"story":result["story"]})
 	return super.receive(identity,result)
+
+
+func accept_combined(job: Dictionary,result: Dictionary,attempt: String) -> Dictionary:
+	var verified=outcome(job)
+	if verified.is_empty():
+		stop("retry","Verified outcome unavailable.")
+		return failure(status)
+	job["candidate"]=PACK.identity(data["state"],job["turn_id"],attempt)
+	job["candidate"]["text"]=result["text"]
+	job["narrative_recap"]=result["recap"]
+	job["local_recap_hash"]=result["recap"].sha256_text()
+	job["geography"]=result["geography"].duplicate(true)
+	# Combined transport uses one identity; the B4 local transaction uses
+	# distinct operation IDs for narration and geography. Allocate only
+	# after checking the exact provider envelope above.
+	job["geography"]["request_id"]=registry.session.make_id()
+	job["story"]=result["story"].duplicate(true)
+	job["discoveries"]=result["discoveries"].duplicate(true)
+	job["story_index"]=0
+	job["discovery_index"]=0
+	job["definition_refs"]={}
+	job["discovery_receipts"]={}
+	job["local_candidate_hash"]=result["text"].sha256_text()
+	job["local_outcome_hash"]=canonical_outcome_hash(verified)
+	job["local_outcome_hash_version"]=2
+	job["critical_verified"]=true
+	job["stage"]="reconcile"
+	job["attempt"]={}
+	inflight={}
+	if not update_active(job):
+		adapter.diagnostic("narration_journal_write_unconfirmed")
+		return failure("Combined narration persistence unconfirmed.")
+	refresh()
+	advance.call_deferred()
+	return {"ok":true}
 
 func correction(job: Dictionary,message: String) -> Dictionary:
 	inflight={}
@@ -948,6 +993,8 @@ func retry() -> Dictionary:
 		job["stage"]="reconcile"
 	elif not job.get("tool",{}).is_empty():
 		job["stage"]="execute"
+	elif job.has("lookup_revision"):
+		job["stage"]="narrate"
 	else:
 		job["stage"]="new"
 	if not update_active(job):

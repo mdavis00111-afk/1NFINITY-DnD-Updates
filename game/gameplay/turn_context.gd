@@ -4,7 +4,6 @@ const SQL=preload("res://systems/sqlite.gd")
 const DTO=preload("res://world/world_dto.gd")
 const CAT=preload("res://rules/catalog.gd")
 const PACK=preload("res://turns/agent_packets.gd")
-const UI=preload("res://gameplay/ui_intents.gd")
 const REG=preload("res://gameplay/tool_registry.gd")
 const DIRECT_KINDS="'equip','quick_equip','swap','unequip','attune','unattune','item_use','item_drop','item_transfer','currency_transfer','loot_pickup','loot_take_all','spell_cast','spell_prepare','spell_unprepare','resource_use','rest','object_interact'"
 # Only durable narration linked by the existing turn receipt or standalone
@@ -52,7 +51,7 @@ func interpreter_packet(state: Dictionary,intent: Dictionary,registry) -> Dictio
 			var ids = casting.get(sources[source],[])
 			if ids is Array and not ids.is_empty():
 				spells[source]=ids.slice(0,24)
-	return {"intent":intent,"revision":state["revision"],"catalogue":catalogue(registry),"lookup_catalogue":REG.QUERY_TYPES,"rule_categories":CAT.TABLES,"argument_choices":{"slot":UI.SLOTS,"grip":UI.GRIPS,"spell_source":REG.SPELL_SOURCES},"references":{"location_id":location,"locations":sets[0],"npcs":sets[1],"inventory":sets[2],"slots":sets[3],"local_loot":sets[4],"routes":sets[5],"recent_narration":sets[6],"actor":{"id":actor,"name":state["actor"].get("name",""),"class_id":state["actor"].get("class_id",""),"race_id":state["actor"].get("race_id",""),"spell_ids_by_source":spells}}}
+	return {"intent":intent,"revision":state["revision"],"references":{"location_id":location,"locations":sets[0],"npcs":sets[1],"inventory":sets[2],"slots":sets[3],"local_loot":sets[4],"routes":sets[5],"recent_narration":sets[6],"actor":{"id":actor,"name":state["actor"].get("name",""),"class_id":state["actor"].get("class_id",""),"race_id":state["actor"].get("race_id",""),"spell_ids_by_source":spells}}}
 
 func memory(state: Dictionary,session,excluded_request_id: String="") -> Dictionary:
 	if not state.get("ok",false):
@@ -304,4 +303,21 @@ func dm_packet(state: Dictionary,job: Dictionary,payload: Dictionary,registry) -
 		if linked.size()!=1:
 			return {}
 		packet["prior_outcome"]={"original_request_id":linked[0]["request_id"],"original_event_id":linked[0]["event_id"]}
+	return packet
+
+# First DM packet carries established facts and explicitly unresolved intent.
+func unresolved_packet(state: Dictionary,job: Dictionary,payload: Dictionary,registry) -> Dictionary:
+	var intent = job["intent"]
+	var session = registry.session
+	if state["pending_turn_id"]!=null or job["lookup_revision"]!=state["revision"] or not session.request_valid(intent,"1") or intent["kind"]!="chat" or intent["campaign_id"]!=state["campaign_id"] or intent["actor_id"]!=state["actor_id"] or payload["turn_id"]!=intent["request_id"]:
+		return {}
+	var prior = session.settlement(state["campaign_id"],intent["request_id"])
+	var current = session.token(state["campaign_id"])
+	if not prior.get("ok",false) or prior.get("found",false) or not current.get("ok",false) or not registry.resolver.store.matching_token(state,current):
+		return {}
+	var packet = payload.duplicate(true)
+	packet["binding"]={"schema_version":"1","campaign_id":state["campaign_id"],"actor_id":state["actor_id"],"intent_request_id":intent["request_id"],"tool_request_id":null,"expected_revision":state["revision"],"revision":state["revision"],"turn_id":intent["request_id"]}
+	packet["lookup_facts"]=job["lookup_facts"]
+	packet["unresolved_intent"]=true
+	packet["mechanical_catalogue"]=catalogue(registry)["tools"].filter(func(row): return row["id"] in REG.DM_OPERATIONS)
 	return packet

@@ -1,3 +1,7 @@
+## v0.0.31 partial checkpoint
+
+Owner-authorized development in Codex Cloud from published godot f8d2989502d820dfb3106d0000828e7a84122fc4. Scope was semantic_adapter.gd, semantic_controller.gd, tool_registry.gd, turn_context.gd, semantic_integration_smoke.gd and these records. Proposed responses before mechanics are journaled against the original request and revision. Existing authoritative handlers remain the only route to expenditure or item use. Release inputs were left unchanged. See the blockers in PROJECT_BRAIN.md and focused checks in TESTING.md.
+
 ## v0.0.30 context pipeline correction
 
 Codex Cloud implementation started from published godot commit 5c6cc8fa8dba7d314855fc66d575b33b8c135e4e on feature/v030-context-pipeline. Scope includes game/gameplay/complete_controller.gd, semantic_controller.gd, semantic_adapter.gd, tool_registry.gd, turn_context.gd and game/tests/semantic_integration_smoke.gd. The package follows the existing approved branch workflow and its manifest remains the release authority. No schema, GUI, model-setting or updater changes. See TESTING.md for Linux fixture evidence and owner Windows cases.

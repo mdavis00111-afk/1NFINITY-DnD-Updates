@@ -1,3 +1,9 @@
+## v0.0.31 architectural correction checkpoint
+
+Feature branch only. The lookup translator accepts bounded subject lists and cannot supply actions. Godot reads pinned rules, spell availability and owned objects. Explicit named prerequisites have local rejection paths. The DM receives the exact command, verified facts, persistent context and the existing prompt before an action is settled. The packet inspection includes the actual outbound hash. A no-effect reply uses a durable observation receipt and the existing world boundary. A scoped DM request for explicit self-use or supported first-level self-healing goes through the existing transaction and narration recovery. Explicit custom inscription inspection preserves the local proposal exception.
+
+Publication remains blocked. This checkpoint does not execute Mage Hand effects or general cantrip casting, does not implement context authorization for rolls, saves, movement or damage, and does not detect conflicting mechanical claims in unrestricted prose. The complete acceptance matrix and preservation of natural-language access to other supported mechanics remain outstanding. Keep v0.0.30 live.
+
 ## v0.0.30 interpreter and DM packet pipeline
 
 The live campaign manager uses the semantic controller. The inherited orchestration now asks a dedicated interpreter context builder for one revision-checked SQLite read of disclosed references, owned item and slot IDs, local loot, routes and a short linked conversational excerpt. The prompt includes the exact journaled player input, identity and current interpretation revision, typed actions and query schemas, enumerated choices and rule categories. No scene projection, character sheet, ranked story, campaign memory or RAW records are assembled for that prompt.

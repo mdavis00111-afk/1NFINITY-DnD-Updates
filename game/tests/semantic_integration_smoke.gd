@@ -193,7 +193,7 @@ func run() -> void:
 	expect(not session.same_request(null,{}) and not session.same_request({},null) and not session.same_request("invalid",{}),"Absent or malformed staged request fails closed")
 	var players=PLAYER.new()
 	var master=players.make_id()
-	if not expect(players.save_record(master_record(master)).is_empty(),"Master fixture"):
+	if not expect(players.save_record(master_record(master,"cleric" if "--dm-first" in OS.get_cmdline_user_args() else "fighter")).is_empty(),"Master fixture"):
 		finish()
 		return
 	var original=players.load_record(master)
@@ -238,6 +238,14 @@ func run() -> void:
 	if not expect(not shield.is_empty(),"Owned shield"):
 		finish()
 		return
+	if "--dm-first" in OS.get_cmdline_user_args():
+		await dm_first_case(id)
+		expect(players.load_record(master)==original and base.gameplay_view(b["id"])==sibling,"DM first save isolation")
+		ctrl.close_session()
+		workspace.queue_free()
+		ctrl.queue_free()
+		finish()
+		return
 	if "--context-pipeline" in OS.get_cmdline_user_args():
 		await context_pipeline_case(id,mara,shield)
 		expect(players.load_record(master)==original and base.gameplay_view(b["id"])==sibling,"Master and sibling isolation")
@@ -264,6 +272,101 @@ func run() -> void:
 	workspace.queue_free()
 	ctrl.queue_free()
 	finish()
+
+func dm_first_case(id: String) -> void:
+	var before = session.token(id)
+	var command = "I cast Mage Hand and use it to carry my knife and cut the rope."
+	var request = pipeline_intent(id,command)
+	var calls = outbound.size()
+	expect(ctrl.submit(request).get("ok",false),"Unstructured spell command accepted")
+	if not await pump("interpret"):
+		return
+	expect(not ctrl.adapter.payload.has("catalogue") and ctrl.adapter.payload["intent"]["args"]["text"]==command,"Translator receives exact command without action catalogue")
+	reply({"spells":["Mage Hand"],"items":["knife"]})
+	if not await pump("idle"):
+		return
+	expect(outbound.size()==calls+1 and ctrl.status.contains("knife") and session.token(id)["revision"]==before["revision"],"Missing item locally rejected without DM")
+	var missing_spell = pipeline_intent(id,"I cast Mage Hand.")
+	calls=outbound.size()
+	expect(ctrl.submit(missing_spell).get("ok",false),"Unavailable spell submitted")
+	if not await pump("interpret"):
+		return
+	reply({"spells":["Mage Hand"]})
+	if not await pump("idle"):
+		return
+	expect(outbound.size()==calls+1 and ctrl.status.contains("Mage Hand"),"Unavailable spell denied locally")
+	var talk = pipeline_intent(id,"  What if I could cast Mage Hand?  ")
+	calls=outbound.size()
+	expect(ctrl.submit(talk).get("ok",false),"Hypothetical accepted")
+	if not await pump("interpret"):
+		return
+	reply({"spells":["Mage Hand"]})
+	if not await pump("narrate"):
+		return
+	var packet = ctrl.inspect_dm_packet()
+	if not expect(not packet.is_empty() and packet["unresolved_intent"],"DM receives the unresolved packet"):
+		return
+	expect(packet["player_text"]==talk["args"]["text"] and not packet.has("receipt") and session.token(id)["revision"]==before["revision"],"Exact command reaches DM before mechanics")
+	expect(packet["lookup_facts"][0]["records"][0]["index"]=="mage-hand" and not packet["lookup_facts"][0]["access"]["slot_required"],"Pinned Mage Hand cantrip has no slot requirement")
+	expect(packet["outbound"]["sha256"]==outbound.back()["prompt"].sha256_text(),"DM prompt hash exact")
+	reply(combined("Mara smiles at the idea."))
+	if not await pump("idle"):
+		return
+	expect(outbound.size()==calls+2 and session.token(id)["actor"]==before["actor"],"Hypothetical settles with no mechanics or extra calls")
+	var ration: Dictionary = {}
+	for item in ctrl.view["interaction_extension"]["inventory_instances"]:
+		if item["definition_id"]=="rations-1-day":
+			ration=item
+	if not expect(not ration.is_empty(),"Ration available"):
+		return
+	var use = pipeline_intent(id,"I eat my "+ration["name"])
+	calls=outbound.size()
+	expect(ctrl.submit(use).get("ok",false),"Item action accepted")
+	if not await pump("interpret"):
+		return
+	reply({"items":[ration["name"]]})
+	if not await pump("narrate"):
+		return
+	var serial = ctrl.adapter.serial
+	reply({"mechanics":{"kind":"item_use","args":{"instance_id":ration["instance_id"],"quantity":1,"target_id":before["actor_id"]}}})
+	if not await pump("narrate",serial):
+		return
+	packet=ctrl.inspect_dm_packet()
+	expect(packet.get("settlement",{}).get("result",{}).get("consumed")==1 and outbound.size()==calls+3,"DM receives actual item settlement")
+	reply(combined("The ration tastes of dried grain."))
+	if not await pump("idle"):
+		return
+	expect(session.settlement(id,use["request_id"]).get("result",{}).get("consumed")==1,"One durable consumption")
+	var cast = pipeline_intent(id,"I cast Cure Wounds on myself.")
+	var spell = {"spell_id":"cure-wounds","source":"prepared","slot_level":1,"target_id":before["actor_id"]}
+	calls=outbound.size()
+	var prior_spent = session.token(id)["actor"]["spellcasting"]["slots"]["1"]["spent"]
+	expect(ctrl.submit(cast).get("ok",false),"Leveled cast submitted")
+	if not await pump("interpret"):
+		return
+	reply({"spells":["Cure Wounds"]})
+	if not await pump("narrate"):
+		return
+	expect(session.token(id)["actor"]["spellcasting"]["slots"]["1"]["spent"]==prior_spent,"Spell lookup does not debit a slot")
+	serial=ctrl.adapter.serial
+	reply({"mechanics":{"kind":"spell_cast","args":spell}})
+	if not await pump("narrate",serial):
+		return
+	var leased = ctrl.inspect_dm_packet()
+	var settled = session.settlement(id,cast["request_id"])
+	expect(leased.get("settlement",{}).get("result",{}).get("rolls",[]).size()==1 and settled["result"]["slot_spent"]==prior_spent+1 and outbound.size()==calls+3,"Leveled cast produces a local roll and one debit")
+	ctrl.close_session()
+	workspace.queue_free()
+	ctrl.queue_free()
+	await process_frame
+	if not bind(id) or not await pump("narrate"):
+		return
+	expect(session.settlement(id,cast["request_id"])==settled and ctrl.inspect_dm_packet().get("settlement",{}).get("result",{})==settled["result"],"Recovered cast preserves receipt, roll and slot debit")
+	reply(combined("The healing magic settles."))
+	if not await pump("idle"):
+		return
+	await pipeline_inscription_case(id)
+
 
 # Focused v0.0.30 mode. The legacy suite includes older provider contracts.
 func context_pipeline_case(id: String,mara: String,shield: String) -> void:
@@ -403,7 +506,7 @@ func pipeline_inscription_case(id: String) -> void:
 		expect(ctrl.submit(intent).get("ok",false),"Inscription requested")
 		if not await pump("interpret"):
 			return
-		reply({"kind":"inspect_inscription","args":{"instance_id":instance},"queries":[]})
+		reply({"items":["Amber Token"]} if "--dm-first" in OS.get_cmdline_user_args() else {"kind":"inspect_inscription","args":{"instance_id":instance},"queries":[]})
 		if not already_saved:
 			if not await pump("attribute"):
 				return

@@ -479,3 +479,139 @@ func execute_sequence(id: String,requests: Array,review: Callable) -> Dictionary
 		if not result.get("ok",false) or result.get("status") in ["accepted_pending","pending_narration"] or result.get("adopted_pending",false):
 			return {"ok":result.get("ok",false),"status":"interrupted","results":results,"next_index":results.size()}
 	return {"ok":true,"status":"completed","results":results,"next_index":results.size()}
+
+const SUBJECT_CATEGORIES = {"spells":["spells"],"items":["equipment","magic-items"],"skills":["skills"],"abilities":["ability-scores"],"features":["features","traits"],"resources":[],"rules":["rule-sections"],"world":[]}
+const DM_OPERATIONS = ["item_use","spell_cast"]
+
+func lookup_subjects_valid(value: Dictionary) -> bool:
+	var count = 0
+	for key in value:
+		if not SUBJECT_CATEGORIES.has(key) or not value[key] is Array:
+			return false
+		for subject in value[key]:
+			if not DTO.bounded_text(subject,100):
+				return false
+			count+=1
+	return count<=8
+
+func subject_matches_name(subject: String, candidate: String) -> bool:
+	return subject.strip_edges().to_lower().replace("-"," ")==candidate.strip_edges().to_lower().replace("-"," ")
+
+# A lookup mention confers no authorization. An explicit first-person cast
+# grounded in the original text can establish the need for a known spell.
+func exact_cast_subject(text: String,subject: String) -> bool:
+	var input = text.strip_edges().to_lower()
+	var name = subject.strip_edges().to_lower().replace("-"," ")
+	return subject_at_start(input,"i cast "+name) or subject_at_start(input,"cast "+name)
+
+func subject_at_start(input: String, prefix: String) -> bool:
+	return input==prefix or (input.begins_with(prefix) and input.substr(prefix.length(),1) in [" ",".",",","!"])
+
+func spell_access(actor: Dictionary,spell: Dictionary) -> Dictionary:
+	var casting = actor.get("spellcasting",{})
+	var sources: Array = []
+	var keys = {"class_cantrip":"cantrip_ids","racial_cantrip":"racial_cantrip_ids","known":"known_ids","prepared":"prepared_ids","always_prepared":"always_prepared_ids"}
+	var level = int(spell.get("level",-1))
+	if level<0 or level>9:
+		return {}
+	for source in keys:
+		if (source in ["class_cantrip","racial_cantrip"])!=(level==0):
+			continue
+		if source=="known" and actor.get("class_id") in ["wizard","druid","cleric"]:
+			continue
+		if spell["index"] in casting.get(keys[source],[]):
+			sources.append(source)
+	var levels: Array = []
+	for actual in range(maxi(1,level),10):
+		var slot = casting.get("slots",{}).get(str(actual),{})
+		if DTO.whole(slot.get("maximum")) and DTO.whole(slot.get("spent"),0,int(slot["maximum"])) and slot["spent"]<slot["maximum"]:
+			levels.append(actual)
+	return {"sources":sources,"slot_required":level>0,"available_slot_levels":levels if level>0 else [],"armor_blocks_casting":actor.get("equipment",{}).get("armor_penalty")!=false,"components":spell.get("components",[]),"concentration":casting.get("concentration")}
+
+func lookup_subjects(state: Dictionary, subjects: Dictionary,text: String) -> Dictionary:
+	if not lookup_subjects_valid(subjects):
+		return error_result("invalid","Invalid lookup subjects.")
+	var facts: Array = []
+	var ids: Dictionary = {}
+	var catalog = ITEMS.new()
+	var owned = {}
+	if not subjects.get("items",[]).is_empty() or not subjects.get("spells",[]).is_empty():
+		owned=noncombat.read_owned(state,state["actor_id"])
+		if not owned.get("ok",false):
+			return error_result("unconfirmed","Owned item or casting context unavailable.")
+	for key in subjects:
+		for subject in subjects[key]:
+			var fact = {"category":key,"subject":subject,"records":[]}
+			for category in SUBJECT_CATEGORIES[key]:
+				var searched = catalog.search(category,subject,12)
+				if not searched.get("ok",false):
+					return error_result("unconfirmed","Pinned "+key+" lookup unavailable.")
+				for entry in searched["records"]:
+					if not subject_matches_name(subject,entry["name"]) and not subject_matches_name(subject,entry["id"]):
+						continue
+					var record = catalog.official(category,entry["id"])
+					if record.is_empty():
+						return error_result("unconfirmed","Pinned subject record unavailable.")
+					var binding = category+":"+entry["id"]
+					if not ids.has(binding):
+						fact["records"].append(record)
+						ids[binding]=true
+			if key=="spells" and fact["records"].size()==1:
+				var spell = fact["records"][0]
+				var access = spell_access(state["actor"],spell)
+				if access.is_empty():
+					return error_result("unconfirmed","Casting data unavailable.")
+				access["free_hand"]=noncombat.casting_hand_free(owned)
+				fact["access"]=access
+				if exact_cast_subject(text,str(spell["name"])):
+					if access["sources"].is_empty():
+						return error_result("ineligible","You do not have "+str(spell["name"])+" available to cast.")
+					if access["armor_blocks_casting"] or ("S" in access["components"] and "M" not in access["components"] and not access["free_hand"]):
+						return error_result("ineligible","Your equipment prevents casting "+str(spell["name"])+".")
+					if access["slot_required"] and access["available_slot_levels"].is_empty() and not spell.get("ritual",false):
+						return error_result("insufficient_resources","You have no available slot for "+str(spell["name"])+".")
+			elif key=="items":
+				fact["owned"]=[]
+				for iid in owned["items"]:
+					var row = owned["items"][iid]
+					if subject_matches_name(subject,row["name"]) or subject_matches_name(subject,row["definition_id"]) or subject==iid:
+						fact["owned"].append({"instance_id":iid,"quantity":row["quantity"],"definition":owned["definitions"][iid]})
+				var lower = text.strip_edges().to_lower()
+				var named = subject.strip_edges().to_lower()
+				var uses_owned = lower.trim_suffix(".") in ["i use my "+named,"use my "+named,"i eat my "+named,"eat my "+named,"i drink my "+named,"drink my "+named]
+				if lower.begins_with("i cast ") and lower.contains(" carry my "):
+					var carried = lower.get_slice(" carry my ",1)
+					uses_owned = uses_owned or carried.trim_suffix(".")==named or carried.begins_with(named+" and ")
+				if uses_owned and fact["owned"].is_empty():
+					return error_result("ineligible","You do not have "+subject+" in your inventory.")
+			elif key=="resources":
+				fact["availability"]=state["actor"].get("resources",{}).get(subject.to_lower().replace(" ","_"))
+			elif key=="world":
+				var locations = session.read(state,[SQL.stmt("SELECT l.id,l.name,l.kind FROM locations l JOIN world_discovery d ON d.location_id=l.id WHERE d.visibility='player' AND d.status<>'unknown' AND (l.id=? OR lower(l.name)=lower(?)) ORDER BY l.id LIMIT 8",[subject,subject])])
+				var actors = enquire(state["campaign_id"],{"schema_version":"2","campaign_id":state["campaign_id"],"expected_revision":state["revision"],"query_id":session.make_id(),"kind":"actors","args":{"location_id":state["location_id"]},"limit":16})
+				if not locations.get("ok",false) or not actors.get("ok",false):
+					return error_result("unconfirmed","Disclosed world lookup unavailable.")
+				fact["locations"]=locations["sets"][0]
+				fact["actors"]=actors["data"]["actors"].filter(func(row): return row["actor_id"]==subject or subject_matches_name(subject,row["name"]))
+			facts.append(fact)
+			if JSON.stringify(facts).length()>32000:
+				return error_result("invalid","Lookup facts exceed the bounded packet.")
+	var current = session.token(state["campaign_id"])
+	if not current.get("ok",false) or not resolver.store.matching_token(state,current):
+		return error_result("stale","Campaign changed during subject lookup.")
+	return {"ok":true,"facts":facts}
+
+func dm_operation_bound(operation: Dictionary,facts: Array,text: String) -> bool:
+	var args = operation["args"]
+	for fact in facts:
+		if operation["kind"]=="spell_cast" and fact["category"]=="spells":
+			for record in fact["records"]:
+				if record["index"]==args["spell_id"] and exact_cast_subject(text,record["name"]):
+					return true
+		if operation["kind"]=="item_use" and fact["category"]=="items":
+			for item in fact.get("owned",[]):
+				var name = fact["subject"].to_lower().strip_edges()
+				var input = text.to_lower().strip_edges()
+				if args["instance_id"]==item["instance_id"] and input in ["i use my "+name,"use my "+name,"i eat my "+name,"eat my "+name,"i drink my "+name,"drink my "+name]:
+					return true
+	return false
