@@ -729,3 +729,7 @@ Discovery already persists request identity before execution and validates exact
 
 ### Context and memory audit
 Memory SQL already limits to ten linked public moves for the active actor and a bounded narrative-only recap. LEFT JOIN receipt_event is legitimately NULL for standalone/direct events; avoid parsing null or empty receipt strings (a concrete source of noisy JSON errors, not proof of the semantic failure). Avoid treating absent location IDs as local story matches. Partition overview/situation records from the remaining story list to avoid duplicated context. Preserve exact original input, public actor/quest projections, authoritative mechanics and request limits. Static review only; native context memory and provider packet regression tests outstanding. No publication.
+
+
+### Rules-Check and Storyteller prompt authority audit
+Resolve conflicting bare-action versus assessment instructions; explicitly disallow enquiry batches under combined one-call-per-stage protocol and align malformed response feedback. Distinguish RAW contextual difficulty proposals from invented fixed rules/DCs. Require reuse of established identities and clarify that creative descriptive introductions are permitted as proposals, not committed mechanics or state. Preserve editable narrator settings, mandatory authority, existing schemas, MAX_CALLS=1 and local validation. Static prompt review only; live Gemini adherence and native regression tests outstanding. No publication.
