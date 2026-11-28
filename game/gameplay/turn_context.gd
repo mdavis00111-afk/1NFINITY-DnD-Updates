@@ -34,7 +34,10 @@ func memory(state: Dictionary,session,excluded_request_id: String="") -> Diction
 	var moves: Array=[]
 	for row in rows["sets"][0]:
 		var value=JSON.parse_string(row["payload"])
-		var receipt=JSON.parse_string(str(row["receipt_event"]))
+		# Standalone and direct events legitimately have no joined receipt.
+		var receipt: Variant=null
+		if row.get("receipt_event") is String and not row["receipt_event"].is_empty():
+			receipt=JSON.parse_string(row["receipt_event"])
 		if not value is Dictionary or not DTO.bounded_text(value.get("text"),12000):
 			return {"ok":false}
 		var original=value.get("player_text",receipt.get("player_text","") if receipt is Dictionary else "")
@@ -113,7 +116,7 @@ func select_story(records: Array,scene: Dictionary,actors: Array,text: String) -
 		var score=0
 		if row.get("kind") in ["overview","situation"]:
 			score+=100
-		if row.get("location_id")==local:
+		if local!=null and row.get("location_id")==local:
 			score+=30
 		if row.get("status") in ["open","active","offered"]:
 			score+=15

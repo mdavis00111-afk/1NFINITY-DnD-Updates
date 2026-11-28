@@ -94,6 +94,8 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	expanded["public_quests"]=ext.get("public_quests",[]).slice(0,32)
 	expanded["story"]=context_builder.select_story(ext.get("story_records",[]),scene,expanded["public_actors"],str(job["intent"]["args"].get("text","")))
 	expanded["overview"]=expanded["story"].filter(func(row): return row["kind"] in ["overview","situation"])
+	# Keep overview records in one packet field, not twice.
+	expanded["story"]=expanded["story"].filter(func(row): return not row["kind"] in ["overview","situation"])
 	expanded["selected_context"]=job.get("selected_context",[])
 	expanded["recent_outcomes"]=job.get("completed_steps",[])
 	expanded["interpreted"]=job.get("tool",{})

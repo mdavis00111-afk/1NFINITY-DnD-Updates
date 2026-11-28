@@ -725,3 +725,7 @@ Version new local outcome fingerprints (v2) using full-precision sorted JSON rou
 
 ### Deferred world reconciliation audit
 Discovery already persists request identity before execution and validates exact committed settlement before advancing. Base story processing lacked equivalent staged proposal binding: validate request ID, campaign, actor, story kind and exact source-bound arguments before settlement lookup, and current revision before fresh execution. Reject negative deferred cursors. Existing settlement replay remains intact; no new writes or schema changes. Static source review only; native interrupted quest/story and discovery regression validation outstanding. No publication.
+
+
+### Context and memory audit
+Memory SQL already limits to ten linked public moves for the active actor and a bounded narrative-only recap. LEFT JOIN receipt_event is legitimately NULL for standalone/direct events; avoid parsing null or empty receipt strings (a concrete source of noisy JSON errors, not proof of the semantic failure). Avoid treating absent location IDs as local story matches. Partition overview/situation records from the remaining story list to avoid duplicated context. Preserve exact original input, public actor/quest projections, authoritative mechanics and request limits. Static review only; native context memory and provider packet regression tests outstanding. No publication.
