@@ -1,3 +1,7 @@
+## v0.0.29 Step 7B eligibility checkpoint
+
+Codex Cloud reviewed on behalf of the owner from Step 7A commit `dbd269ab2785ccdd35ff6bca9fe8e84c7325aadc` on `feature/v029-step7b-eligibility`. Scope covered the registered item actions, definition creation, load checks, provider dispatch and settlement handling. Changed PROJECT_BRAIN.md, NEXT_CHAT.md, HANDOFF.md and TESTING.md only. No eligible producer exists. Proposal, persistence and resumption implementation remains blocked on the supported-action prerequisite in PROJECT_BRAIN.md. No overlapping active owner was recorded for this scope. No publication or Step 8 work.
+
 ## v0.0.29 Step 7A development checkpoint
 
 Owner-authorized Codex Cloud implementation, based on godot Step 6 `7257ad914d921045ddde558664282b0dd216fa88`, scoped locally on `feature/v029-step7a`. Source scope was game/gameplay/complete_controller.gd, semantic_controller.gd, semantic_policy.gd, tool_registry.gd and game/persistence/item_catalog.gd, loot_store.gd, noncombat_store.gd. Development records updated in PROJECT_BRAIN.md, NEXT_CHAT.md, HANDOFF.md and TESTING.md.

@@ -1,3 +1,9 @@
+## v0.0.29 Step 7B eligibility checkpoint
+
+Blocked on an eligible producer of `missing_custom_attributes`. The audit found no registered action that both establishes eligibility from persisted facts and requires an absent custom attribute to finish. Equip and slot reconciliation require known physical placement. Pickup, transfer and travel require known load for their capacity or pace checks. Full drop permits a nullable load projection. Consumption and attunement execute only their supported pinned effects. Discovery validates charge capacity before creating a charged instance. Definition registration creates definitions and does not repair an owned instance.
+
+The proposal path remains disabled. The only production references to the result code declare or consume it. No provider request, attribute write or action resume was added. Step 7B can proceed when a supported action has independent eligibility checks and a defined custom attribute required only after eligibility. Step 8 remains outside this checkpoint. See TESTING.md for checks and owner cases.
+
 ## v0.0.29 checkpoint — Step 7A persisted item attribute validation
 
 Unpublished. Godot classifies persisted item data after local request, actor, ownership, context and equipment checks. Descriptive custom held items require a verified category and valid matching physical options. Absent options or a null mechanical block leave eligibility unresolved. Empty options establish no legal placement. Present malformed options are invalid data. Held items use the existing fixed handling time and cannot contribute custom weapon profiles, armor or other effects. Pickup and transfer distinguish null weight, invalid weight and exceeded capacity. The existing nullable carried-weight mirror still permits a full drop when no new capacity check is required. Official mechanics remain pinned.

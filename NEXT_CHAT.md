@@ -1,3 +1,7 @@
+## v0.0.29 Step 7B prerequisite
+
+The Step 7B audit confirmed zero eligible producers on the Step 7A action set. Keep proposals disabled until a supported action has a required custom attribute whose absence leaves eligibility independently provable. When such an action exists, specify its attribute path and validation constraints, then recheck request, revision, actor, ownership, quantity and settlement before any approved write or one-time resume. Continue from the live godot tip. Keep v0.0.29 unpublished.
+
 ## v0.0.29 checkpoint — Step 7A complete
 
 Development scope is unpublished. The updater still points to v0.0.28. Read the Step 7A record in PROJECT_BRAIN.md and owner cases in TESTING.md. Current handlers have no eligible actionable missing-custom case. An unknown slot, grip or weight prevents eligibility. An unsupported custom mechanic remains unsupported. Continue from the exact current godot HEAD.

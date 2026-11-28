@@ -1,3 +1,19 @@
+## v0.0.29 Step 7B eligibility checks
+
+Codex Cloud static review traced the registered action handlers, SQLite item-definition writes, the missing-attribute result consumers and terminal rejection. A source scan confirmed the code has one declaration, three comparisons and zero producers. The Git diff whitelist, whitespace check and release-input equality checks passed.
+
+Owner-only runtime checks use a disposable campaign and capture provider-stage calls and the resulting journal state.
+
+| Case | Expected |
+| --- | --- |
+| Try to equip owned custom gear with missing slot or grip options | Local eligibility rejection. No attribute proposal or narration request, and no equipment or definition write. |
+| Pick up a zero-weight item, then repeat with an otherwise equivalent null-weight item | Normal capacity validation for zero weight. Null weight blocks eligibility without a provider proposal. |
+| Drop a full eligible stack while unrelated carried weight is unknown | Ordinary drop commits once and the weight projection can remain null. |
+| Try to use a custom consumable or attune unsupported custom gear | Local denial without a custom-attribute proposal or resource debit. |
+| Submit a stale request, retry an already settled request, or simulate prepared recovery | Existing stale rejection, replay or recovery takes precedence. No extra provider request, attribute write or duplicate action. |
+
+No Godot or Windows runtime tests were executed. A positive proposal and resume test requires an independently eligible producer.
+
 ## v0.0.29 Step 7A validation
 
 Executed in Codex Cloud Linux. The standalone gdtoolkit 4.5.0 parser parsed the seven changed GDScript files. Reviewed method signatures, enum states, dictionary shapes and dispatch through local policy, registry, persistence and controller. Reviewed early returns against equipment/ownership checks, capacity checks, dice, transaction guards and Step 6 settlement recovery. Python stdlib SQLite loaded the three existing schemas in memory and exercised the existing owned-instance query against custom rows with weight zero and null, false attunement, empty arrays, an absent mechanical block and a foreign-owned instance. Foreign-key check and `git diff --check` passed. The release files were unchanged. The standalone parser and in-memory SQL check provide development checks only.
