@@ -1,3 +1,7 @@
+## Copy log and Esc navigation
+
+Copy log is available in the top-right corner. It copies up to the latest 256 KiB from the launcher's `game.log`, with Godot's user log as a fallback. Esc returns to the main menu after widgets handle their own input. In a campaign, it uses the existing leave guard to save the composer draft and keep unconfirmed delivery in recovery.
+
 ## Narration transport recovery
 
 The owner's v0.0.31 `hello` attempt reached the Gemini narration transport and failed before a verified mechanical commit. The published log omitted the HTTP result and status. The development adapter sends a compact narration envelope to Gemini and leaves world proposals, checks and mechanical requests under the existing Godot validators. Transport diagnostics add safe status codes and failure categories to `SEMANTIC_BOUNDARY`.

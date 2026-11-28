@@ -240,6 +240,13 @@ func run() -> void:
 	if not expect(not shield.is_empty(),"Owned shield"):
 		finish()
 		return
+	if "--menu-shortcuts" in OS.get_cmdline_user_args():
+		ctrl.close_session()
+		workspace.queue_free()
+		ctrl.queue_free()
+		await menu_shortcuts_case(id)
+		finish()
+		return
 	if "--transport-retry" in OS.get_cmdline_user_args():
 		await transport_retry_case(id)
 		ctrl.close_session()
@@ -317,6 +324,59 @@ func run() -> void:
 	workspace.queue_free()
 	ctrl.queue_free()
 	finish()
+
+func menu_shortcuts_case(id: String) -> void:
+	var game = load("res://main.tscn").instantiate()
+	root.add_child(game)
+	await process_frame
+	var installed_log = game.install_root().path_join("game.log")
+	expect(game.game_log_path()==installed_log and game.read_recent_log(installed_log).contains("Godot Engine"),"Copy log reads the installed engine log")
+	var large_path = "user://log-copy-fixture.log"
+	var log_file = FileAccess.open(large_path,FileAccess.WRITE)
+	log_file.store_string("older entry\n"+"x".repeat(2*game.LOG_COPY_LIMIT)+"\nLatest log line.\n")
+	log_file.close()
+	expect(game.read_recent_log(large_path)=="Latest log line.\n" and game.read_recent_log("user://missing-log.log").is_empty(),"Copy log reads a bounded tail and handles a missing log")
+	game.settings_campaign_id=id
+	game.show_screen("Game Workspace")
+	await process_frame
+	await process_frame
+	var campaign = game.campaign_screen
+	if not expect(is_instance_valid(campaign.workspace) and is_instance_valid(campaign.gameplay_controller),"Main menu opens a saved campaign"):
+		game.queue_free()
+		return
+	var current = campaign.workspace
+	var toolbar = current.nav_bar.get_global_rect()
+	var log_button = game.copy_log_button.get_global_rect()
+	expect(log_button.end.x <= game.size.x and not toolbar.intersects(log_button),"Workspace toolbar and top-right Copy log button do not overlap")
+	var click = InputEventMouseButton.new()
+	click.position=log_button.get_center()
+	click.button_index=MOUSE_BUTTON_LEFT
+	click.pressed=true
+	root.push_input(click,true)
+	var release = click.duplicate() as InputEventMouseButton
+	release.pressed=false
+	root.push_input(release,true)
+	expect(game.copy_log_button.text=="Copied","The top-right button is clickable from the workspace")
+	var escape = InputEventKey.new()
+	escape.pressed=true
+	escape.keycode=KEY_ESCAPE
+	current.composer.text="Keep this draft after Esc."
+	current.composer.grab_focus()
+	current.local_pending_id="unconfirmed"
+	root.push_input(escape,true)
+	await process_frame
+	expect(game.active_screen=="Game Workspace","Esc preserves the workspace when delivery is unconfirmed")
+	current.local_pending_id=""
+	current.composer.grab_focus()
+	root.push_input(escape,true)
+	await process_frame
+	expect(game.active_screen=="Main","Esc from the focused composer returns to the main menu")
+	game.settings_campaign_id=id
+	game.show_screen("Game Workspace")
+	await process_frame
+	await process_frame
+	expect(game.campaign_screen.workspace.composer.text=="Keep this draft after Esc.","Reopened campaign restores the exact draft")
+	game.queue_free()
 
 func transport_retry_case(id: String) -> void:
 	var before = SQL.metrics()["calls"]

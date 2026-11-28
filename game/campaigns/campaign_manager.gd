@@ -258,6 +258,9 @@ func leave() -> void:
 	else:
 		exit_action.call()
 
+func can_return_to_main() -> bool:
+	return not is_instance_valid(workspace) or workspace.can_leave()
+
 func read_only_text(parent: Container, value: String) -> TextEdit:
 	var edit = TextEdit.new()
 	edit.editable = false

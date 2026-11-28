@@ -1,3 +1,9 @@
+## v0.0.32 Copy log and Esc acceptance
+
+Godot 4.7.2 Linux passed `semantic_integration_smoke.gd -- --menu-shortcuts` with the test-only SQLite bridge, disposable user directory and `--log-file` targeting the fixture installation's `game.log`. It verified the launcher log source, bounded copying of a long log, missing log behavior, a real mouse event on the toolbar button, and Esc with the composer focused. Unconfirmed delivery retained the workspace, and reopening after Esc restored the exact draft.
+
+On Windows, click Update and reopen the affected campaign. Click Copy log and paste into a local text editor to verify the clipboard. Use Turn → Retry once and check for a single DM reply. Type an unsent draft, press Esc, and reopen the campaign to verify it is preserved. Windows clipboard, updater installation, screen times and live narration remain owner acceptance.
+
 ## Narration transport recovery
 
 Godot 4.7.2 Linux passed script `--check-only` for the campaign manager, semantic controller and integration fixture after importing assets in the disposable project. `godot --headless --path game --script res://tests/ai_profile_smoke.gd` passed with a disposable user directory. It verifies a simulated HTTP 400 produces the status and failure category without recording provider text. `git diff --check` passed.

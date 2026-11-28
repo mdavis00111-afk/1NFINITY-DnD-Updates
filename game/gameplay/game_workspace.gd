@@ -358,6 +358,11 @@ func build_header() -> void:
 		b.custom_minimum_size.y = 35
 		if caption=="Game":
 			b.add_theme_stylebox_override("normal",box_style(true,4))
+	# Keep the persistent top-right log button clear of the workspace toolbar.
+	var log_button_space = Control.new()
+	log_button_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	log_button_space.custom_minimum_size.x = 98
+	row.add_child(log_button_space)
 
 func navigate(destination: String) -> void:
 	match destination:
@@ -369,24 +374,21 @@ func navigate(destination: String) -> void:
 		"Campaign": request_leave()
 		"Settings": request_settings()
 
-func request_leave() -> void:
+func can_leave(blocked_message: String = "A request needs reconciliation before leaving the workspace.") -> bool:
 	if is_instance_valid(development_controller) and not development_controller.save_draft(composer.text if is_instance_valid(composer) else "").get("ok",false):
 		show_status("Draft save unconfirmed; retry before leaving.")
-		return
+		return false
 	if not intents.outstanding_id.is_empty() or not local_pending_id.is_empty():
-		show_status("A request needs reconciliation before leaving the workspace.")
-		return
-	if leave_action.is_valid():
+		show_status(blocked_message)
+		return false
+	return true
+
+func request_leave() -> void:
+	if can_leave() and leave_action.is_valid():
 		leave_action.call()
 
 func request_settings() -> void:
-	if is_instance_valid(development_controller) and not development_controller.save_draft(composer.text if is_instance_valid(composer) else "").get("ok",false):
-		show_status("Draft save unconfirmed; retry before leaving.")
-		return
-	if not intents.outstanding_id.is_empty() or not local_pending_id.is_empty():
-		show_status("A request needs reconciliation before changing settings.")
-		return
-	if settings_action.is_valid():
+	if can_leave("A request needs reconciliation before changing settings.") and settings_action.is_valid():
 		settings_action.call()
 
 func stat(parent: Node, caption: String, value: String, icon_id: String = "", health: bool = false) -> void:

@@ -6,6 +6,7 @@ const MUTED = Color("#a8997e")
 const GEMINI = preload("res://systems/gemini.gd")
 const THEME_PATH = "res://themes/master_theme.tres"
 const CONFIG_PATH = "user://settings.cfg"
+const LOG_COPY_LIMIT = 256 * 1024
 var version: String = ""
 var status: Label
 var check_button: Button
@@ -15,7 +16,10 @@ var dialog: ConfirmationDialog
 var update_version: Label
 var update_notes: RichTextLabel
 var screen: Control
+var campaign_screen: Control
 var backdrop: TextureRect
+var copy_log_button: Button
+var log_feedback: Timer
 var config = ConfigFile.new()
 var active_screen = "Main"
 var busy = false
@@ -107,6 +111,7 @@ func _ready() -> void:
 	add_child(backdrop)
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	show_screen("Main")
+	add_log_button()
 	await get_tree().process_frame
 	await get_tree().process_frame
 	for arg in OS.get_cmdline_user_args():
@@ -134,6 +139,74 @@ func menu_button(value: String, action: Callable) -> Button:
 	b.pressed.connect(action)
 	return b
 
+func add_log_button() -> void:
+	copy_log_button = Button.new()
+	copy_log_button.text = "Copy log"
+	copy_log_button.tooltip_text = "Copy the recent game log to the clipboard."
+	copy_log_button.add_theme_font_size_override("font_size", 16)
+	copy_log_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	add_child(copy_log_button)
+	copy_log_button.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	copy_log_button.offset_left = -108
+	copy_log_button.offset_right = -12
+	copy_log_button.offset_top = 12
+	copy_log_button.offset_bottom = 44
+	copy_log_button.pressed.connect(copy_game_log)
+	log_feedback = Timer.new()
+	log_feedback.one_shot = true
+	log_feedback.wait_time = 2.0
+	log_feedback.timeout.connect(func(): copy_log_button.text = "Copy log")
+	add_child(log_feedback)
+
+func game_log_path() -> String:
+	# The installed launcher directs the engine log to the installation root.
+	var installed_log = install_root().path_join("game.log")
+	if FileAccess.file_exists(installed_log):
+		return installed_log
+	return str(ProjectSettings.get_setting("debug/file_logging/log_path", "user://logs/godot.log"))
+
+func read_recent_log(path: String) -> String:
+	var log_file = FileAccess.open(path, FileAccess.READ)
+	if log_file == null:
+		return ""
+	var length = log_file.get_length()
+	var start = maxi(0, length - LOG_COPY_LIMIT)
+	log_file.seek(start)
+	var content = log_file.get_buffer(length - start)
+	if start > 0:
+		var newline = content.find(10)
+		if newline >= 0 and newline + 1 < content.size():
+			content = content.slice(newline + 1)
+		else:
+			var first = 0
+			while first < content.size() and (content[first] & 0xc0) == 0x80:
+				first += 1
+			content = content.slice(first)
+	return content.get_string_from_utf8()
+
+func copy_game_log() -> void:
+	var recent = read_recent_log(game_log_path())
+	if recent.is_empty():
+		copy_log_button.text = "No log"
+	else:
+		DisplayServer.clipboard_set(recent)
+		copy_log_button.text = "Copied"
+	log_feedback.start()
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if busy or active_screen == "Main" or not event is InputEventKey or not event.pressed or event.echo or event.keycode != KEY_ESCAPE:
+		return
+	get_viewport().set_input_as_handled()
+	return_to_main.call_deferred(screen)
+
+func return_to_main(previous: Control) -> void:
+	if busy or screen != previous or active_screen == "Main":
+		return
+	if is_instance_valid(campaign_screen) and not campaign_screen.can_return_to_main():
+		return
+	settings_campaign_id = ""
+	show_screen("Main")
+
 func show_screen(name: String) -> void:
 	if busy:
 		return
@@ -141,8 +214,11 @@ func show_screen(name: String) -> void:
 	if is_instance_valid(screen):
 		remove_child(screen)
 		screen.queue_free()
+	campaign_screen = null
 	screen = Control.new()
 	add_child(screen)
+	if is_instance_valid(copy_log_button):
+		move_child(copy_log_button, -1)
 	screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var art = "castle"
 	if name == "Main":
@@ -196,6 +272,7 @@ func show_screen(name: String) -> void:
 		return
 	if name in ["New Campaign","Existing Campaigns","Game Workspace"]:
 		var campaign = CAMPAIGN.new()
+		campaign_screen = campaign
 		var resume_id = settings_campaign_id if name=="Game Workspace" else ""
 		settings_campaign_id = ""
 		campaign.configure("new" if name=="New Campaign" else "library",func(): show_screen("Campaign Manager"),func(): show_screen("Edit Content Rules"),open_game_settings,resume_id)

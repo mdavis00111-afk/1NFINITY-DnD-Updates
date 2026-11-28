@@ -1,6 +1,12 @@
 # 1NFINITY D&D — Changelog
 Live channel: godot. Entries below are reconstructed from published Git commit messages, not evidence of runtime test success. Source commit and manifest commit prefixes are provided for traceability.
 
+## 0.0.32 Windows playtest
+
+- Simplify the Gemini narration response schema, report sanitized transport failures, and recover the original saved input through Retry.
+- Reduce duplicate campaign and turn reads. Wrap update notes in a scrollable box.
+- Add Copy log in the top-right corner and Esc to return to the main menu while preserving campaign drafts.
+
 ## 0.0.22 Windows playtest
 - Fixed 70% centered sheet with left portrait roster and bottom-left controls; remove zoom controls.
 - Simplified identity fields, lighter surfaces, default sample portrait, pre-roll cards, compact searchable dropdowns and bounded tips.

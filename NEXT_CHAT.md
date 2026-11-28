@@ -1,3 +1,7 @@
+## v0.0.32 Windows acceptance
+
+Read the live updater channel and the latest PROJECT_BRAIN.md, HANDOFF.md and TESTING.md entries. The owner confirmed the API connection and authorized the test update. In the affected campaign, use Turn → Retry for the saved `hello`. Check for a single DM reply and note the campaign opening and screen transition times. Use the top-right Copy log button if another provider request fails. Verify that Esc returns to Main and the draft survives reopening the campaign.
+
 ## Narration transport recovery checkpoint
 
 Verify `feature/narration-transport-recovery` and live `godot`, then read the latest PROJECT_BRAIN.md, HANDOFF.md and TESTING.md entries. The owner log identifies a Gemini narration transport failure before settlement. The checkpoint adds a compact transport schema, safe HTTP diagnostics, guarded Retry and fewer synchronous reads. Reproduce the saved `hello` and measure actual campaign transition time on Windows. If narration still fails, use `SEMANTIC_BOUNDARY.transport` for the same attempt. Keep saved effects behind the existing recovery guards. The live updater remains v0.0.31.

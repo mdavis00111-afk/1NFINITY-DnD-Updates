@@ -1,3 +1,7 @@
+## v0.0.32 owner test release
+
+Owner confirmed the API connection and authorized packaging the narration recovery with Copy log and Esc navigation. On `feature/log-and-menu-shortcuts`, the new UI changes are in `game/main.gd`, `game/campaigns/campaign_manager.gd` and `game/gameplay/game_workspace.gd`, with coverage in `game/tests/semantic_integration_smoke.gd`. Game version stamps and the immutable manifest come from the existing package workflow. See the live `channel.json` for the packaged source and TESTING.md for Windows acceptance.
+
 ## Narration transport recovery
 
 Codex Cloud checkpoint on `feature/narration-transport-recovery` from `feature/chat-blocker-recovery` at `310419e368e95a22e295594253d9579b75681a79`. Published base is `godot` at `b85b5abdab863404fb9d93e2986254c58d1bf9a3`, v0.0.31. Scope covers `game/campaigns/campaign_manager.gd`, `game/gameplay/complete_controller.gd`, `semantic_adapter.gd`, `semantic_controller.gd`, `game/systems/gemini.gd`, and `game/tests/ai_profile_smoke.gd` and `semantic_integration_smoke.gd`. This branch includes the earlier update-notes and chat-blocker patches. See TESTING.md for the headless evidence and required Windows validation. The laptop's exact provider failure remains open because its log predates transport diagnostics. The release channel and packaging inputs remain at the published checkpoint.
