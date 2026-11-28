@@ -574,3 +574,7 @@ Codex Cloud is preparing the owner-authorized test update from live `godot` at `
 
 ### Alpha 0.0.32 packaging
 Owner authorized live testing instead of mandatory GitHub gameplay regression. Latest Linux baseline 12/14; semantic corrections unverified; GUI owner-managed. No claim of native or live acceptance. Packaging only.
+
+
+### Alpha 0.0.33 packaging
+Owner authorized live testing instead of mandatory GitHub gameplay regression. Latest Linux baseline 12/14; semantic corrections unverified; GUI owner-managed. No claim of native or live acceptance. Packaging only.
