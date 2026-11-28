@@ -201,6 +201,11 @@ func render() -> void:
 	if mode=="workspace":
 		build_workspace(layout)
 		return
+	var host: Node = get_parent()
+	while host != null and not host.has_method("set_gameplay_menu_active"):
+		host = host.get_parent()
+	if host != null:
+		host.set_gameplay_menu_active(false)
 	var root = column(layout,8)
 	var title = "Existing Campaigns" if mode=="library" else "New Campaign"
 	var title_label = text_label(title,34,true)

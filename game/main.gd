@@ -25,6 +25,7 @@ var config = ConfigFile.new()
 var active_screen = "Main"
 var busy = false
 var fullscreen = true
+var update_workspace: Control
 
 const NAV = {
 	"Main": ["Player", "Campaign", "Settings", "Full Screen", "Exit"],
@@ -220,6 +221,7 @@ func show_screen(name: String) -> void:
 	if busy:
 		return
 	active_screen = name
+	set_gameplay_menu_active(false)
 	if is_instance_valid(screen):
 		remove_child(screen)
 		screen.queue_free()
@@ -405,10 +407,7 @@ func navigate(item: String) -> void:
 		browser_return="Settings"
 		show_screen(item)
 	elif item == "Full Screen":
-		fullscreen = not fullscreen
-		get_window().mode = Window.MODE_FULLSCREEN if fullscreen else Window.MODE_WINDOWED
-		config.set_value("display", "fullscreen", fullscreen)
-		config.save(CONFIG_PATH)
+		toggle_game_fullscreen()
 		show_screen("Main")
 	elif item == "Return to Main":
 		show_screen("Game Workspace" if not settings_campaign_id.is_empty() else "Main")
@@ -678,15 +677,55 @@ func master_screen(menu: VBoxContainer) -> void:
 func install_root() -> String:
 	return ProjectSettings.globalize_path("res://").trim_suffix("/").trim_suffix("\\").get_base_dir()
 
+func set_gameplay_menu_active(enabled: bool) -> void:
+	if is_instance_valid(copy_log_button):
+		copy_log_button.visible = not enabled
+
+func toggle_game_fullscreen() -> void:
+	fullscreen = not fullscreen
+	get_window().mode = Window.MODE_FULLSCREEN if fullscreen else Window.MODE_WINDOWED
+	config.set_value("display", "fullscreen", fullscreen)
+	config.save(CONFIG_PATH)
+
+func gameplay_menu_action(destination: String, workspace: Control) -> void:
+	match destination:
+		"Main Menu": return_to_main(screen)
+		"Copy log":
+			copy_game_log()
+			workspace.show_status("Log copied." if copy_log_button.text=="Copied" else "No log available.")
+		"Check for updates":
+			if busy:
+				workspace.show_status("Update check already in progress.")
+				return
+			update_workspace = workspace
+			start_update_check()
+		"Full Screen / Windowed": toggle_game_fullscreen()
+
+func update_feedback(value: String) -> void:
+	if is_instance_valid(update_workspace) and update_workspace.is_inside_tree():
+		update_workspace.show_status(value)
+	elif is_instance_valid(status):
+		status.text = value
+
+func set_update_button_disabled(disabled: bool) -> void:
+	if is_instance_valid(check_button):
+		check_button.disabled = disabled
+
 func check_updates() -> void:
+	if busy:
+		return
+	update_workspace = null
+	start_update_check()
+
+func start_update_check() -> void:
 	busy = true
-	check_button.disabled = true
-	status.text = "Checking Godot update channel..."
+	set_update_button_disabled(true)
+	update_feedback("Checking Godot update channel...")
 	var err = request.request(CHANNEL + "?t=" + str(Time.get_unix_time_from_system()))
 	if err != OK:
 		busy = false
-		status.text = "Could not start update check."
-		check_button.disabled = false
+		update_feedback("Could not start update check.")
+		set_update_button_disabled(false)
 
 func version_parts(value: String) -> Array:
 	var p = value.split(".")
@@ -711,20 +750,20 @@ func newer(candidate: String) -> bool:
 
 func on_response(result: int, code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
 	busy = false
-	check_button.disabled = false
+	set_update_button_disabled(false)
 	if result != HTTPRequest.RESULT_SUCCESS or code != 200:
-		status.text = "Update check failed (HTTP " + str(code) + ")."
+		update_feedback("Update check failed (HTTP " + str(code) + ").")
 		return
 	var data = JSON.parse_string(body.get_string_from_utf8())
 	if not data is Dictionary or data.get("channel") != "godot":
-		status.text = "Invalid update channel."
+		update_feedback("Invalid update channel.")
 		return
 	var latest = str(data.get("version", ""))
 	if version_parts(latest).is_empty():
-		status.text = "Invalid release version."
+		update_feedback("Invalid release version.")
 		return
 	if not newer(latest):
-		status.text = "You are up to date.  |  v" + version
+		update_feedback("You are up to date.  |  v" + version)
 		return
 	remote = data
 	update_version.text = "Version " + latest
@@ -732,23 +771,25 @@ func on_response(result: int, code: int, _headers: PackedStringArray, body: Pack
 	update_notes.text = str(data.get("notes", ""))
 	dialog.popup_centered(Vector2i(clampi(get_window().size.x - 16, 1, 480), 220))
 	update_notes.scroll_to_line.call_deferred(0)
-	status.text = "Update available: v" + latest
+	update_feedback("Update available: v" + latest)
 
 func install_update() -> void:
+	if is_instance_valid(update_workspace) and update_workspace.is_inside_tree() and not update_workspace.can_leave():
+		return
 	if OS.get_name() != "Windows":
-		status.text = "The packaged updater currently supports Windows only."
+		update_feedback("The packaged updater currently supports Windows only.")
 		return
 	var root = install_root()
 	var script = root.path_join("Update.ps1")
 	if not FileAccess.file_exists(script):
-		status.text = "Updater missing. Use the original installation package."
+		update_feedback("Updater missing. Use the original installation package.")
 		return
 	var args = PackedStringArray(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, "-InstallRoot", root, "-ExpectedVersion", str(remote["version"]), "-GamePid", str(OS.get_process_id())])
 	if fullscreen:
 		get_window().mode = Window.MODE_WINDOWED
-	status.text = "Starting external updater. See update.log for details."
+	update_feedback("Starting external updater. See update.log for details.")
 	var pid = OS.create_process("powershell.exe", args, true)
 	if pid <= 0:
-		status.text = "Unable to start updater."
+		update_feedback("Unable to start updater.")
 		return
 	get_tree().quit()

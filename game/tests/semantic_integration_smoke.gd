@@ -365,17 +365,23 @@ func menu_shortcuts_case(id: String) -> void:
 		return
 	var current = campaign.workspace
 	var toolbar = current.nav_bar.get_global_rect()
-	var log_button = game.copy_log_button.get_global_rect()
-	expect(log_button.end.x <= game.size.x and not toolbar.intersects(log_button),"Workspace toolbar and top-right Copy log button do not overlap")
-	var click = InputEventMouseButton.new()
-	click.position=log_button.get_center()
-	click.button_index=MOUSE_BUTTON_LEFT
-	click.pressed=true
-	root.push_input(click,true)
-	var release = click.duplicate() as InputEventMouseButton
-	release.pressed=false
-	root.push_input(release,true)
-	expect(game.copy_log_button.text=="Copied","The top-right button is clickable from the workspace")
+	expect(toolbar.end.x<=game.size.x and not game.copy_log_button.visible,"Compact menu replaces top-right Copy log button")
+	var menu = current.menu_button.get_popup()
+	menu.id_pressed.emit(current.MENU_ITEMS.find("Copy log"))
+	expect(game.copy_log_button.text=="Copied","Copy log remains callable through the compact menu")
+	var enter = InputEventKey.new()
+	enter.pressed=true
+	enter.keycode=KEY_ENTER
+	enter.shift_pressed=true
+	current.composer.text="First"
+	current.composer.set_caret_column(5)
+	current.composer.grab_focus()
+	root.push_input(enter,true)
+	expect(current.composer.text=="First\n","Shift+Enter inserts a newline without submitting")
+	var mounted_composer = current.composer
+	current.show_tab("Rules")
+	expect(current.composer==mounted_composer and current.composer.text=="First\n","Tab switch keeps multiline draft and composer")
+	current.show_tab("Inventory")
 	var escape = InputEventKey.new()
 	escape.pressed=true
 	escape.keycode=KEY_ESCAPE

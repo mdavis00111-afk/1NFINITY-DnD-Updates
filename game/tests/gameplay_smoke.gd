@@ -135,10 +135,15 @@ func run() -> void:
 		expect(empty_equip!=null and empty_equip.disabled,"Empty legacy slot not inspectable or mutation enabled")
 		close_popups(ui)
 		await settle()
-		for caption in ["4 / 7","30 ft.","Weight: 18.38 / 150 lb","17 gp","2 sp","Passive Perception","Proficiency"]:
-			expect(has_text(ui,caption),"Missing displayed campaign value: "+caption)
+		for caption in ["4 / 7","17 gp","2 sp","L1: 1 / 2"]:
+			expect(has_text(ui.left_panel,caption),"Missing displayed campaign value: "+caption)
+		expect(not has_text(ui.left_panel,"Passive Perception") and not has_text(ui.left_panel,"Proficiency"),"Removed statistics remain in HUD")
+		ui.show_tab("Character")
+		for caption in ["30 ft.","Weight: 18.38 / 150 lb","Passive Perception","Proficiency"]:
+			expect(has_text(ui.right_content,caption),"Missing Character tab value: "+caption)
+		ui.show_tab("Inventory")
 		var columns_width = ui.left_panel.size.x+ui.center_panel.size.x+ui.right_panel.size.x
-		expect(columns_width>0 and absf(ui.left_panel.size.x/columns_width-27.0/99.0)<0.05 and absf(ui.center_panel.size.x/columns_width-43.0/99.0)<0.05 and absf(ui.right_panel.size.x/columns_width-29.0/99.0)<0.05,"Column proportions differ from reference")
+		expect(columns_width>0 and ui.center_panel.size.x>ui.left_panel.size.x and ui.center_panel.size.x>ui.right_panel.size.x,"Conversation must receive the largest column")
 		expect(ui.inventory_cells.has("backpack") and ui.inventory_cells.has("shortsword"),"Normalized inventory cells missing")
 		ui.select_item("backpack")
 		expect(ui.inventory_detail.text.contains("Quantity: 3") and ui.inventory_detail.text.contains("Stack weight: 15 lb"),"Selected quantity or stack weight not normalized")
@@ -157,9 +162,10 @@ func run() -> void:
 				expect(has_text(ui.right_content,"Class Save DC 13") and has_text(ui.right_content,"Attack +5") and has_text(ui.right_content,"Level 1 slots: 1 / 2"),"Spell statistics not displayed from actor")
 			elif tab=="Skills":
 				expect(has_text(ui.right_content,"◆ Arcana   +5"),"Stored skill modifier or proficiency missing")
+		var menu = ui.menu_button.get_popup()
+		expect(menu.item_count==8,"Compact menu entry count")
 		for caption in ["Settings","Campaign"]:
-			for nav_button in ui.nav_bar.get_children():
-				if nav_button.text==caption: nav_button.pressed.emit()
+			menu.id_pressed.emit(ui.MENU_ITEMS.find(caption))
 		expect(called==["settings","leave"],"Navigation callbacks failed")
 		# Empty and long-inventory/missing-art synthetic views exercise layout without writes.
 		base.remove_child(ui)

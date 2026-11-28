@@ -28,7 +28,11 @@ const PORTRAIT_FRAME = preload("res://themes/parts/portrait_empty.png")
 const GOLD = Color("#ffd989")
 const IVORY = Color("#fff0cf")
 const ABILITIES = ["str","dex","con","int","wis","cha"]
-const TABS = ["Inventory","Spells","Skills","Features","Notes"]
+const TABS = ["Inventory","Spells","Skills","Features","Character","Quest Log","Map","Notes","Rules"]
+const MENU_ITEMS = ["Main Menu","Campaign","Settings","Turn / Retry","Copy log","Check for updates","Full Screen / Windowed","Save & Exit"]
+const MAP_MODEL = preload("res://cartography/map_model.gd")
+const MAP_CANVAS = preload("res://cartography/map_canvas.gd")
+const CHAT_LIMIT = 2000
 const LIVE_VIEW_FIELDS = ["revision","phase","pending_turn_id","active_turn_id","supported_intents","can_queue","choice_tools","queue_wait","status_text","work_stage","processing","draft","reviewed_preview","accepted_request_ids","request_history","last_terminal","settled_request_id","settled_status"]
 var cat = CAT.new()
 var intents = INTENTS.new()
@@ -57,7 +61,7 @@ var inventory_detail: RichTextLabel
 var inventory_cells: Dictionary = {}
 var opening_button: Button
 var status: Label
-var composer: LineEdit
+var composer: TextEdit
 var send_button: Button
 var dice_type: OptionButton
 var dice_count: SpinBox
@@ -69,6 +73,13 @@ var left_panel: PanelContainer
 var center_panel: PanelContainer
 var right_panel: PanelContainer
 var nav_bar: HBoxContainer
+var menu_button: MenuButton
+var location_label: Label
+var left_body: VBoxContainer
+var party_body: VBoxContainer
+var tab_scroll: ScrollContainer
+var map_cache: Dictionary = {}
+var map_load_serial = 0
 var icon_rects: Dictionary = {}
 var status_refreshes=0
 var full_refreshes=0
@@ -96,6 +107,9 @@ func _ready() -> void:
 	cat.initialize()
 	add_theme_constant_override("separation",5)
 	build_workspace()
+	var host = main_host()
+	if host != null:
+		host.set_gameplay_menu_active(true)
 	if is_instance_valid(development_controller):
 		composer.text=str(extension().get("draft",""))
 
@@ -103,24 +117,56 @@ func build_workspace() -> void:
 	build_header()
 	var body = hbox(self,5)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var left = frame(body,27.0,true)
-	var center = frame(body,43.0,true)
-	var right = frame(body,29.0,true)
+	var left = frame(body,23.0,true)
+	var center = frame(body,49.0,true)
+	var right = frame(body,28.0,true)
 	left_panel = left.get_parent() as PanelContainer
 	center_panel = center.get_parent() as PanelContainer
 	right_panel = right.get_parent() as PanelContainer
-	left_panel.custom_minimum_size.x = 310
+	left_panel.custom_minimum_size.x = 275
 	center_panel.custom_minimum_size.x = 430
-	right_panel.custom_minimum_size.x = 340
-	build_left(left)
+	right_panel.custom_minimum_size.x = 345
+	left_body = vbox(scroll(left,0),4)
+	left_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	build_left(left_body)
 	build_center(center)
 	build_right(right)
 	refresh_intent_controls()
 
-# Called only by the trusted future controller with a fresh, committed full view.
-# Do not reconstruct the adapter or clear a request lock on ordinary redraws.
-# Reuse the panels when only the journal, turn controls or transcript changed.
-# An open dialog may contain offers tied to the old revision.
+func clear_children(parent: Node) -> void:
+	for child in parent.get_children():
+		parent.remove_child(child)
+		child.queue_free()
+
+func main_host() -> Node:
+	var node: Node = get_parent()
+	while node != null:
+		if node.has_method("gameplay_menu_action"):
+			return node
+		node = node.get_parent()
+	return null
+
+func restore_composer(draft: String, line: int, column: int) -> void:
+	if composer.text == draft:
+		return
+	composer.text = draft
+	var target_line = clampi(line,0,composer.get_line_count()-1)
+	composer.set_caret_line(target_line)
+	composer.set_caret_column(clampi(column,0,composer.get_line(target_line).length()))
+
+func _input(event: InputEvent) -> void:
+	if not is_instance_valid(composer) or not composer.is_visible_in_tree() or not composer.has_focus():
+		return
+	if not event is InputEventKey or not event.pressed or event.keycode not in [KEY_ENTER,KEY_KP_ENTER]:
+		return
+	get_viewport().set_input_as_handled()
+	if event.echo or not composer.editable:
+		return
+	if event.shift_pressed:
+		composer.insert_text_at_caret("\n")
+	else:
+		submit_chat()
+
 func can_refresh_transcript(previous: Dictionary,next: Dictionary) -> bool:
 	if previous.is_empty() or previous.keys().size()!=next.keys().size():
 		return false
@@ -156,7 +202,8 @@ func apply_authoritative_view(snapshot: Dictionary) -> bool:
 		return false
 	var draft = composer.text if is_instance_valid(composer) else ""
 	var focused=is_instance_valid(composer) and composer.has_focus()
-	var caret=composer.caret_column if is_instance_valid(composer) else 0
+	var caret_line = composer.get_caret_line() if is_instance_valid(composer) else 0
+	var caret_column = composer.get_caret_column() if is_instance_valid(composer) else 0
 	if is_instance_valid(development_controller):
 		var ext=snapshot.get("interaction_extension",{})
 		if not local_pending_id.is_empty() and (local_pending_id in ext.get("accepted_request_ids",[]) or ext.get("request_history",[]).any(func(row): return row.get("request_id")==local_pending_id)):
@@ -164,11 +211,6 @@ func apply_authoritative_view(snapshot: Dictionary) -> bool:
 				draft=""
 			local_pending_id=""
 			local_pending_text=""
-	var previous_dice = last_roll.duplicate(true)
-	var previous_dice_text = dice_result.text if is_instance_valid(dice_result) else "Result: —"
-	var previous_dice_tip = dice_result.tooltip_text if is_instance_valid(dice_result) else ""
-	var previous_die = dice_type.selected if is_instance_valid(dice_type) else DICE.SIDES.find(20)
-	var previous_count = dice_count.value if is_instance_valid(dice_count) else 1.0
 	if not last_chat_request_id.is_empty() and intents.interaction.get("settled_request_id")==last_chat_request_id:
 		if intents.interaction.get("settled_status")=="committed":
 			draft = ""
@@ -186,29 +228,31 @@ func apply_authoritative_view(snapshot: Dictionary) -> bool:
 		status_refreshes+=1
 		if transcript_changed:
 			refresh_transcript()
-		composer.text=draft
-		composer.caret_column=mini(caret,draft.length())
+		restore_composer(draft,caret_line,caret_column)
 		refresh_intent_controls()
 		show_status(str(extension().get("status_text","Campaign view refreshed.")))
 		return true
 	full_refreshes+=1
+	# Preserve mounted workspace, transcript container, composer and dice controls.
+	# Close revision-bound dialogs just as the previous full redraw did.
 	for child in get_children():
-		remove_child(child)
-		child.queue_free()
-	right_tabs.clear()
-	inventory_cells.clear()
-	intent_buttons.clear()
+		if child is Window:
+			remove_child(child)
+			child.queue_free()
 	popup_status_labels.clear()
-	build_workspace()
-	composer.text = draft
-	composer.caret_column=mini(caret,draft.length())
+	clear_children(left_body)
+	build_left(left_body)
+	clear_children(party_body)
+	build_party(party_body)
+	map_cache.clear()
+	show_tab(current_tab)
+	refresh_location()
+	if transcript_changed:
+		refresh_transcript()
+	restore_composer(draft,caret_line,caret_column)
+	refresh_intent_controls()
 	if focused and composer.editable:
 		composer.grab_focus.call_deferred()
-	last_roll = previous_dice
-	dice_type.select(previous_die)
-	dice_count.value = previous_count
-	dice_result.text = previous_dice_text
-	dice_result.tooltip_text = previous_dice_tip
 	show_status(str(extension().get("status_text","Campaign view refreshed.")) if is_instance_valid(development_controller) else str(intents.interaction.get("status_text","Campaign view refreshed.")))
 	return true
 
@@ -351,37 +395,58 @@ func actor_portrait() -> Texture2D:
 	return EMPTY_PARTY if actor.is_empty() else PORTRAIT.texture_for(str(actor.get("portrait","")))
 
 func build_header() -> void:
-	var header = frame(self,1.0,false,false,5)
-	var row = hbox(header,8)
-	var mark = picture(row,COMPASS,Vector2(42,42))
+	var header = frame(self,1.0,false,false,3)
+	var row = hbox(header,6)
+	nav_bar = hbox(row,0)
+	nav_bar.size_flags_horizontal = Control.SIZE_FILL
+	menu_button = MenuButton.new()
+	menu_button.text = "Menu"
+	menu_button.custom_minimum_size = Vector2(84,29)
+	menu_button.add_theme_font_size_override("font_size",17)
+	for state in ["normal","disabled","hover","pressed","focus"]:
+		menu_button.add_theme_stylebox_override(state,box_style(state in ["hover","pressed","focus"],4))
+	nav_bar.add_child(menu_button)
+	var popup = menu_button.get_popup()
+	popup.add_theme_stylebox_override("panel",box_style(false,8))
+	popup.add_theme_stylebox_override("hover",box_style(true,4))
+	popup.add_theme_color_override("font_color",IVORY)
+	popup.add_theme_color_override("font_hover_color",GOLD)
+	for i in range(MENU_ITEMS.size()):
+		popup.add_item(MENU_ITEMS[i],i)
+	popup.id_pressed.connect(func(id: int): navigate(MENU_ITEMS[id]))
+	var mark = picture(row,COMPASS,Vector2(26,26))
 	mark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var brand = vbox(row,0)
-	brand.custom_minimum_size.x = 225
+	var brand = one_line(row,"1NFINITY D&D",22,GOLD)
 	brand.size_flags_horizontal = Control.SIZE_FILL
-	one_line(brand,"1NFINITY D&D",28,GOLD)
-	one_line(brand,"AI DUNGEON MASTER (5e)",15,GOLD)
-	nav_bar = hbox(row,4)
-	for caption in ["Game","Character","Inventory","Spells","Skills","Quest Log","Map","Campaign","Settings"]:
-		var name_value = caption
-		var b = button(nav_bar,caption,func(): navigate(name_value),16)
-		b.custom_minimum_size.y = 35
-		if caption=="Game":
-			b.add_theme_stylebox_override("normal",box_style(true,4))
-	# Keep the persistent top-right log button clear of the workspace toolbar.
-	var log_button_space = Control.new()
-	log_button_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	log_button_space.custom_minimum_size.x = 98
-	row.add_child(log_button_space)
+	brand.custom_minimum_size.x = 158
+	location_label = one_line(row,"",16,GOLD)
+	location_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	refresh_location()
+	if view.get("opening_available",false) and not is_instance_valid(development_controller):
+		opening_button = button(row,"Generate Opening",retry_action,15,"wand")
+		opening_button.size_flags_horizontal = Control.SIZE_FILL
+		opening_button.disabled = pending or not data_error.is_empty()
+
+func refresh_location() -> void:
+	var value = str(campaign.get("title","Campaign"))+"  ·  "+str(view.get("location",{}).get("name","Location unavailable"))
+	location_label.text = value
+	location_label.tooltip_text = value
 
 func navigate(destination: String) -> void:
 	match destination:
 		"Game": show_tab("Inventory")
-		"Character": show_character()
-		"Inventory","Spells","Skills": show_tab(destination)
-		"Quest Log": show_quests()
-		"Map": show_map()
-		"Campaign": request_leave()
+		"Character","Inventory","Spells","Skills","Features","Quest Log","Map","Notes","Rules": show_tab(destination)
+		"Campaign","Save & Exit": request_leave()
 		"Settings": request_settings()
+		"Turn / Retry": show_turn_controls()
+		"Main Menu","Copy log","Check for updates","Full Screen / Windowed":
+			var host = main_host()
+			if host != null:
+				host.gameplay_menu_action(destination,self)
+			elif destination=="Main Menu":
+				request_leave()
+			else:
+				show_status("Game menu service unavailable.")
 
 func can_leave(blocked_message: String = "A request needs reconciliation before leaving the workspace.") -> bool:
 	if is_instance_valid(development_controller) and not development_controller.save_draft(composer.text if is_instance_valid(composer) else "").get("ok",false):
@@ -439,7 +504,7 @@ func stat(parent: Node, caption: String, value: String, icon_id: String = "", he
 
 func build_left(parent: VBoxContainer) -> void:
 	var top = hbox(parent,6)
-	var portrait_frame = picture(top,PORTRAIT_FRAME,Vector2(117,149))
+	var portrait_frame = picture(top,PORTRAIT_FRAME,Vector2(104,132))
 	portrait_frame.size_flags_horizontal = Control.SIZE_FILL
 	portrait_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	portrait_frame.stretch_mode = TextureRect.STRETCH_SCALE
@@ -456,24 +521,34 @@ func build_left(parent: VBoxContainer) -> void:
 	image.material = material_mask
 	var info = vbox(top,2)
 	info.size_flags_stretch_ratio = 1.7
-	one_line(info,str(actor.get("name","Character unavailable")),24,GOLD,true)
+	one_line(info,str(actor.get("name","Character unavailable")),22,GOLD,true)
 	var race_name = title_for("subraces",actor.get("subrace_id")) if not str(actor.get("subrace_id","")).is_empty() else title_for("races",actor.get("race_id"))
-	label(info,"Level "+number(actor.get("level"))+"  "+title_for("classes",actor.get("class_id"))+" ("+race_name+")",14,GOLD,true)
+	one_line(info,"Level "+number(actor.get("level"))+" · "+title_for("classes",actor.get("class_id"))+" · "+race_name,14,GOLD,true)
 	var combat = actor.get("combat",{})
 	stat(info,"HP",number(combat.get("hp_current"))+" / "+number(combat.get("hp_max")),"health",true)
-	stat(info,"AC",number(combat.get("armor_class")),"shield")
-	stat(info,"Speed",number(combat.get("speed_feet"))+" ft.","speed")
-	stat(info,"Initiative",number(combat.get("initiative"),true),"initiative")
-	var abilities = frame(parent,1.0,false,false,3)
-	var stats = hbox(abilities,1)
-	for key in ABILITIES:
-		var cell = frame(stats,1.0,false,false,2)
-		one_line(cell,key.to_upper(),14,GOLD,true)
-		one_line(cell,number(actor.get("ability_scores",{}).get(key)),20,IVORY,true)
-		one_line(cell,"("+number(actor.get("ability_modifiers",{}).get(key),true)+")",14,IVORY,true)
-	var bonuses = hbox(parent,3)
-	stat(bonuses,"Proficiency",number(actor.get("proficiency_bonus"),true))
-	stat(bonuses,"Passive Perception",number(combat.get("passive_perception")))
+	var coins: PackedStringArray = []
+	for denomination in ["gp","pp","ep","sp","cp"]:
+		if actor.get("coins",{}).has(denomination):
+			coins.append(number(actor["coins"][denomination])+" "+denomination)
+	one_line(info,"Gold: "+number(actor.get("coins",{}).get("gp"))+" gp",16,GOLD)
+	var other = one_line(info,"Coins: "+(" · ".join(coins) if not coins.is_empty() else "Not recorded"),13,IVORY)
+	other.tooltip_text = other.text
+	var sp = actor.get("spellcasting",{})
+	var slot_lines: PackedStringArray = []
+	for level in range(1,10):
+		var slot: Dictionary = sp.get("slots",{}).get(str(level),{})
+		if slot.is_empty():
+			continue
+		if slot.get("maximum",0)!=0 or slot.get("spent",0)!=0:
+			slot_lines.append("L"+str(level)+": "+DISPLAY.remaining_text(slot.get("maximum"),slot.get("spent")))
+	if not slot_lines.is_empty():
+		var magic = frame(parent,1.0,false,false,3)
+		one_line(magic,"Pact slots" if sp.get("pact_magic",false) else "Spell slots",15,GOLD)
+		for i in range(0,slot_lines.size(),3):
+			var line: PackedStringArray = []
+			for j in range(i,mini(i+3,slot_lines.size())):
+				line.append(slot_lines[j])
+			label(magic,"   ·   ".join(line),15,IVORY)
 	var equipment = frame(parent,1.0,true,false,5)
 	equipment.get_parent().size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var slots = hbox(equipment,3)
@@ -508,16 +583,6 @@ func build_left(parent: VBoxContainer) -> void:
 	weapon.tooltip_text = "Inspect or choose main/off hand equipment"
 	for slot in ["Neck","Ring","Accessory","Belt","Shield"]:
 		slot_card(right,slot,str(gear.get("shield_id","")) if slot=="Shield" else "")
-	var money = frame(parent,1.0,false,false,4)
-	var coins: PackedStringArray = []
-	for denomination in ["pp","gp","ep","sp","cp"]:
-		if actor.get("coins",{}).has(denomination):
-			coins.append(number(actor["coins"][denomination])+" "+denomination)
-	one_line(money,"Coins: "+("  ·  ".join(coins) if not coins.is_empty() else "Not recorded"),15,GOLD)
-	var weight_label = one_line(money,"Weight: "+DISPLAY.load_text(actor),16)
-	var missing = actor.get("weight_projection",{}).get("missing",[])
-	if not missing.is_empty():
-		weight_label.tooltip_text += "\nUnknown weight/amount: "+", ".join(missing)
 	var warnings = actor.get("display_warnings",[])
 	if not warnings.is_empty():
 		equipment.tooltip_text = "Stored equipment inconsistencies; statistics not recalculated.\n"+"\n".join(warnings)
@@ -746,64 +811,11 @@ func equip_from_inventory(id: String) -> void:
 	popup.popup_centered(Vector2i(450,260))
 
 func build_center(parent: VBoxContainer) -> void:
-	var scene = frame(parent,1.0,true,false,3)
-	var location = view.get("location",{})
-	var scenery = picture(scene,STARTS.texture_for(str(campaign.get("thumbnail_id",campaign.get("start_id","road")))),Vector2(0,143),true)
-	scenery.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scenery.clip_contents = true
-	scenery.tooltip_text = "Provisional bundled scene illustration"
-	var banner = frame(scenery,1.0,false,true,4)
-	var banner_panel = banner.get_parent() as PanelContainer
-	banner_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	banner_panel.offset_left = -123
-	banner_panel.offset_right = 123
-	banner_panel.offset_top = 0
-	banner_panel.offset_bottom = 34
-	var headline = hbox(banner,4)
-	picture(headline,COMPASS,Vector2(25,25))
-	one_line(headline,"AI Dungeon Master",21,GOLD,true)
-	var location_band = frame(scenery,1.0,false,false,3)
-	var band_panel = location_band.get_parent() as PanelContainer
-	band_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	band_panel.offset_top = -25
-	one_line(location_band,str(campaign.get("title","Campaign"))+"  ·  "+str(location.get("name","Location unavailable")),15,GOLD,true)
 	var log = frame(parent,1.0,true,false,5)
 	log.get_parent().size_flags_vertical = Control.SIZE_EXPAND_FILL
 	log_scroll = scroll(log,120)
 	log_list = vbox(log_scroll,6)
 	refresh_transcript()
-	var actions = hbox(parent,4)
-	if view.get("opening_available",false) and not is_instance_valid(development_controller):
-		opening_button = button(actions,"Generate Opening",retry_action,15,"wand")
-		opening_button.disabled = pending or not data_error.is_empty()
-	button(actions,"Turn / Retry",show_turn_controls,15)
-	if is_instance_valid(development_controller):
-		button(actions,"World",show_world_menu,15)
-	var save_exit = button(actions,"Save & Exit",request_leave,15)
-	save_exit.tooltip_text = "Committed campaign data and accepted work are saved. Manual dice are not saved." if is_instance_valid(development_controller) else "Committed campaign data is already saved. Pending opening generation is canceled; manual dice are not saved."
-	var status_text = str(extension().get("status_text","Development controller pending.")) if is_instance_valid(development_controller) else str(intents.interaction.get("status_text","Turn controller pending — action submission unavailable."))
-	if not data_error.is_empty():
-		status_text = "Campaign data unavailable. Return to Campaign and reopen."
-	elif pending:
-		status_text = "Generating opening… Saved campaign is safe."
-	status = label(parent,status_text,14,GOLD)
-	status.max_lines_visible = 2
-	status.custom_minimum_size.y = 20
-	var compose = hbox(parent,4)
-	composer = LineEdit.new()
-	composer.placeholder_text = "Type your action here… (turn controller pending)"
-	composer.editable = false
-	composer.max_length = 2000
-	composer.text_submitted.connect(func(_value: String): submit_chat())
-	composer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	composer.add_theme_stylebox_override("normal",box_style(false,5))
-	composer.add_theme_stylebox_override("read_only",box_style(false,5))
-	composer.custom_minimum_size.y = 34
-	compose.add_child(composer)
-	send_button = button(compose,"Send",submit_chat,16)
-	send_button.size_flags_horizontal = Control.SIZE_FILL
-	send_button.disabled = true
-	send_button.tooltip_text = "Action resolution is not implemented. No action is submitted or saved."
 	var dice = frame(parent,1.0,false,false,4)
 	var controls = hbox(dice,4)
 	var roll_label = one_line(controls,"Roll Dice",16,GOLD)
@@ -832,7 +844,33 @@ func build_center(parent: VBoxContainer) -> void:
 		icon_button.size_flags_horizontal = Control.SIZE_FILL
 		icon_button.custom_minimum_size = Vector2(27,30)
 		icon_button.tooltip_text = "Scroll to latest log" if target=="Log" else ("Open rules reference" if target=="Rules" else "Clear manual dice result")
-	label(dice,"Manual only · not part of campaign resolution",12,GOLD)
+	roll_label.tooltip_text = "Manual dice only · not part of campaign resolution"
+	var status_text = str(extension().get("status_text","Development controller pending.")) if is_instance_valid(development_controller) else str(intents.interaction.get("status_text","Turn controller pending — action submission unavailable."))
+	if not data_error.is_empty():
+		status_text = "Campaign data unavailable. Return to Campaign and reopen."
+	elif pending:
+		status_text = "Generating opening… Saved campaign is safe."
+	status = label(parent,status_text,14,GOLD)
+	status.max_lines_visible = 2
+	status.custom_minimum_size.y = 20
+	var compose = hbox(parent,4)
+	composer = TextEdit.new()
+	composer.placeholder_text = "Type your action here…"
+	composer.editable = false
+	composer.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	composer.scroll_past_end = false
+	composer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	composer.custom_minimum_size.y = 82
+	for state in ["normal","read_only","focus"]:
+		composer.add_theme_stylebox_override(state,box_style(state=="focus",9))
+	composer.add_theme_font_size_override("font_size",17)
+	composer.add_theme_constant_override("line_spacing",3)
+	compose.add_child(composer)
+	send_button = button(compose,"Send",submit_chat,16)
+	send_button.size_flags_horizontal = Control.SIZE_FILL
+	send_button.custom_minimum_size.x = 72
+	send_button.disabled = true
+	send_button.tooltip_text = "Enter to send · Shift+Enter for a new line"
 
 func refresh_transcript() -> void:
 	for child in log_list.get_children():
@@ -866,7 +904,7 @@ func refresh_transcript() -> void:
 func dice_tool(target: String) -> void:
 	match target:
 		"Log": log_scroll.set_deferred("scroll_vertical",2147483647)
-		"Rules": show_reference_index("Rules (SRD)","rule-sections")
+		"Rules": show_tab("Rules")
 		"Clear":
 			last_roll = {}
 			dice_result.text = "Result: —"
@@ -939,7 +977,7 @@ func refresh_intent_controls() -> void:
 	if is_instance_valid(send_button):
 		send_button.disabled = not can_intent("chat")
 		send_button.text="Queue" if is_instance_valid(development_controller) and extension().get("can_queue",false) else "Send"
-		send_button.tooltip_text = "Send your action to the Dungeon Master." if can_intent("chat") else intent_reason("chat")
+		send_button.tooltip_text = "Enter to send · Shift+Enter for a new line" if can_intent("chat") else intent_reason("chat")
 
 func request_intent(kind: String,args: Dictionary) -> Dictionary:
 	var reply: Dictionary
@@ -966,6 +1004,9 @@ func submit_chat() -> void:
 		var ext = extension()
 		if not local_pending_id.is_empty() or ext.get("queue_wait",false) or ext.get("phase") in ["retryable","awaiting_decision","blocked"]:
 			show_processing()
+		return
+	if composer.text.length()>CHAT_LIMIT:
+		show_status("Input exceeds "+str(CHAT_LIMIT)+" characters. Your draft is unchanged.")
 		return
 	var sent=request_intent("chat",{"text":composer.text})
 	if is_instance_valid(development_controller):
@@ -1008,17 +1049,29 @@ func roll_dice() -> void:
 		popup_text("Manual dice — "+str(last_roll["quantity"])+"d"+str(last_roll["sides"]),text)
 
 func build_right(parent: VBoxContainer) -> void:
-	var switcher = hbox(parent,2)
+	var switcher = GridContainer.new()
+	switcher.columns = 3
+	switcher.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	switcher.add_theme_constant_override("h_separation",2)
+	switcher.add_theme_constant_override("v_separation",2)
+	parent.add_child(switcher)
 	for name_value in TABS:
 		var tab = name_value
-		var b = button(switcher,tab,func(): show_tab(tab),14)
+		var b = button(switcher,tab,func(): show_tab(tab),15)
+		b.custom_minimum_size.y = 26
 		right_tabs[tab] = b
 	var section = frame(parent,1.0,true,false,4)
 	section.get_parent().size_flags_vertical = Control.SIZE_EXPAND_FILL
-	right_content = vbox(section,3)
+	tab_scroll = scroll(section,64)
+	right_content = vbox(tab_scroll,4)
 	right_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var party = frame(parent,1.0,true,false,4)
+	party_body = party
+	build_party(party_body)
 	show_tab(current_tab if current_tab in TABS else "Inventory")
-	var references = frame(parent,1.0,true,false,4)
+
+func build_rules() -> void:
+	var references = right_content
 	one_line(references,"✧  Quick References (5e)",19,GOLD)
 	var grid = GridContainer.new()
 	grid.columns = 3
@@ -1029,7 +1082,8 @@ func build_right(parent: VBoxContainer) -> void:
 		var caption = str(item[0])
 		var table = str(item[1])
 		button(grid,caption,func(): show_reference_index(caption,table),14,str(item[2]))
-	var party = frame(parent,1.0,true,false,4)
+
+func build_party(party: VBoxContainer) -> void:
 	one_line(party,"✧  Party",20,GOLD)
 	var cards = hbox(party,4)
 	var card = frame(cards,1.0,false,true,3)
@@ -1092,20 +1146,97 @@ func show_party_picker() -> void:
 	popup.popup_centered(Vector2i(510,330))
 
 func show_tab(tab: String) -> void:
-	if not is_instance_valid(right_content):
+	if not is_instance_valid(right_content) or tab not in TABS:
 		return
+	map_load_serial += 1
 	current_tab = tab
 	for key in right_tabs:
 		right_tabs[key].add_theme_stylebox_override("normal",box_style(key==tab,4))
-	for child in right_content.get_children():
-		right_content.remove_child(child)
-		child.queue_free()
+	clear_children(right_content)
+	tab_scroll.scroll_vertical = 0
 	match tab:
 		"Inventory": build_inventory()
 		"Spells": build_spells()
 		"Skills": build_skills()
 		"Features": build_features()
+		"Character": build_character_tab()
+		"Quest Log": build_quest_tab()
+		"Map": build_map_tab()
 		"Notes": build_notes()
+		"Rules": build_rules()
+	refresh_intent_controls()
+
+func build_character_tab() -> void:
+	one_line(right_content,"Character sheet",20,GOLD)
+	button(right_content,"Open full character sheet",show_character)
+	button(right_content,"Rest & advancement",show_character_actions)
+	var combat = actor.get("combat",{})
+	for i in range(0,ABILITIES.size(),3):
+		var row = hbox(right_content,3)
+		for j in range(i,i+3):
+			var key = ABILITIES[j]
+			var cell = frame(row,1.0,false,false,3)
+			one_line(cell,key.to_upper(),14,GOLD,true)
+			one_line(cell,number(actor.get("ability_scores",{}).get(key)),20,IVORY,true)
+			one_line(cell,"("+number(actor.get("ability_modifiers",{}).get(key),true)+")",14,IVORY,true)
+	stat(right_content,"AC",number(combat.get("armor_class")),"shield")
+	stat(right_content,"Speed",number(combat.get("speed_feet"))+" ft.","speed")
+	stat(right_content,"Initiative",number(combat.get("initiative"),true),"initiative")
+	stat(right_content,"Proficiency",number(actor.get("proficiency_bonus"),true))
+	stat(right_content,"Passive Perception",number(combat.get("passive_perception")))
+	var weight_label = label(right_content,"Weight: "+DISPLAY.load_text(actor),16)
+	var missing = actor.get("weight_projection",{}).get("missing",[])
+	if not missing.is_empty():
+		weight_label.tooltip_text = "Unknown weight/amount: "+", ".join(missing)
+
+func build_quest_tab() -> void:
+	one_line(right_content,"Quest Log",20,GOLD)
+	button(right_content,"Open quest journal",show_quests)
+	var rows: Array = extension().get("public_quests",[]) if is_instance_valid(development_controller) else intents.interaction.get("public_quests",[])
+	if rows.is_empty():
+		label(right_content,"No disclosed quests in the available projection.",16)
+	for quest in rows:
+		label(right_content,str(quest.get("title","Quest"))+" · "+str(quest.get("status","")),17,GOLD)
+		label(right_content,str(quest.get("description","")),16)
+
+func build_map_tab() -> void:
+	one_line(right_content,"Adventurer's Cartography",18,GOLD)
+	button(right_content,"Expand campaign map",show_map)
+	var canvas = MAP_CANVAS.new()
+	canvas.custom_minimum_size = Vector2(0,230)
+	canvas.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	canvas.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right_content.add_child(canvas)
+	var tools = hbox(right_content,3)
+	button(tools,"−",func(): canvas.zoom(0.8,canvas.size*0.5))
+	button(tools,"+",func(): canvas.zoom(1.25,canvas.size*0.5))
+	button(tools,"Fit",func(): canvas.fit())
+	var caption = label(right_content,"Loading committed map…",14,GOLD)
+	button(right_content,"Refresh map",func(): map_cache.clear(); show_tab("Map"))
+	load_map_preview.call_deferred(canvas,caption,map_load_serial)
+
+func load_map_preview(canvas: Control, caption: Label, serial: int) -> void:
+	await get_tree().process_frame
+	if serial!=map_load_serial or not is_instance_valid(canvas) or not is_instance_valid(caption) or not is_inside_tree():
+		return
+	if not map_cache.is_empty():
+		canvas.set_snapshot(map_cache,true)
+		caption.text = "Committed player-visible map · drag to pan"
+		return
+	var model = MAP_MODEL.new()
+	model.start(str(campaign.get("id","")))
+	while serial==map_load_serial and is_instance_valid(canvas) and is_instance_valid(caption) and is_inside_tree():
+		var result = model.fetch_next()
+		if result=="more":
+			await get_tree().process_frame
+			continue
+		if result=="done":
+			map_cache = model.data
+			canvas.set_snapshot(map_cache,true)
+			caption.text = "Committed player-visible map · drag to pan"
+		else:
+			caption.text = model.error
+		return
 
 func equipped(id: String) -> bool:
 	if is_instance_valid(development_controller) and intents.interaction.is_empty():
@@ -1174,7 +1305,8 @@ func build_inventory() -> void:
 	var detail = frame(right_content,1.0,false,false,4)
 	inventory_detail = RichTextLabel.new()
 	inventory_detail.bbcode_enabled = false
-	inventory_detail.custom_minimum_size.y = 79
+	inventory_detail.custom_minimum_size.y = 108
+	inventory_detail.scroll_active = true
 	inventory_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	inventory_detail.add_theme_font_size_override("normal_font_size",15)
 	detail.add_child(inventory_detail)
@@ -1310,7 +1442,7 @@ func readable(value: Variant) -> String:
 
 func list_for_tab(caption: String) -> VBoxContainer:
 	one_line(right_content,caption,20,GOLD)
-	return vbox(scroll(right_content,145),3)
+	return vbox(right_content,3)
 
 func reference_row(parent: Node, table: String, id: String, caption: String = "") -> void:
 	button(parent,title_for(table,id) if caption.is_empty() else caption,func(): inspect(table,id),15)
@@ -1535,6 +1667,8 @@ func show_character_actions() -> void:
 
 func build_notes() -> void:
 	var list = list_for_tab("Established local facts")
+	if is_instance_valid(development_controller):
+		button(list,"World / campaign records",show_world_menu)
 	var facts = view.get("location",{}).get("payload",{}).get("world_facts",[])
 	if facts.is_empty():
 		label(list,"No additional local facts committed.",16)
