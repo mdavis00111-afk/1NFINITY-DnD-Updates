@@ -79,3 +79,7 @@ Run 46086797815 Linux job 140798143633 pinned 8785e166: import pass, 6/14 suites
 
 ### Scoped QA harness contract verification
 Confirmed raw SQL.run and Windows bridge return results; world read_sets wraps as sets. Rollback assertion now explicitly requires successful reads and compares ordered result arrays, not transport metadata. No production change. Run 46086797815 Windows still in progress at observation; new push run ID unavailable via PR-filtered connector. Native validation pending; no integration/publication.
+
+
+### Native loot assertion checkpoint
+Run 46087923985 Linux artifact 15240151290 pinned 3518ac6 confirms custom reuse single row, discovery player 2 daggers/2 gp, container 3 daggers/1 custom/5 gp, failed pickup unchanged, closed player 5 daggers/1 custom/7 gp, request counts 7/9 and transfer counts 0/3. Added explicit SQL assertions and outcome balance check, projection comparison diagnostics and adjacent numeric leaf diagnostics. Original projection and boundary assertions retained pending evidence. No production changes; new tests unexecuted. Windows jobs still running at observation. Process restart outstanding; no integration/publication.
