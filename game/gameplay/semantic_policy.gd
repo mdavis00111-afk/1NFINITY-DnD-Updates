@@ -131,7 +131,7 @@ func validate_assessment(req: Dictionary,report: Variant,job: Dictionary,state: 
 # Derive descriptive clearance only from the exact staged proposal and committed public narration.
 # The registry still validates the typed operation and performs its own transaction.
 func descriptive_assessment(req: Dictionary,job: Dictionary,state: Dictionary) -> Dictionary:
-	if not req["kind"] in DESCRIPTIVE or req!=job.get("story_request") or not bound_request(req,job,state):
+	if not req["kind"] in DESCRIPTIVE or not controller.registry.session.same_request(req,job.get("story_request")) or not bound_request(req,job,state):
 		return {}
 	if not controller.committed_job_source(job,state) or (req["kind"]!="story_update" and not controller.discovery_request_valid(req,job,state)):
 		return {}
