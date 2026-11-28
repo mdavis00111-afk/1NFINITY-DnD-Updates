@@ -662,3 +662,5 @@ Linux exact 527a403: 12/14 suites pass, campaign and C4 now pass, GUI eight fail
 
 ### Alpha 0.0.27 packaging
 Owner authorized live testing instead of mandatory GitHub gameplay regression. Latest Linux baseline 12/14; semantic corrections unverified; GUI owner-managed. No claim of native or live acceptance. Packaging only.
+
+Packaged 0.0.27 source 5425e3c35a40ed04a7c8583bd0493c8ca090d963; 397 verified Git blobs. Live acceptance outstanding.

@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.26",
-  "source_commit": "6d52ee378f5af5fd38297201ba16bae6a2957a13",
-  "notes": "Diagnostic alpha: provider errors and narration spacing. Runtime and performance fixes outstanding.",
+  "version": "0.0.27",
+  "source_commit": "5425e3c35a40ed04a7c8583bd0493c8ca090d963",
+  "notes": "Alpha live test: persistence, semantic authorization, narration context and recovery corrections. Known semantic and GUI issues remain; use disposable campaign.",
   "files": [
     {
       "path": "art/arcane.svg",
@@ -46,7 +46,7 @@
     },
     {
       "path": "campaigns/campaign_store.gd",
-      "blob": "83f82a05d6e70f377b41726cd2ab4376f1645f77"
+      "blob": "9237afabfda16996b746a0a2f4877efe9fb563ab"
     },
     {
       "path": "campaigns/maturity_profiles.gd",
@@ -54,11 +54,11 @@
     },
     {
       "path": "campaigns/narrator_prompt.gd",
-      "blob": "14a7d7f51ce15a680e939f6c0fe4e62a8ecdcd13"
+      "blob": "d752953042ac2e832fd4182ed0f5bdefc107c432"
     },
     {
       "path": "campaigns/opening_scene.gd",
-      "blob": "96c72f47b4f64eefe733ae9a70fed53efb6b5b34"
+      "blob": "d2f40efb4125456a98c4007d08d94a003172ac41"
     },
     {
       "path": "campaigns/prompt_sharing.gd",
@@ -1194,7 +1194,7 @@
     },
     {
       "path": "gameplay/complete_controller.gd",
-      "blob": "a0dc8406ddbfa0bddf5f16ba7791a058ecec4b37"
+      "blob": "3548c1b1586f634982bd25c0ff39733ae5eb4ce7"
     },
     {
       "path": "gameplay/display_values.gd",
@@ -1202,7 +1202,7 @@
     },
     {
       "path": "gameplay/game_workspace.gd",
-      "blob": "ae4026bf25349a3e200cd99312572739b8244603"
+      "blob": "fc5fe0030fa14e92a5226379d0e7c1554e8f99ac"
     },
     {
       "path": "gameplay/independent_review.gd",
@@ -1238,19 +1238,23 @@
     },
     {
       "path": "gameplay/semantic_adapter.gd",
-      "blob": "32f4cc3ae1452f9d61edfcf195ae43022ebc6198"
+      "blob": "ba171b23ce87fc11863f17b6a480973ffb457ad1"
     },
     {
       "path": "gameplay/semantic_controller.gd",
-      "blob": "d981ef62d3c3dd2c05effe19d1b3025796ab648f"
+      "blob": "a391c9ebc0f3a89ffd1c240e1ebe19f484e194be"
     },
     {
       "path": "gameplay/semantic_policy.gd",
-      "blob": "89b3a04c9e9a7b4333926e2e74424379aa6338f7"
+      "blob": "b3ecc45efa5db1b0b6926a96531f95c7e2387dd3"
     },
     {
       "path": "gameplay/tool_registry.gd",
-      "blob": "22cbd21df8af988f0c880fb6236937f31cae7849"
+      "blob": "276f0086aa94af1b9914a2e765bdad20a0ff5baa"
+    },
+    {
+      "path": "gameplay/turn_context.gd",
+      "blob": "e3fd8743701fa237929072b332b9c9e643538a1d"
     },
     {
       "path": "gameplay/ui_intents.gd",
@@ -1278,7 +1282,7 @@
     },
     {
       "path": "persistence/gameplay_migration.gd",
-      "blob": "7b03383f94e7593520ac24af55e2e5de1e1b5793"
+      "blob": "a4428080f7cbc1de093108ca88725c7b3ed1d984"
     },
     {
       "path": "persistence/gameplay_queries.gd",
@@ -1290,7 +1294,7 @@
     },
     {
       "path": "persistence/gameplay_session.gd",
-      "blob": "edf2db526033693aa00de4e62026bd687021021c"
+      "blob": "3842e4d70fad0f473589ec4b169042485b514964"
     },
     {
       "path": "persistence/interaction_projection.gd",
@@ -1302,11 +1306,11 @@
     },
     {
       "path": "persistence/loot_store.gd",
-      "blob": "f8c17a7e4395eb437953f733a4a9368db4d02b32"
+      "blob": "8c465b5a6401e7d3c766e12787cbe24565d46f6d"
     },
     {
       "path": "persistence/noncombat_store.gd",
-      "blob": "bb2dfa056e8d36d2e36c5ad369897c41cb32c1c4"
+      "blob": "30c5ee5fc9dabe6b4d8f5415cde2b3ffe1a7ab10"
     },
     {
       "path": "persistence/story_store.gd",
@@ -1342,7 +1346,7 @@
     },
     {
       "path": "project.godot",
-      "blob": "7aeb65d6a730c5b9f8fb8289f32009801922d73c"
+      "blob": "afbc114485cd7787f5d4dd47eaa618e7beaf8ef6"
     },
     {
       "path": "rules/MASTER_REFERENCE.md",
@@ -1402,7 +1406,7 @@
     },
     {
       "path": "systems/sqlite.gd",
-      "blob": "4adae9e847fecd3e0a55a490275f3db3a98767ec"
+      "blob": "1696d9279b15740da7892ce79829e63b48a815c5"
     },
     {
       "path": "systems/sqlite_bridge.cs",
@@ -1422,7 +1426,7 @@
     },
     {
       "path": "tests/campaign_smoke.gd",
-      "blob": "cdbc5ff410148204ffbde31f5537dcc84d59343a"
+      "blob": "a7823d30a7db00a0d6f7410b78e4c8e3f04ee8c1"
     },
     {
       "path": "tests/cartography_assets_smoke.gd",
@@ -1446,7 +1450,7 @@
     },
     {
       "path": "tests/gameplay_smoke.gd",
-      "blob": "aed056994b3eb2d39b55b7ff005ffa0f3e3732d9"
+      "blob": "2856f1afd8757e31215d5de949b8f8abf1e96eb9"
     },
     {
       "path": "tests/layout_smoke.gd",
@@ -1454,15 +1458,15 @@
     },
     {
       "path": "tests/noncombat_smoke.gd",
-      "blob": "e5fdbc276f6d456459563f311bc525fc366db69b"
+      "blob": "e80d2554fbb2659def2cbff523121a0f50bcfed1"
     },
     {
       "path": "tests/persistence_smoke.gd",
-      "blob": "3be1ffc111f00cec91e1a44e07faf56e85f3177e"
+      "blob": "8e36c1ba91fa2f0a060eaa036069b9f9da5ef580"
     },
     {
       "path": "tests/semantic_integration_smoke.gd",
-      "blob": "eb220c108c12b2f76d967dcc51c6911b3d55f23f"
+      "blob": "a8ecaaec2c8897aca700999057d5046284ffb0cd"
     },
     {
       "path": "tests/sqlite_smoke.gd",
@@ -1470,7 +1474,7 @@
     },
     {
       "path": "tests/world_smoke.gd",
-      "blob": "7ea452bd5a92f2fb4ceee51d29df33c9fb827c48"
+      "blob": "8edabaac3ee78b33f09792d11a317bd3708d34c1"
     },
     {
       "path": "themes/TYPOGRAPHY.md",
@@ -1550,7 +1554,7 @@
     },
     {
       "path": "turns/raw_mechanics.gd",
-      "blob": "e02e224ea13a4c86b6bf540f2f3e6c115f42c277"
+      "blob": "618a3c482d2c886da25788eefc9c99eb6dda7be0"
     },
     {
       "path": "turns/turn_coordinator.gd",
@@ -1562,15 +1566,15 @@
     },
     {
       "path": "turns/turn_store.gd",
-      "blob": "1dc39a5f7b25a7c76210e4055f10ad1b360f0cd9"
+      "blob": "197c81fc7c5948156022519bd223d582f9de3102"
     },
     {
       "path": "version.txt",
-      "blob": "c4475d3bb7824a3420e49933d17a271009449165"
+      "blob": "24ff85581f81976c5f70fe1a8c3c0f62b5275c91"
     },
     {
       "path": "world/geography_reconciler.gd",
-      "blob": "293bbcfe2351a18a767ea4048b2b4f3d1d20d9e4"
+      "blob": "2d1b9a2066f65c2f3388f6aa84db308fde5f195c"
     },
     {
       "path": "world/world_dto.gd",
@@ -1586,7 +1590,7 @@
     },
     {
       "path": "world/world_store.gd",
-      "blob": "9efb9eaecb3162006a4321c7ad0a8ed7f76955aa"
+      "blob": "b8000b2688f761f0855c9db122b835f0a753cbe4"
     }
   ]
 }
