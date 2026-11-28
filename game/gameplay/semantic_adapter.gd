@@ -8,6 +8,7 @@ const DTO=preload("res://world/world_dto.gd")
 const PACK=preload("res://turns/agent_packets.gd")
 const MAX_CALLS=1
 const MAX_CONTEXT=90000
+const RESPONSE_DEADLINE=GEMINI.REQUEST_TIMEOUT+2.0
 static var latest_boundary_line: String = ""
 var controller: Node
 var transport: Node
@@ -18,18 +19,29 @@ var metrics: Array=[]
 var factory: Callable
 var serial=0
 var response_transport: Dictionary={}
+var response_elapsed_ms: Variant=null
+var deadline: Timer
+var dispatched_at: int=0
 
 func attach(value: Node,transport_factory: Callable=Callable()) -> bool:
 	if not is_inside_tree() or is_instance_valid(controller) or not is_instance_valid(value):
 		return false
 	controller=value
 	factory=transport_factory
+	deadline=Timer.new()
+	deadline.one_shot=true
+	deadline.ignore_time_scale=true
+	deadline.process_mode=Node.PROCESS_MODE_ALWAYS
+	deadline.timeout.connect(response_timed_out)
+	add_child(deadline)
 	controller.semantic_requested.connect(start)
 	controller.semantic_cancelled.connect(cancel)
 	return true
 
 func retire() -> void:
 	serial+=1
+	if is_instance_valid(deadline):
+		deadline.stop()
 	if is_instance_valid(transport):
 		transport.cancel_generation()
 		transport.queue_free()
@@ -47,6 +59,7 @@ func _exit_tree() -> void:
 func start(stage: String,packet: Dictionary) -> void:
 	retire()
 	response_transport={}
+	response_elapsed_ms=null
 	identity=packet["identity"].duplicate(true)
 	payload=packet["data"].duplicate(true)
 	if stage!=identity.get("stage") or not current():
@@ -130,13 +143,15 @@ func send() -> void:
 	calls+=1
 	var epoch=serial
 	var clock=Time.get_ticks_msec()
+	dispatched_at=clock
 	transport=factory.call() if factory.is_valid() else GEMINI.new()
 	if not is_instance_valid(transport):
 		failed()
 		return
 	add_child(transport)
-	transport.completed.connect(func(ok: bool,message: String):
-		var details: Dictionary = transport.response_diagnostic() if transport.has_method("response_diagnostic") else {}
+	var source=transport
+	source.completed.connect(func(ok: bool,message: String):
+		var details: Dictionary = source.response_diagnostic() if source.has_method("response_diagnostic") else {}
 		received.call_deferred(epoch,clock,ok,message,details))
 	var prose=identity["stage"]=="narrate"
 	var payload_size = payload["outbound"]["payload_characters"] if prose else JSON.stringify(payload).length()
@@ -144,7 +159,11 @@ func send() -> void:
 	metrics=metrics.slice(maxi(0,metrics.size()-64))
 	if transport.has_method("set_campaign_maturity"):
 		transport.set_campaign_maturity(str(controller.data["state"]["campaign"].get("maturity_id","standard")))
+	deadline.start(RESPONSE_DEADLINE)
 	transport.generate(input,"","",true,schema(),65536,8192 if prose else 4096,0.8 if prose else 0.2)
+
+func response_timed_out() -> void:
+	received(serial,dispatched_at,false,"The AI request timed out.",{"category":"response_deadline"})
 
 func diagnostic(code: String) -> void:
 	if OS.get_environment("INFINITY_TEST_USER_ROOT").is_empty():
@@ -166,7 +185,7 @@ func boundary(code: String,expected: String,actual: Variant,validation: Dictiona
 	var state = controller.data.get("state",{})
 	var sent = controller.last_dm_packet if identity.get("stage")=="narrate" else {}
 	var committed = "yes" if state.get("pending_turn_id")!=null or sent.has("settlement") or sent.has("receipt") else "no verified commit"
-	var event = {"request_id":identity.get("request_id"),"attempt_id":identity.get("attempt_id"),"stage":identity.get("stage"),"boundary":code,"expected":expected,"actual_shape":fields,"recoverable":true,"mechanics_committed":committed,"transport":response_transport}
+	var event = {"request_id":identity.get("request_id"),"attempt_id":identity.get("attempt_id"),"stage":identity.get("stage"),"boundary":code,"expected":expected,"actual_shape":fields,"recoverable":true,"mechanics_committed":committed,"transport":response_transport,"provider_elapsed_ms":response_elapsed_ms}
 	if not validation.is_empty():
 		event["validation"]=validation
 	latest_boundary_line="SEMANTIC_BOUNDARY "+JSON.stringify(event)
@@ -177,7 +196,8 @@ func received(epoch: int,clock: int,ok: bool,message: String,details: Dictionary
 		diagnostic("response_stale")
 		return
 	response_transport=details
-	metrics.append({"stage":identity["stage"],"call":calls,"elapsed_ms":Time.get_ticks_msec()-clock,"ok":ok})
+	response_elapsed_ms=Time.get_ticks_msec()-clock
+	metrics.append({"stage":identity["stage"],"call":calls,"elapsed_ms":response_elapsed_ms,"ok":ok})
 	metrics=metrics.slice(maxi(0,metrics.size()-64))
 	retire()
 	if not ok:
@@ -202,12 +222,17 @@ func deliver(value: Dictionary) -> void:
 	if not current():
 		return
 	var id=identity.duplicate(true)
+	var result: Dictionary
 	if id["stage"]=="interpret":
-		var result: Dictionary=controller.receive_interpreter_envelope(id,value)
-		diagnostic("interpret_accepted" if result.get("ok",false) else "interpret_rejected")
+		result=controller.receive_interpreter_envelope(id,value)
 	else:
-		var result: Dictionary=controller.receive(id,value)
-		diagnostic(str(id["stage"])+("_accepted" if result.get("ok",false) else "_rejected"))
+		result=controller.receive(id,value)
+	diagnostic(str(id["stage"])+("_accepted" if result.get("ok",false) else "_rejected"))
+	# A stale or unreadable journal can reject the current reply before the
+	# controller retires it. This transport has already ended.
+	if not result.get("ok",false) and current() and identity==id:
+		boundary("reply_not_applied","response matching the saved turn at its live revision",value)
+		failed("The reply could not be applied to the saved turn.")
 
 func failed(detail: String = "Provider request unavailable.") -> void:
 	if current():

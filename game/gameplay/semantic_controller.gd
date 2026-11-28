@@ -95,7 +95,7 @@ func ask_interpreter(state: Dictionary,job: Dictionary) -> void:
 	job["stage"]="narrate"
 	job["attempt"]={}
 	if update_active(job):
-		recover_active()
+		ask_unresolved_dm(job)
 
 func prepare_dispatch(stage: String,payload: Dictionary,identity: Dictionary) -> Dictionary:
 	if stage!="narrate":
@@ -233,11 +233,12 @@ func receive_interpreter_envelope(identity: Dictionary,envelope: Dictionary) -> 
 	job["attempt"]={}
 	retire_attempt()
 	if not update_active(job):
+		block_view(status)
 		return failure("Resolved lookup facts could not be journaled.")
 	if job["stage"]=="execute":
 		execute_active()
 	else:
-		recover_active()
+		ask_unresolved_dm(job)
 	return {"ok":true}
 
 func receive_unresolved_dm(identity: Dictionary,result: Dictionary,job: Dictionary) -> Dictionary:
@@ -305,6 +306,7 @@ func receive_unresolved_dm(identity: Dictionary,result: Dictionary,job: Dictiona
 	job["attempt"]={}
 	retire_attempt()
 	if not update_active(job):
+		block_view(status)
 		return failure("DM decision could not be journaled.")
 	execute_active()
 	return {"ok":true}
@@ -398,17 +400,23 @@ func legacy_review_stages() -> bool:
 	# Production combined protocol never dispatches obsolete review stages.
 	return false
 
+func ask_unresolved_dm(job: Dictionary) -> void:
+	var state = data["state"]
+	if job["lookup_revision"]!=state["revision"]:
+		stop("retry","Unresolved DM context changed.")
+		return
+	var context = scene_context(state)
+	if not context.get("ok",false):
+		stop("retry","Current scene unavailable.")
+		return
+	ask("narrate",job,{"scene":context["scene"],"turn_id":job["turn_id"],"maturity_id":state["campaign"].get("maturity_id","standard")})
+
 func recover_active() -> void:
 	if not reload():
 		return
 	var job=active().duplicate(true)
 	if job["tool"].is_empty() and job.has("lookup_revision"):
-		var state = data["state"]
-		var context = scene_context(state)
-		if not context.get("ok",false) or job["lookup_revision"]!=state["revision"]:
-			stop("retry","Unresolved DM context changed.")
-			return
-		ask("narrate",job,{"scene":context["scene"],"turn_id":job["turn_id"],"maturity_id":state["campaign"].get("maturity_id","standard")})
+		ask_unresolved_dm(job)
 		return
 	if job.has("check_branches"):
 		var receipt = outcome(job)
@@ -510,8 +518,12 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 	var stage=identity.get("stage","")
 	if stage=="attribute":
 		return receive_attribute(identity,result)
-	if not matches(identity,stage) or JSON.stringify(result).length()>65536:
+	if not matches(identity,stage):
 		return failure("Stale semantic response.")
+	if JSON.stringify(result).length()>65536:
+		adapter.boundary("response_limit","reply up to 65536 characters",result)
+		stop("retry","The AI reply exceeded the size limit. Retry the saved request.")
+		return failure(status)
 	var job=active().duplicate(true)
 	if stage=="narrate" and job["tool"].is_empty() and job.has("lookup_revision"):
 		return receive_unresolved_dm(identity,result,job)
@@ -627,8 +639,10 @@ func accept_combined(job: Dictionary,result: Dictionary,attempt: String) -> Dict
 	inflight={}
 	if not update_active(job):
 		adapter.diagnostic("narration_journal_write_unconfirmed")
+		block_view(status)
 		return failure("Combined narration persistence unconfirmed.")
-	refresh()
+	status="Saving the DM reply…"
+	refresh_confirmed(true)
 	advance.call_deferred()
 	return {"ok":true}
 
@@ -664,8 +678,10 @@ func reconcile(job: Dictionary,receipt: Dictionary,known: Array) -> void:
 		if not result.get("found",false):
 			stop("retry",str(result.get("error","Standalone narration reconciliation unconfirmed.")))
 			return
-		if reload():
-			after_narration(job,result)
+		if not reload():
+			block_view("The DM reply was saved. Use Turn → Retry to refresh the campaign.")
+			return
+		after_narration(job,result)
 		return
 	# The C4 default can replace conflicted prose. C5 already displayed a
 	# reviewed preview; instead hold on conflict rather than silently replace.
@@ -1115,7 +1131,10 @@ func prepare_review(req: Dictionary,resume_stage: String) -> bool:
 	return false
 
 func advance() -> void:
-	if closed or running or notifying or not reload():
+	if closed or running or notifying:
+		return
+	if not reload():
+		block_view("Saved turn readback unavailable. Use Turn → Retry.")
 		return
 	if not inflight.is_empty() and registry.session.typed_equal(inflight,active().get("attempt")):
 		return

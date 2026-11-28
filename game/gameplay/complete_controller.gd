@@ -28,6 +28,8 @@ var local_review: Callable
 var critical_review: Callable
 var data: Dictionary={}
 var view: Dictionary={}
+var committed_view: Dictionary={}
+var committed_view_key: Array=[]
 var status=""
 var running=false
 var closed=false
@@ -110,14 +112,22 @@ func refresh() -> void:
 		return
 	refresh_confirmed()
 
-func refresh_confirmed() -> void:
+func refresh_confirmed(reuse_projection: bool=false) -> void:
 	if closed:
 		return
-	var fresh=BASE.new().gameplay_view(campaign_id)
+	var state=data["state"]
+	var projection_key=[state["revision"],state["actor_id"],state["metadata"],state["pending_turn_id"]]
+	var reuse=reuse_projection and projection_key==committed_view_key and not committed_view.is_empty()
+	var fresh=committed_view.duplicate(true) if reuse else BASE.new().gameplay_view(campaign_id)
 	var ext=fresh.get("interaction_extension",{})
-	if ext.get("revision")!=data["state"]["revision"] or ext.get("actor_id")!=actor_id:
+	if ext.get("revision")!=state["revision"] or ext.get("actor_id")!=actor_id or fresh.get("campaign")!=state["campaign"]:
+		committed_view={}
+		committed_view_key=[]
 		block_view("Committed view unavailable; actions disabled.")
 		return
+	if not reuse:
+		committed_view=fresh.duplicate(true)
+		committed_view_key=projection_key
 	var job=active()
 	var work=data["work"]
 	var busy=not job.is_empty()
@@ -170,6 +180,9 @@ func refresh_confirmed() -> void:
 			for opt in item["equip_options"]:
 				opt["available"]=true
 				opt["warning"]="Requires contextual and mechanical validation."
+		# Cached projections are deep copies. Keep both presentations of the
+		# same owned instances consistent without relying on shared references.
+		ext["inventory_instances"]=packet["inventory_instances"]
 		for opt in packet["spell_options"]:
 			var slot=fresh["actor"].get("spellcasting",{}).get("slots",{}).get(str(opt["slot_level"]),{})
 			opt["available"]=opt["spell_id"] in ["cure-wounds","healing-word"] and opt["slot_level"]==1 and DTO.whole(slot.get("maximum"),1) and DTO.whole(slot.get("spent")) and slot["spent"]<slot["maximum"]
@@ -225,7 +238,7 @@ func submit(intent: Dictionary) -> Dictionary:
 		# Unknown acknowledgement deliberately does not match C1 success/reject shape.
 		return {}
 	status="Input saved; processing."
-	refresh_confirmed.call_deferred()
+	refresh_confirmed.call_deferred(true)
 	advance.call_deferred()
 	return acknowledge(intent,true,"Saved for processing, not yet resolved.")
 
@@ -240,17 +253,21 @@ func finish(status_code: String,message: String) -> void:
 	inflight={}
 	if persist(work):
 		status=message
-	refresh()
+		refresh_confirmed(true)
+	else:
+		block_view(status)
 	advance.call_deferred()
 
 func stop(stage: String,message: String) -> void:
 	var job=active().duplicate(true)
 	job["stage"]=stage
 	job["message"]=message
-	inflight={}
+	retire_attempt()
 	if update_active(job):
 		status=message
-	refresh()
+		refresh_confirmed(true)
+	else:
+		block_view(status)
 
 func tool_for(intent: Dictionary,state: Dictionary,kind: String,args: Dictionary) -> Dictionary:
 	return {"schema_version":"2","campaign_id":campaign_id,"actor_id":actor_id,"expected_revision":state["revision"],"request_id":intent["request_id"],"kind":kind,"args":args.duplicate(true)}
@@ -270,10 +287,11 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	job["stage"]=stage
 	job["attempt"]=identity
 	if not update_active(job):
+		block_view(status)
 		return
 	inflight=identity.duplicate(true)
-	status="Processing "+stage.replace("_"," ")+"…"
-	refresh_confirmed()
+	status="Waiting for the Dungeon Master…" if stage=="narrate" else "Processing "+stage.replace("_"," ")+"…"
+	refresh_confirmed(true)
 	semantic_requested.emit(stage,{"identity":identity.duplicate(true),"data":dispatch.duplicate(true)})
 
 func prepare_dispatch(_stage: String,payload: Dictionary,_identity: Dictionary) -> Dictionary:
@@ -568,12 +586,14 @@ func reconcile(job: Dictionary,receipt: Dictionary,known: Array) -> void:
 	if not result.get("ok",false):
 		stop("retry","Narration reconciliation unconfirmed.")
 		return
-	if reload():
-		var settled=registry.recover(campaign_id,job["tool"]["request_id"])
-		if settled.get("status")=="committed":
-			after_narration(job,settled)
-		else:
-			stop("retry","Narration committed; settlement recovery required.")
+	if not reload():
+		block_view("The DM reply was saved. Use Turn → Retry to refresh the campaign.")
+		return
+	var settled=registry.recover(campaign_id,job["tool"]["request_id"])
+	if settled.get("status")=="committed":
+		after_narration(job,settled)
+	else:
+		stop("retry","Narration committed; settlement recovery required.")
 
 func retry() -> Dictionary:
 	if running or notifying or not reload() or active().is_empty():
@@ -670,8 +690,20 @@ func after_narration(job: Dictionary,settled: Dictionary) -> void:
 	job["narration_event_id"]=event_id
 	job["stage"]="post_story"
 	if update_active(job):
+		status="DM reply saved."
+		refresh_confirmed()
+		continue_after_narration(job["intent"]["request_id"])
+	else:
+		# The narration transaction settled before the journal cursor write.
+		# Read the authoritative view even when that cursor needs recovery.
 		refresh()
-		advance.call_deferred()
+
+func continue_after_narration(request_id: String) -> void:
+	var tree=get_tree()
+	await tree.process_frame
+	await tree.process_frame
+	if not closed and active().get("stage")=="post_story" and active().get("intent",{}).get("request_id")==request_id:
+		advance()
 
 # C3 story writes are standalone post-settlement operations, not part of the
 # B2 receipt. Each receives a persisted local request ID and current revision.
@@ -783,7 +815,7 @@ func mount_workspace(workspace: Node,leave: Callable,settings: Callable) -> Dict
 		return failure("Development workspace binding unavailable.")
 	workspace.configure(view,view["campaign"],leave,settings,Callable(),false,"",submit)
 	workspace.bind_development_controller(self)
-	view_changed.connect(workspace.apply_authoritative_view)
+	view_changed.connect(workspace.apply_authoritative_view,CONNECT_DEFERRED)
 	return {"ok":true}
 
 func routes_to(destination: String,revision: int) -> Dictionary:
@@ -824,9 +856,15 @@ func retire_attempt() -> void:
 		semantic_cancelled.emit(previous)
 
 func provider_failed(identity: Dictionary,detail: String = "Provider request unavailable.") -> Dictionary:
-	if closed or notifying or not reload() or identity!=inflight or not registry.session.typed_equal(identity,active().get("attempt")):
+	if closed or identity!=inflight:
 		return failure("Stale provider failure ignored.")
 	retire_attempt()
+	if not reload():
+		block_view("The AI request ended and the saved turn could not be read. Use Turn → Retry.")
+		return failure(status)
+	if not registry.session.typed_equal(identity,active().get("attempt")):
+		block_view("The saved turn changed while the AI was responding. Use Turn → Retry to recover it.")
+		return failure(status)
 	stop("retry",str(identity.get("stage","AI"))+": "+detail.left(600)+" Retry the saved request.")
 	return {"ok":true}
 

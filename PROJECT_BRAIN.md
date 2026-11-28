@@ -1,3 +1,9 @@
+## Display committed DM replies in the current workspace
+
+The owner confirmed a reply was already saved when v0.0.33 stayed on Processing narrate. After committing the reply, Godot now publishes the authoritative transcript and yields a frame before deferred world and story processing. A narration-only change refreshes the transcript and controls while preserving the other panels. View signals are applied after the current input callback, and a failed post-commit journal read or cursor write shows recovery status instead of leaving the waiting label indefinitely.
+
+Same-revision journal-only updates reuse the confirmed SQLite projection. The cache binds campaign metadata, actor, revision and pending turn, and a changed canonical state rebuilds the view. The provider attempt has a bounded watchdog. A stale or otherwise unapplied reply releases the in-flight attempt and enters guarded Retry. The saved result, exact request and receipt remain the authority. Network and Windows screen-transition timings still need owner measurements.
+
 ## DM validation detail and Copy log
 
 The latest Windows report after v0.0.33 publication showed the generic narration-format message and a clipboard excerpt containing startup lines only. The narration boundary now identifies missing, malformed, blank or oversized text, an invalid world-update flag, and unexpected fields without logging the underlying reply or any unknown key names. Validation and settlement rules are unchanged.

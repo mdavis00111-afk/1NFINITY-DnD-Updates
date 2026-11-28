@@ -40,6 +40,13 @@ var outbound: Array=[]
 class FixtureController extends "res://gameplay/semantic_controller.gd":
 	var pause_discovery=false
 	var pause_reconcile=false
+	var fail_narration_cursor=false
+	func update_active(job: Dictionary) -> bool:
+		if fail_narration_cursor and job.get("stage")=="post_story":
+			fail_narration_cursor=false
+			status="Work not confirmed. Recover before retrying."
+			return false
+		return super.update_active(job)
 	func reconcile(job: Dictionary,receipt: Dictionary,known: Array) -> void:
 		if not pause_reconcile:
 			super.reconcile(job,receipt,known)
@@ -255,6 +262,13 @@ func run() -> void:
 		ctrl.queue_free()
 		finish()
 		return
+	if "--dm-stall" in OS.get_cmdline_user_args():
+		await dm_stall_case(id)
+		ctrl.close_session()
+		workspace.queue_free()
+		ctrl.queue_free()
+		finish()
+		return
 	if "--chat-recovery" in OS.get_cmdline_user_args():
 		await chat_recovery_case(id)
 		ctrl.close_session()
@@ -424,6 +438,80 @@ func transport_retry_case(id: String) -> void:
 	if not await pump("idle"):
 		return
 	expect(session.settlement(id,intent["request_id"]).get("status")=="committed" and outbound.size()==5,"Recovered original request commits once")
+
+func dm_stall_case(id: String) -> void:
+	var reads = SQL.metrics()["calls"]
+	ctrl.refresh_confirmed(true)
+	expect(SQL.metrics()["calls"]==reads,"Journal-only refresh uses the confirmed projection without starting SQLite")
+	var intent = pipeline_intent(id,"Hello, Mara.")
+	expect(ctrl.submit(intent).get("ok",false),"Save the player's hello")
+	if not await pump("interpret"):
+		return
+	reply({})
+	if not await pump("narrate"):
+		return
+	var old_attempt = ctrl.adapter.serial
+	expect(not ctrl.adapter.deadline.is_stopped(),"Provider wait has a watchdog")
+	ctrl.adapter.deadline.start(0.02)
+	for _i in range(60):
+		await process_frame
+		if ctrl.active().get("stage")=="retry":
+			break
+	if not expect(ctrl.active().get("stage")=="retry" and ctrl.inflight.is_empty() and ctrl.status.contains("timed out"),"A silent transport clears waiting and offers Retry"):
+		return
+	ctrl.adapter.received(old_attempt,Time.get_ticks_msec(),true,"{\"text\":\"Late reply.\"}")
+	expect(not session.settlement(id,intent["request_id"]).get("found",false),"Timeout and late callback cannot settle the saved action")
+	expect(ctrl.retry().get("ok",false),"Retry the original turn")
+	if not await pump("narrate"):
+		return
+	var bump = SQL.run(session.path(id),[SQL.stmt("UPDATE world_state SET revision=revision+1 WHERE campaign_id=?",[id])])
+	expect(bump.get("ok",false),"Simulate a changed campaign revision during the request")
+	reply({"text":"A stale reply."})
+	for _i in range(40):
+		await process_frame
+		if ctrl.active().get("stage")=="retry":
+			break
+	if not expect(ctrl.active().get("stage")=="retry" and ctrl.inflight.is_empty() and ADAPTER.latest_boundary_line.contains("reply_not_applied"),"Rejected current reply clears waiting without opening another request"):
+		return
+	expect(ctrl.retry().get("ok",false),"Recover the saved action against the new revision")
+	if not await pump("interpret"):
+		return
+	reply({})
+	if not await pump("narrate"):
+		return
+	var composer = workspace.composer
+	var narration = "Mara looks up. ‘Hello there.’"
+	reply({"text":narration})
+	var displayed_before_deferred_work = false
+	for _i in range(60):
+		await process_frame
+		if workspace.log_list.find_children("*","Label",true,false).any(func(label): return label.text==narration):
+			displayed_before_deferred_work=ctrl.active().get("stage")=="post_story"
+			break
+	expect(displayed_before_deferred_work,"Saved DM prose appears in the current window before deferred work")
+	expect(workspace.composer==composer,"A chat-only reply updates the transcript without rebuilding the whole workspace")
+	if not await pump("idle"):
+		return
+	expect(session.settlement(id,intent["request_id"]).get("status")=="committed" and outbound.size()==5,"Original input settles once after timeout and stale response")
+	var second = pipeline_intent(id,"I say hello again.")
+	expect(ctrl.submit(second).get("ok",false),"Save the next turn before simulating a cursor update failure")
+	if not await pump("interpret"):
+		return
+	reply({})
+	if not await pump("narrate"):
+		return
+	ctrl.fail_narration_cursor=true
+	var saved_prose = "Mara laughs. ‘Hello again.’"
+	reply({"text":saved_prose})
+	for _i in range(60):
+		await process_frame
+		if workspace.log_list.find_children("*","Label",true,false).any(func(label): return label.text==saved_prose):
+			break
+	expect(ctrl.active().get("stage")=="reconcile" and workspace.status.text.contains("Recover") and workspace.log_list.find_children("*","Label",true,false).any(func(label): return label.text==saved_prose),"A failed cursor update still displays authoritative committed prose and recovery status")
+	expect(ctrl.retry().get("ok",false),"Retry recovers the saved reply's journal cursor")
+	if not await pump("idle"):
+		return
+	expect(outbound.size()==7 and session.settlement(id,second["request_id"]).get("status")=="committed" and workspace.log_list.find_children("*","Label",true,false).filter(func(label): return label.text==saved_prose).size()==1,"Recovering the saved reply avoids another Gemini call or duplicate narration")
 
 func chat_recovery_case(id: String) -> void:
 	var calls = outbound.size()

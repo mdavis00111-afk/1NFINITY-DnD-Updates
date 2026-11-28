@@ -1,6 +1,12 @@
 # 1NFINITY D&D — Changelog
 Live channel: godot. Entries below are reconstructed from published Git commit messages, not evidence of runtime test success. Source commit and manifest commit prefixes are provided for traceability.
 
+## 0.0.34 Windows playtest
+
+- Present saved DM prose in the open campaign before deferred world work and avoid rebuilding unrelated panels for narration-only updates.
+- Reuse confirmed views for journal-only updates. Turn Retry handles a silent transport, an unapplied reply or a failed post-commit readback.
+- Include the installed version and latest safe validation details when copying the log.
+
 ## 0.0.33 Windows playtest
 
 - Separate Gemini's narration, check and mechanical request forms. Accept literal empty mechanical placeholders alongside otherwise valid prose and send mixed substantive replies to guarded Retry.

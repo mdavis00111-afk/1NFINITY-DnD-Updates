@@ -1,3 +1,9 @@
+## v0.0.34 saved narration and processing stall
+
+Godot 4.7.2 Linux passed `--check-only` for the controllers and integration fixture. With mock Gemini and the disposable Linux SQLite bridge, `semantic_integration_smoke.gd -- --dm-stall` passed with a silent transport, late callback, changed revision and unapplied reply, one eventual settlement, and visible committed prose before deferred work. The fixture verifies that a journal-only refresh opens no SQLite process, the chat-only change retains the composer, and a failed post-commit cursor update still displays saved prose and recovers without another Gemini call or duplicate line. Focused `--dm-map`, `--conditional-check`, `--dm-first`, `--provider-format`, `--chat-recovery` and `--menu-shortcuts` passed during this checkpoint. Git whitespace checks passed.
+
+Windows acceptance: type `hello` in an existing campaign and confirm the reply appears once while the workspace remains open. Follow it with another message. Compare the wait to the previous build and note any late viewport warning. If a request stalls, use Copy log to retain its version and current diagnostic. Windows SQLite, live Gemini and screen-transition times remain unmeasured.
+
 ## DM validation details and clipboard
 
 Godot 4.7.2 Linux `--check-only` passed for `main.gd`, the semantic adapter and controller, and the integration fixture. With the disposable Linux SQLite bridge and mock Gemini, `semantic_integration_smoke.gd` passed `--menu-shortcuts`, `--provider-format` and `--transport-retry`. The fixture checked that Copy log includes the installed version and an in-memory event missing from the file, and that an invalid reply identifies its missing text, bad flag type and unexpected fields before any state revision change. The safe event excludes the raw keys and contents. Git whitespace checks passed. Windows clipboard and live Gemini were not run for this checkpoint.

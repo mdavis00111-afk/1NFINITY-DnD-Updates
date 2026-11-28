@@ -6,6 +6,7 @@ const MATURITY = preload("res://campaigns/maturity_profiles.gd")
 const SETTINGS = "user://settings.cfg"
 const DEFAULT_MODEL = "gemini-3.5-flash-lite"
 const BASE = "https://generativelanguage.googleapis.com/v1beta/"
+const REQUEST_TIMEOUT = 45.0
 var request: HTTPRequest
 var active = false
 var mode = ""
@@ -28,7 +29,7 @@ func set_campaign_maturity(id: String) -> void:
 func _ready() -> void:
 	request = HTTPRequest.new()
 	request.use_threads = true
-	request.timeout = 45.0
+	request.timeout = REQUEST_TIMEOUT
 	request.body_size_limit = 4 * 1024 * 1024
 	request.max_redirects = 0
 	add_child(request)

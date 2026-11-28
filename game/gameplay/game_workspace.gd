@@ -29,6 +29,7 @@ const GOLD = Color("#ffd989")
 const IVORY = Color("#fff0cf")
 const ABILITIES = ["str","dex","con","int","wis","cha"]
 const TABS = ["Inventory","Spells","Skills","Features","Notes"]
+const LIVE_VIEW_FIELDS = ["revision","phase","pending_turn_id","active_turn_id","supported_intents","can_queue","choice_tools","queue_wait","status_text","work_stage","processing","draft","reviewed_preview","accepted_request_ids","request_history","last_terminal","settled_request_id","settled_status"]
 var cat = CAT.new()
 var intents = INTENTS.new()
 var intent_buttons: Array = []
@@ -118,9 +119,9 @@ func build_workspace() -> void:
 
 # Called only by the trusted future controller with a fresh, committed full view.
 # Do not reconstruct the adapter or clear a request lock on ordinary redraws.
-# Same visible committed state: avoid destroying the scene and chat controls
-# solely for progress/status text. Do not reuse a popup or an old revision.
-func status_only_refresh(previous: Dictionary,next: Dictionary) -> bool:
+# Reuse the panels when only the journal, turn controls or transcript changed.
+# An open dialog may contain offers tied to the old revision.
+func can_refresh_transcript(previous: Dictionary,next: Dictionary) -> bool:
 	if previous.is_empty() or previous.keys().size()!=next.keys().size():
 		return false
 	for child in get_children():
@@ -129,21 +130,26 @@ func status_only_refresh(previous: Dictionary,next: Dictionary) -> bool:
 	for key in previous:
 		if not next.has(key):
 			return false
-		if key in ["interaction","interaction_extension"]:
+		if key=="events":
+			continue
+		if key in ["campaign","interaction","interaction_extension"]:
 			var old=previous[key]
 			var fresh=next[key]
 			if not old is Dictionary or not fresh is Dictionary or old.keys().size()!=fresh.keys().size():
 				return false
+			var live_fields=["turn","updated_at"] if key=="campaign" else LIVE_VIEW_FIELDS
 			for field in old:
 				if not fresh.has(field):
 					return false
-				if not field in ["status_text","work_stage","processing","draft","accepted_request_ids","request_history","last_terminal","settled_request_id","settled_status"] and old[field]!=fresh[field]:
+				if not field in live_fields and old[field]!=fresh[field]:
 					return false
 		elif previous[key]!=next[key]:
 			return false
 	return true
 
 func apply_authoritative_view(snapshot: Dictionary) -> bool:
+	if not is_inside_tree() or is_queued_for_deletion():
+		return false
 	if not intents.accept_view(snapshot):
 		show_status(intents.last_error)
 		refresh_intent_controls()
@@ -168,7 +174,8 @@ func apply_authoritative_view(snapshot: Dictionary) -> bool:
 			draft = ""
 		if intents.interaction.get("settled_status") in ["committed","rejected","cancelled"]:
 			last_chat_request_id = ""
-	var lightweight=is_instance_valid(development_controller) and is_instance_valid(composer) and status_only_refresh(view,intents.snapshot)
+	var lightweight=is_instance_valid(development_controller) and is_instance_valid(composer) and can_refresh_transcript(view,intents.snapshot)
+	var transcript_changed=view.get("events")!=intents.snapshot.get("events") or extension().get("reviewed_preview")!=intents.snapshot.get("interaction_extension",{}).get("reviewed_preview")
 	view = intents.snapshot
 	campaign = view["campaign"]
 	actor = view["actor"]
@@ -177,6 +184,8 @@ func apply_authoritative_view(snapshot: Dictionary) -> bool:
 	data_error = ""
 	if lightweight:
 		status_refreshes+=1
+		if transcript_changed:
+			refresh_transcript()
 		composer.text=draft
 		composer.caret_column=mini(caret,draft.length())
 		refresh_intent_controls()
@@ -762,30 +771,7 @@ func build_center(parent: VBoxContainer) -> void:
 	log.get_parent().size_flags_vertical = Control.SIZE_EXPAND_FILL
 	log_scroll = scroll(log,120)
 	log_list = vbox(log_scroll,6)
-	for event in view.get("events",[]):
-		if not event.get("kind") in ["campaign_created","narration","player_action","mechanical_summary"] or not event.get("text") is String:
-			continue
-		var role = "System" if event.get("kind") in ["campaign_created","mechanical_summary"] else ("Player" if event.get("kind")=="player_action" else "DM")
-		var entry = hbox(log_list,6)
-		picture(entry,actor_portrait() if role=="Player" else glyph("diamond" if role=="System" else "initiative"),Vector2(30,30))
-		var words = vbox(entry,2)
-		one_line(words,role+"  ·  Turn "+number(event.get("turn")),17,GOLD)
-		var prose = str(event.get("text","")).replace("\r\n","\n")
-		if role=="DM":
-			while prose.contains("\n\n"):
-				prose=prose.replace("\n\n","\n")
-		var event_label=label(words,prose,17,IVORY)
-		event_label.add_theme_constant_override("line_spacing",0)
-		var divider = HSeparator.new()
-		log_list.add_child(divider)
-	if view.get("events",[]).is_empty():
-		label(log_list,"No committed adventure events available.",16)
-	if is_instance_valid(development_controller) and not str(extension().get("reviewed_preview","")).is_empty():
-		label(log_list,"DM · Critically reviewed preview — world reconciliation pending",15,GOLD)
-		label(log_list,str(extension()["reviewed_preview"]),17,IVORY)
-	if not data_error.is_empty():
-		label(log_list,data_error,16,GOLD)
-	log_scroll.set_deferred("scroll_vertical",2147483647)
+	refresh_transcript()
 	var actions = hbox(parent,4)
 	if view.get("opening_available",false) and not is_instance_valid(development_controller):
 		opening_button = button(actions,"Generate Opening",retry_action,15,"wand")
@@ -847,6 +833,35 @@ func build_center(parent: VBoxContainer) -> void:
 		icon_button.custom_minimum_size = Vector2(27,30)
 		icon_button.tooltip_text = "Scroll to latest log" if target=="Log" else ("Open rules reference" if target=="Rules" else "Clear manual dice result")
 	label(dice,"Manual only · not part of campaign resolution",12,GOLD)
+
+func refresh_transcript() -> void:
+	for child in log_list.get_children():
+		log_list.remove_child(child)
+		child.queue_free()
+	for event in view.get("events",[]):
+		if not event.get("kind") in ["campaign_created","narration","player_action","mechanical_summary"] or not event.get("text") is String:
+			continue
+		var role = "System" if event.get("kind") in ["campaign_created","mechanical_summary"] else ("Player" if event.get("kind")=="player_action" else "DM")
+		var entry = hbox(log_list,6)
+		picture(entry,actor_portrait() if role=="Player" else glyph("diamond" if role=="System" else "initiative"),Vector2(30,30))
+		var words = vbox(entry,2)
+		one_line(words,role+"  ·  Turn "+number(event.get("turn")),17,GOLD)
+		var prose = str(event.get("text","")).replace("\r\n","\n")
+		if role=="DM":
+			while prose.contains("\n\n"):
+				prose=prose.replace("\n\n","\n")
+		var event_label=label(words,prose,17,IVORY)
+		event_label.add_theme_constant_override("line_spacing",0)
+		var divider = HSeparator.new()
+		log_list.add_child(divider)
+	if view.get("events",[]).is_empty():
+		label(log_list,"No committed adventure events available.",16)
+	if is_instance_valid(development_controller) and not str(extension().get("reviewed_preview","")).is_empty():
+		label(log_list,"DM · Critically reviewed preview — world reconciliation pending",15,GOLD)
+		label(log_list,str(extension()["reviewed_preview"]),17,IVORY)
+	if not data_error.is_empty():
+		label(log_list,data_error,16,GOLD)
+	log_scroll.set_deferred("scroll_vertical",2147483647)
 
 func dice_tool(target: String) -> void:
 	match target:

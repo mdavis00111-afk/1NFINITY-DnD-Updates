@@ -1,3 +1,7 @@
+## Windows saved DM reply and latency acceptance
+
+Verify the live updater channel and read the latest PROJECT_BRAIN.md, HANDOFF.md and TESTING.md. The owner confirmed v0.0.33 saved a DM reply but displayed it only after reopening. Verify that the new build shows a fresh `hello` in the same open workspace. If a request fails, use Copy log for the installed version and latest `SEMANTIC_BOUNDARY`. If narration is visible and menu transitions still lag, time the Windows transitions separately from Gemini and isolate the remaining synchronous database calls.
+
 ## Current Windows DM format report
 
 The owner reported the generic invalid narration message. The clipboard excerpt contained the Godot startup header but no semantic failure. Recover the installed version and current `SEMANTIC_BOUNDARY` from the Windows installation folder's `game.log`, then target the identified failure. The `feature/dm-log-diagnostics` checkpoint improves the validation message and makes Copy log include the newest in-memory boundary. Keep narration and authoritative consequences separate and leave the screen-lag work until the DM path is confirmed.

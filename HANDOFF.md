@@ -2,6 +2,8 @@
 
 Codex Cloud is working on `feature/dm-turn-timeout` from live v0.0.33. Scope is the narrated-turn stall, provider deadlines, safe turn recovery and the synchronous reads around provider dispatch. The candidate includes the previously tested diagnostics from `45ed595cbf723ec842f2eed14a23cdd2463ba199`. The owner reports frozen Processing narrate and a Windows viewport input warning. Actual Windows timings remain outstanding.
 
+The owner then confirmed reopening showed the saved reply. The checkpoint moves the committed transcript refresh ahead of deferred work and separates controller wait, commit and presentation status. Changed source is `game/gameplay/complete_controller.gd`, `game_workspace.gd`, `semantic_adapter.gd`, `semantic_controller.gd`, `game/systems/gemini.gd` and `game/tests/semantic_integration_smoke.gd`, plus the earlier diagnostics and project records. The release retains the existing Windows SQLite bridge and updater.
+
 ## v0.0.33 Windows DM format follow-up
 
 Codex Cloud is tracing the owner's invalid narration message from live `godot` publication `6562d3f5b2cc2870a416718189ca6f7cf8ad190c` on `feature/dm-log-diagnostics`. The copied excerpt shows startup only. Scope is the exact narration rejection reason and Copy log access to the current boundary. The live captures have yet to identify the failing field on v0.0.33. Screen-transition performance remains separate.
