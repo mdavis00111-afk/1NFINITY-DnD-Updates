@@ -19,3 +19,6 @@ AI 1 reads the original player input and returns the list of applicable Godot lo
 
 ## Current development priority
 Owner prioritizes game-side AI lookup interpretation and Godot hard logic before further DM development. Inspect existing implementation against the owner-defined lookup pipeline, reuse existing registry/rules/persistence, and make scoped corrections only. Produce inspectable structured lookup, validation, mechanical outcome and DM-ready context output; rejected actions return local reasons. Do not expand narration or rebuild unrelated systems. Example combat outputs discussed are illustrative, not evidence of implemented combat. No runtime changes in this directive commit.
+
+## v0.0.28 scoped lookup bridge
+Enabled bounded read-only lookup list alongside existing typed action; local registry executes once, forwards successful results via existing selected_context, no interpreter follow-up. Existing contextual assessment safety remains; pure lookup-only protocol, automatic rejection turn completion, owned-item missing attribute exception and full combat remain outstanding. No DM changes. Native/live tests not executed. Owner alpha publication requested.

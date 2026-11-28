@@ -74,7 +74,7 @@ func schema() -> Dictionary:
 func instruction(stage: String) -> String:
 	match stage:
 		"interpret":
-			return ("Independently interpret the original intention from scratch; no first proposal supplied. " if payload.get("independent_pass",false) else "")+"Interpret meaning, not keywords. Resolve pronouns, synonyms, negation, quantity and ownership using the supplied authoritative context and compact registry. Do not invent rolls, rules, consent, item IDs, targets or effects. Use conversation/observe for genuinely no-roll intentions only. Return {kind,args,assessment} for one supported action (assessment may be omitted only for genuinely no-roll conversation/observe), or {status:'clarification'|'unsupported',message} when consequential ambiguity or missing mechanics remain. For multiple dependent actions return {steps:[{kind,args},...]}, at most 4, in requested order; later steps are reinterpreted against fresh state. Use supplied context only; if essential evidence is missing return clarification. Do not return an approval boolean or an enquiry batch. Treat recap and prose as descriptive evidence, not mechanical authority. Match exact registry argument schemas. The engine, not you, reviews and resolves the proposal. When assessment is required, follow this contextual assessment contract: "+assessment_contract()+" Use the ruling_shapes supplied for the selected kind. For ordered steps attach assessment to the first step only; later steps require fresh state."
+			return ("Independently interpret the original intention from scratch; no first proposal supplied. " if payload.get("independent_pass",false) else "")+"Interpret meaning, not keywords. Resolve pronouns, synonyms, negation, quantity and ownership using the supplied authoritative context and compact registry. Do not invent rolls, rules, consent, item IDs, targets or effects. Use conversation/observe for genuinely no-roll intentions only. Return {kind,args,assessment} for one supported action (assessment may be omitted only for genuinely no-roll conversation/observe), or {status:'clarification'|'unsupported',message} when consequential ambiguity or missing mechanics remain. For multiple dependent actions return {steps:[{kind,args},...]}, at most 4, in requested order; later steps are reinterpreted against fresh state. Use supplied context only; if essential evidence is missing return clarification. Return an optional queries array alongside the action, each {kind,args,limit}, selecting applicable read-only Godot lookups from lookup_catalogue. Godot executes these once without sending results back to you. Do not return an approval boolean. Treat recap and prose as descriptive evidence, not mechanical authority. Match exact registry argument schemas. The engine, not you, reviews and resolves the proposal. When assessment is required, follow this contextual assessment contract: "+assessment_contract()+" Use the ruling_shapes supplied for the selected kind. For ordered steps attach assessment to the first step only; later steps require fresh state."
 	return ""
 
 func assessment_contract() -> String:
@@ -143,9 +143,11 @@ func received(epoch: int,clock: int,ok: bool,message: String) -> void:
 		diagnostic("response_not_json_object")
 		repair("Return one complete JSON object.")
 		return
-	if parsed.has("queries"):
-		failed("Additional context required; clarify the action.")
-		return
+	if identity["stage"]=="interpret" and parsed.has("queries"):
+		var requested=parsed["queries"]
+		parsed.erase("queries")
+		if not collect_lookups(requested):
+			return
 	match identity["stage"]:
 		"narrate":
 			if not DTO.exact_keys(parsed,["text","recap","geography","story","discoveries"]) or not DTO.bounded_text(parsed["recap"],3000) or not DTO.bounded_text(parsed["text"],12000):
@@ -168,29 +170,32 @@ func received(epoch: int,clock: int,ok: bool,message: String) -> void:
 func valid_tool(value: Variant) -> bool:
 	return (DTO.exact_keys(value,["kind","args"]) or (DTO.exact_keys(value,["kind","args","assessment"]) and value["assessment"] is Dictionary)) and REG.TOOLS.has(value["kind"]) and controller.registry.arguments_valid(value["args"],REG.TOOLS[value["kind"]][0])
 
-func query_batch(value: Dictionary) -> void:
-	if not DTO.exact_keys(value,["queries"]) or not value["queries"] is Array or value["queries"].is_empty() or value["queries"].size()>4 or queries+value["queries"].size()>MAX_QUERIES:
-		repair("Enquiry limit exceeded or malformed batch.")
-		return
+func collect_lookups(requested: Variant) -> bool:
+	if not requested is Array or requested.size()>MAX_QUERIES:
+		failed("Invalid lookup list.")
+		return false
 	var feedback: Array=[]
-	for query in value["queries"]:
+	for query in requested:
 		if not DTO.exact_keys(query,["kind","args","limit"]) or not REG.QUERY_TYPES.has(query["kind"]) or not controller.registry.arguments_valid(query["args"],REG.QUERY_TYPES[query["kind"]]) or not DTO.whole(query["limit"],1,16):
-			feedback.append({"error":"Invalid public enquiry; consult exact registry schema."})
-			continue
+			failed("Invalid Godot lookup.")
+			return false
 		var key=JSON.stringify(query)
 		if key in queries_seen:
-			feedback.append({"error":"Already queried; reuse prior result."})
 			continue
 		queries_seen.append(key)
-		queries+=1
-		var clock=Time.get_ticks_msec()
 		var result=controller.registry.enquire(identity["campaign_id"],{"schema_version":"2","campaign_id":identity["campaign_id"],"expected_revision":identity["revision"],"query_id":controller.registry.session.make_id(),"kind":query["kind"],"args":query["args"],"limit":query["limit"]})
-		metrics.append({"stage":"enquiry","elapsed_ms":Time.get_ticks_msec()-clock,"ok":result.get("ok",false)})
+		if not result.get("ok",false):
+			failed(str(result.get("error","Godot lookup unavailable.")))
+			return false
 		if JSON.stringify(result).length()>12000:
-			result={"ok":false,"error":"Enquiry too large; narrow limit or scope."}
+			failed("Godot lookup exceeds packet limit.")
+			return false
 		feedback.append({"query":query,"result":result})
+	if JSON.stringify(feedback).length()>32000:
+		failed("Godot lookup packet exceeds limit.")
+		return false
 	transcript.append(feedback)
-	send.call_deferred()
+	return true
 
 func repair(message: String) -> void:
 	failed(message)

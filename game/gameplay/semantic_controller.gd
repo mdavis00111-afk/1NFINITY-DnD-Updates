@@ -122,6 +122,7 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 		expanded["intent"]=job["intent"]
 		expanded.erase("original_player_text") # exact original already in intent
 		expanded["catalogue"]=context_builder.catalogue(registry)
+		expanded["lookup_catalogue"]=REG.QUERY_TYPES
 		expanded["next_step_hint"]=job.get("remaining",[]).front() if not job.get("remaining",[]).is_empty() else null
 		expanded["completed_steps"]=job.get("completed_steps",[])
 		expanded["independent_pass"]=false
