@@ -73,3 +73,6 @@ Run 46088394508 Linux job 140803281526 completed failure; checkout/report/artifa
 
 ## Oversight milestone — numeric guard and projection correction (2026-11-28)
 Reviewed 7e649fad37e7fed5e880f1459cf4b62edd54451c. Developer artifact evidence isolates max safe integer rejection to guard, not decoder; strict signed bounds at +/-2^53 preserve intended range, finite check retained. Four currency test comparisons changed to typed equality, expected balances and SQL assertions preserved. Encounter outcome SQL balance reported passed. Accepted for native QA only. Minor diagnostic flaw: raw equality labels now print typed equality twice; restore truthful diagnostic or remove redundant label in next relevant commit. Require successful settlement lookup in failed pickup absence assertion. Obtain run ID and native retest; continue process restart and equipment/resource diagnosis without waiting on unrelated Windows jobs. No integration/publication, live v0.0.26.
+
+## Oversight milestone — numeric correction workflow located (2026-11-28)
+Owner supplied run 46088962585 for expected 7e649fad37e7fed5e880f1459cf4b62edd54451c. Linux job 140805117491 and Windows job 140805117268 both executing native suites; checkout/setup/archive verification passed. No artifacts yet; exact source pin and results pending. Existing implementation authorization and release hold unchanged.
