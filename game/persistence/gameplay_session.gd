@@ -28,7 +28,7 @@ func read(state: Dictionary, statements: Array) -> Dictionary:
 	return WORLD.new().read_sets(state,statements)
 
 func request_valid(request: Variant,version: String = VERSION) -> bool:
-	return DTO.exact_keys(request,["schema_version","campaign_id","actor_id","expected_revision","request_id","kind","args"]) and request["schema_version"]==version and DTO.id_valid(request["campaign_id"]) and DTO.id_valid(request["actor_id"]) and DTO.id_valid(request["request_id"]) and DTO.whole(request["expected_revision"],0,DTO.MAX_INT-2) and DTO.bounded_text(request["kind"],80) and request["args"] is Dictionary and json_safe(request) and JSON.stringify(request,"",true,true).length()<=65536
+	return DTO.exact_keys(request,["schema_version","campaign_id","actor_id","expected_revision","request_id","kind","args"]) and request["schema_version"]==version and DTO.id_valid(request["campaign_id"]) and DTO.id_valid(request["actor_id"]) and DTO.id_valid(request["request_id"]) and DTO.whole(request["expected_revision"],0,DTO.MAX_INT-2) and DTO.bounded_text(request["kind"],80) and request["args"] is Dictionary and json_safe(request) and JSON.stringify(request,"",true,true).length()<=65536 and typed_equal(request,JSON.parse_string(JSON.stringify(request,"",true,true)))
 
 # Compare requests in the same JSON representation used by durable storage.
 # Godot JSON decodes numbers as floats, including nested integer operands.
@@ -43,7 +43,29 @@ func same_request(a: Dictionary,b: Dictionary) -> bool:
 		return false
 	if left.parse(JSON.stringify(a,"",true,true))!=OK or right.parse(JSON.stringify(b,"",true,true))!=OK:
 		return false
-	return left.data is Dictionary and right.data is Dictionary and left.data==right.data
+	return left.data is Dictionary and right.data is Dictionary and typed_equal(a,b) and typed_equal(a,left.data) and typed_equal(b,right.data)
+
+# Compare numeric leaves without coercing strings or booleans.
+func typed_equal(a: Variant,b: Variant) -> bool:
+	if typeof(a) in [TYPE_INT,TYPE_FLOAT] and typeof(b) in [TYPE_INT,TYPE_FLOAT]:
+		return json_safe(a) and json_safe(b) and float(a)==float(b)
+	if typeof(a)!=typeof(b):
+		return false
+	if a is Dictionary:
+		if a.size()!=b.size():
+			return false
+		for key in a:
+			if not b.has(key) or not typed_equal(a[key],b[key]):
+				return false
+		return true
+	if a is Array:
+		if a.size()!=b.size():
+			return false
+		for i in range(a.size()):
+			if not typed_equal(a[i],b[i]):
+				return false
+		return true
+	return a==b
 
 # Reject values that JSON cannot represent losslessly as request operands.
 func json_safe(value: Variant) -> bool:

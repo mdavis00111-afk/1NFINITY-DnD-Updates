@@ -32,6 +32,12 @@ func finish() -> void:
 	print("C2 persistence smoke failures: ",failures.size())
 	quit(0 if failures.is_empty() else 1)
 
+func loot_sql(id: String,cid: String) -> Dictionary:
+	var aid = session.token(id)["actor_id"]
+	var result = SQL.run(base.path_for(id),[SQL.stmt("SELECT id,definition_id,actor_id,container_id,quantity FROM item_instances WHERE actor_id=? OR container_id=? ORDER BY id",[aid,cid]),SQL.stmt("SELECT payload FROM actors WHERE id=?",[aid]),SQL.stmt("SELECT status FROM loot_containers WHERE id=?",[cid]),SQL.stmt("SELECT denomination,quantity FROM loot_currency WHERE container_id=? ORDER BY denomination",[cid]),SQL.stmt("SELECT count(*) AS n FROM gameplay_requests"),SQL.stmt("SELECT count(*) AS n FROM item_transfers")],true)
+	expect(result.get("ok",false),"Authoritative loot SQL read failed")
+	return result
+
 func money(gp: int = 0) -> Dictionary:
 	return {"cp":0,"sp":0,"ep":0,"gp":gp,"pp":0}
 
@@ -74,7 +80,10 @@ func request_comparison_tests() -> void:
 	expect(not session.same_request(invalid,invalid),"Invalid envelope matched itself")
 	var boundary = a.duplicate(true)
 	boundary["args"]["nested"][0]["quantity"]=9007199254740991
-	expect(session.same_request(boundary,JSON.parse_string(JSON.stringify(boundary,"",true,true))),"Safe integer boundary failed")
+	var encoded_boundary = JSON.stringify(boundary,"",true,true)
+	var decoded_boundary = JSON.parse_string(encoded_boundary)
+	print("Numeric boundary encoded: ",encoded_boundary," decoded quantity: ",str(decoded_boundary["args"]["nested"][0]["quantity"])," exact: ",session.typed_equal(boundary,decoded_boundary))
+	expect(session.same_request(boundary,decoded_boundary),"Safe integer boundary failed")
 	var unsafe = boundary.duplicate(true)
 	unsafe["args"]["nested"][0]["quantity"]=9007199254740992
 	expect(not session.same_request(unsafe,unsafe),"Unsafe integer boundary accepted")
@@ -175,7 +184,12 @@ func run() -> void:
 		return
 	var custom_id = custom["result"]["definition_id"]
 	var again = request(id,"define_custom",define_args)
-	expect(loot.define_custom(id,again,clearance(again,"custom_definition")).get("result",{}).get("definition_id")==custom_id,"Custom definition duplicated")
+	var reused_definition = loot.define_custom(id,again,clearance(again,"custom_definition"))
+	print("Custom definition reuse: ",reused_definition)
+	var definition_rows = SQL.run(base.path_for(id),[SQL.stmt("SELECT id,attributes FROM item_definitions WHERE name=?",[definition["name"]])],true)
+	print("Custom definition SQL rows: ",definition_rows)
+	expect(definition_rows.get("ok",false) and definition_rows["results"][0].size()==1,"Custom definition SQL identity count")
+	expect(reused_definition.get("result",{}).get("definition_id")==custom_id,"Custom definition reuse failed")
 	var equivalent = definition.duplicate(true)
 	equivalent["name"]="Dagger"
 	var official = request(id,"define_custom",{"definition":equivalent,"source_event_id":opening_event,"official_equivalent_id":null})
@@ -198,6 +212,7 @@ func run() -> void:
 		expect(false,"Visible loot projection unavailable")
 		finish()
 		return
+	print("Discovery SQL: ",loot_sql(id,container_id))
 	expect(view["actor"]["coins"]==money(2) and view["inventory"][0]["quantity"]==2,"Loot transferred automatically")
 	var dagger_instance = ""
 	for row in extension["loot_containers"][0]["items"]:
@@ -206,8 +221,13 @@ func run() -> void:
 	var trigger = SQL.run(base.path_for(id),[SQL.stmt("CREATE TRIGGER c2_fixture_reject BEFORE INSERT ON item_transfers BEGIN SELECT RAISE(ABORT,'fixture'); END")])
 	expect(trigger.get("ok",false),"Rollback fixture trigger failed")
 	var frozen = session.token(id)
+	var before_failed_pickup = loot_sql(id,container_id)
+	print("Before failed pickup SQL: ",before_failed_pickup)
 	expect(not loot.pickup(id,pickup,clearance(pickup,"loot_transfer")).get("ok",false),"Injected failure not rejected")
 	expect(session.token(id)["revision"]==frozen["revision"] and not session.settlement(id,pickup["request_id"]).get("found",false) and base.gameplay_view(id)["actor"]["coins"]==money(2),"Failed pickup partially persisted")
+	var after_failed_pickup = loot_sql(id,container_id)
+	print("After failed pickup SQL: ",after_failed_pickup)
+	expect(before_failed_pickup==after_failed_pickup,"Failed pickup changed authoritative SQL state")
 	expect(SQL.run(base.path_for(id),[SQL.stmt("DROP TRIGGER c2_fixture_reject")]).get("ok",false),"Rollback fixture cleanup failed")
 	var collected = loot.pickup(id,pickup,clearance(pickup,"loot_transfer"))
 	expect(collected.get("ok",false) and collected.get("result",{}).get("items",[]).size()==1,"Selective pickup failed")
@@ -216,6 +236,7 @@ func run() -> void:
 	expect(loot.pickup(id,take,clearance(take,"loot_transfer")).get("ok",false),"Take all failed")
 	view=base.gameplay_view(id)
 	extension=view.get("interaction_extension",{})
+	print("Closed loot SQL: ",loot_sql(id,container_id))
 	expect(view["actor"]["coins"]==money(7) and extension.get("loot_containers",[]).is_empty(),"Currency/closed loot view incorrect")
 	# The two pieces of the same discovered stack have identical provenance.
 	# They can be consolidated, not silently merged with the original master stack.

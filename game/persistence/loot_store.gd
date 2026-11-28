@@ -64,7 +64,7 @@ func define_custom(id: String,request: Dictionary,clearance: Dictionary) -> Dict
 		if existing["sets"][0].size()!=1:
 			return fail("Definition identity ambiguous.")
 		var old = cat.from_row(existing["sets"][0][0])
-		if old.get("origin")=="custom" and old.get("attributes")==proposed:
+		if old.get("origin")=="custom" and typed_equal(old.get("attributes"),proposed):
 			return _reuse(ctx,{"definition_id":old["id"]},args["source_event_id"])
 		return fail("Existing definition preserved. Use its ID or an explicitly distinct name.")
 	var key = "custom-"+make_id()

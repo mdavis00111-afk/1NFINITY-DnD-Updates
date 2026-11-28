@@ -71,3 +71,7 @@ Prior run 46084904289 completed on both OS: 6/14 each, matching failures; Window
 
 ### Settlement prewrite precision and recovery follow-up
 Request validation now rejects unsafe JSON operands before begin/adoption; all three durable request insert paths serialize with full precision, as do settlement results. Added canonical generation fresh-service readback, exact revision increment, immutable replay, changed-argument rejection and unsafe prewrite regression assertions. Candidate push run ID not accessible via PR-filtered connector; awaiting exact Actions run ID. No native pass claimed, no workflow change, no integration or publication.
+
+
+### Scoped native settlement follow-up
+Run 46086797815 Linux job 140798143633 pinned 8785e166: import pass, 6/14 suites, baseline raw equality false, canonical committed revision 3 from 2 and exact-once assertions passed. Windows pending. Safe integer boundary failed; added exact encoded/decoded diagnostic and fail-closed round-trip validation before writes, retaining boundary assertion. Typed numeric leaf comparison scoped to requests and custom definition reuse; no string/bool coercion. Added SQL definition count and loot ownership/currency/status/request/transfer snapshots, including rollback equality. Existing loot assertions retained. New candidate unexecuted; full process restart pending. No integration/publication.
