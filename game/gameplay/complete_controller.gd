@@ -370,7 +370,7 @@ func execute_active() -> void:
 			if prior.get("logical_turn_id")!=null:
 				after_narration(job,prior)
 			else:
-				finish("committed","Committed tool result restored.")
+				finish("committed",tool_message(req,prior,"Committed tool result restored."))
 			return
 		if prior["status"]=="accepted_pending":
 			var recovered=registry.recover(campaign_id,req["request_id"])
@@ -398,22 +398,29 @@ func execute_active() -> void:
 	elif result.get("ok",false):
 		var confirmed=registry.session.settlement(campaign_id,req["request_id"])
 		if confirmed.get("found",false) and confirmed["status"]=="committed":
-			finish("committed","Tool committed. Campaign refreshed.")
+			finish("committed",tool_message(req,confirmed,"Tool committed. Campaign refreshed."))
 		else:
 			stop("retry","Tool acknowledgement needs recovery.")
 	else:
 		var message=str(result.get("error","Tool not resolved."))
 		var code = result.get("code")
 		if code==REG.MISSING_CUSTOM_ATTRIBUTES:
-			# Step 7A stops locally. No receipt, provider call, or automatic retry.
 			if registry.missing_custom_attributes_valid(result,req):
-				reject_local(req,"Required custom item attributes are missing. "+message)
+				missing_attributes(req,result)
 			else:
 				stop("retry","Missing item attribute result could not be verified.")
 		elif code in ["invalid","unsupported","decision_required","review_required"]+REG.ITEM_REJECTIONS and not result.get("adopted_pending",false):
 			reject_local(req,message)
 		else:
 			stop("retry",message)
+
+func tool_message(req: Dictionary,settled: Dictionary,fallback: String) -> String:
+	if req["kind"]=="inspect_inscription" and DTO.bounded_text(settled.get("result",{}).get("inscription"),160):
+		return "Inscription: "+settled["result"]["inscription"]
+	return fallback
+
+func missing_attributes(req: Dictionary,result: Dictionary) -> void:
+	reject_local(req,"Required custom item attributes are missing. "+result["error"])
 
 func legacy_review_stages() -> bool:
 	return true

@@ -897,3 +897,49 @@ func object_interact(id: String,req: Dictionary,clearance: Dictionary) -> Dictio
 	]
 	action_seconds=6
 	return _commit(ctx,commands,{"kind":"object_interact","object_id":old["id"],"status":status,"changed":true,"rolls":[],"rule_refs":[RAW.rule_ref("objects"),RAW.rule_ref("time")]},"Object is now "+status+".")
+
+func inscription_valid(value: Variant) -> bool:
+	if not DTO.bounded_text(value,160) or value!=value.strip_edges():
+		return false
+	for index in range(value.length()):
+		var point = value.unicode_at(index)
+		if point<32 or (point>=127 and point<=159) or point in [8232,8233]:
+			return false
+	return true
+
+# Descriptive only. The proposal cannot affect placement, capacity or effects.
+func inspect_inscription(id: String,req: Dictionary,permit: Dictionary,attribute: Dictionary) -> Dictionary:
+	var ctx = begin(id,req,"inspect_inscription",["instance_id"])
+	if not ctx.get("ok",false) or ctx.get("replayed",false):
+		return ctx
+	if not allowed(ctx,permit,"inspect_inscription"):
+		return {"ok":false,"code":"ineligible","error":"Inscription access requires a safe actor and quiet context."}
+	var state = ctx["state"]
+	var pack = read_owned(state,state["actor_id"])
+	if not pack.get("ok",false):
+		return pack
+	var iid = req["args"]["instance_id"]
+	if not pack["items"].has(iid):
+		return {"ok":false,"code":"ineligible","error":"Selected item is not owned."}
+	var item = pack["items"][iid]
+	var definition = pack["definitions"][iid]
+	var attrs = definition["attributes"]
+	if definition["origin"]!="custom" or not attrs.get("category") in ["gear","object"] or item["condition"] in ["damaged","broken"]:
+		return {"ok":false,"code":"unsupported","error":"Only intact custom objects and gear support inscription inspection."}
+	var inscription = attrs.get("inscription")
+	var commands = owned_guards(pack)
+	if not attrs.has("inscription"):
+		var details = {"request":req,"instance_id":iid,"definition_id":definition["id"],"origin":"custom","quantity":item["quantity"],"missing_paths":["attributes.inscription"],"context":{"name":str(item["name"]).left(100),"description":str(attrs.get("description","")).left(400),"category":attrs["category"]}}
+		if attribute.is_empty():
+			return {"ok":false,"code":"missing_custom_attributes","error":"Inscription text is missing.","details":details}
+		if not DTO.exact_keys(attribute,["details","inscription"]) or not typed_equal(attribute["details"],details) or not inscription_valid(attribute["inscription"]):
+			return {"ok":false,"code":"invalid","error":"Inscription proposal or its request binding is invalid."}
+		inscription=attribute["inscription"]
+		var updated = attrs.duplicate(true)
+		updated["inscription"]=inscription
+		commands.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('c3_inscription_guard',(SELECT 'ok' FROM item_definitions WHERE id=? AND origin='custom' AND attributes=?))",[definition["id"],item["attributes"]]))
+		commands.append(SQL.stmt("DELETE FROM meta WHERE key='c3_inscription_guard'"))
+		commands.append(SQL.stmt("UPDATE item_definitions SET attributes=? WHERE id=? AND origin='custom' AND attributes=?",[JSON.stringify(updated),definition["id"],item["attributes"]]))
+	elif not attribute.is_empty() or not inscription_valid(inscription):
+		return {"ok":false,"code":"invalid_data","error":"Stored inscription is invalid or already established."}
+	return _commit(ctx,commands,{"instance_id":iid,"definition_id":definition["id"],"inscription":inscription},"Inspected a custom item inscription.")

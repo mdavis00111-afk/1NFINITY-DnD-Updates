@@ -61,6 +61,20 @@ func local_decision(req: Dictionary,job: Dictionary,state: Dictionary) -> Dictio
 	if kind in DESCRIPTIVE:
 		if descriptive_assessment(req,job,state).is_empty():
 			return {"ok":false,"error":"Committed descriptive source or staged proposal unavailable."}
+	elif kind=="inspect_inscription":
+		var text = str(job["intent"]["args"].get("text","")).strip_edges().to_lower()
+		if job["intent"]["kind"]!="chat" or not (text.begins_with("read the inscription on ") or text.begins_with("inspect the inscription on ")) or not nc.safe_actor(state):
+			return {"ok":false,"error":"Ask explicitly to read the inscription on an owned custom object."}
+		var target = text.trim_prefix("read the inscription on ").trim_prefix("inspect the inscription on ").trim_suffix(".").trim_suffix("?").strip_edges()
+		var owned = nc.read_owned(state,state["actor_id"])
+		if not owned.get("ok",false):
+			return owned
+		var matches: Array = []
+		for item in owned["items"].values():
+			if target==item["id"] or target==str(item["name"]).strip_edges().to_lower():
+				matches.append(item["id"])
+		if matches!=[args["instance_id"]]:
+			return {"ok":false,"error":"Use an exact, unique owned item name or instance ID."}
 	elif direct_safe(req,job,state):
 		if kind in ROUTINE:
 			ruling={"safe_nonmechanical":true,"seconds":0,"establish_clock":false}

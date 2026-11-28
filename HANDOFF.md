@@ -1,3 +1,7 @@
+## v0.0.29 owner-authorized Step 7B and publication
+
+Starting development tip 284d39bca4c26730833c0c6369e40b31f83e8e27. Codex Cloud feature/v029-inscription. Source scope includes the semantic adapter, policy, registry, controllers, work journal and noncombat store. One descriptive inscription action was added. Packaging now checks the approved source against godot history instead of the historical v0.0.27 QA branch. See PROJECT_BRAIN.md and TESTING.md. Live Windows validation is with the owner. Follow NEXT_CHAT.md for defect fixes.
+
 ## v0.0.29 Step 8 checkpoint
 
 Codex Cloud implementation from godot 69a896c57071f1cce26a194c9986dad1aeb80b8a on feature/v029-step8. Scope included game/gameplay/turn_context.gd and semantic_controller.gd plus PROJECT_BRAIN.md, NEXT_CHAT.md, HANDOFF.md and TESTING.md. Standalone syntax and read-only dispatch checks passed. Owner runtime cases are pending. Step 7B remains deferred, and Step 9 was outside this checkpoint. No release files changed.

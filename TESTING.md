@@ -1,3 +1,9 @@
+## v0.0.29 Step 7B inscription checks
+
+Codex Cloud parsed all seven changed GDScript files with gdtoolkit 4.5.0. Python SQLite exercised the actual parameterized origin/old-value guard and update against the three existing schemas. The stale guard failed as expected and preserved the stored inscription. Foreign-key and Git whitespace checks passed. No Windows, Godot runtime or live Gemini calls were run.
+
+Owner cases use a disposable campaign. Read the inscription on an intact owned custom object by its exact unique name, then repeat after restarting. The first request can make one proposal call beyond interpretation and commits one local result. Later reads display the same inscription without a proposal. Exercise ambiguous name, wrong instance, official definition, unsafe actor, invalid JSON, oversized and multiline text, stale revision, and interrupted dispatch. Expect no attribute write or narrator call on denial, a maximum of one proposal per original request, and recovery of a committed or prepared result without duplicate execution. Check that equipment, time, dice and carrying eligibility remain unchanged.
+
 ## v0.0.29 Step 8 packet validation
 
 Codex Cloud parsed turn_context.gd, semantic_controller.gd, semantic_adapter.gd, tool_registry.gd and complete_controller.gd with standalone gdtoolkit 4.5.0. Source assertions checked read-only assembly, reuse of the single existing dispatch call site and unchanged release inputs. Reviewed request, standalone settlement, logical receipt, narration linkage and revision checks. Git whitespace checks passed.

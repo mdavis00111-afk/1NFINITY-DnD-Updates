@@ -1,3 +1,9 @@
+## v0.0.29 owner live-test and defect-fix brief
+
+Read live channel.json, PROJECT_BRAIN.md, HANDOFF.md and TESTING.md. Start with the owner's actual update or gameplay observation. Use the reported steps, expected and actual behavior, and logs to identify the first failed boundary. For updater startup failures use update.log, import.log and smoke.log. For gameplay use game.log and a disposable save. Preserve the verified updater, original 2014 RAW, Godot/SQLite authority, saves, settings and approved GUI. Deliver a focused fix, run suitable static checks, and record live testing separately. Do not treat old QA or handoff entries as new defect reports.
+
+To exercise Step 7B, use “Read the inscription on [exact unique owned custom item name or instance ID]” with an intact custom object or gear. Read it again to verify the persisted text. See TESTING.md for rejection and restart cases. The next chat should prioritize reported defects over adding new features.
+
 ## v0.0.29 Step 8 checkpoint
 
 Inspect the bound DM-ready packet using semantic_controller.inspect_dm_packet() during the active narration attempt. See PROJECT_BRAIN.md and TESTING.md. Step 9 owns provider-call budgets and dependent-action interpretation changes. Step 7B remains deferred and its proposal path is disabled. Continue from verified godot HEAD and keep the updater channel at v0.0.28.

@@ -1,3 +1,9 @@
+## v0.0.29 Step 7B owner-approved alpha scope
+
+Step 7B supports explicit inscription inspection of intact, owned custom gear or objects. Ask “Read the inscription on [exact unique item name or instance ID].” The local policy binds that target. Godot checks quiet access, actor, instance, custom origin and revision before issuing one flavor-only proposal. The journal records the attempt before dispatch. Godot accepts one bounded single-line string and rechecks the entire proposal binding and action prerequisites before storing the inscription and settlement in one guarded transaction. The action displays the inscription locally and has no dice, time cost or mechanical effects. An existing inscription needs no proposal. Interrupted proposals cannot be dispatched again under the same request. A definition-level inscription is shared by instances of that definition.
+
+Release scope is an owner-authorized live-test alpha. Step 8 is included. Deferred Step 4 context gaps, broader Step 9 call-budget work and owner Windows acceptance remain open. The updater manifest is the authority on what is actually published.
+
 ## v0.0.29 Step 8 DM-ready packet checkpoint
 
 The semantic controller consolidates its existing narration data through turn_context.gd. The packet binds campaign, actor, original intent and tool request IDs, turn, expected revision and current revision. It retains the exact journaled input, selected enquiries with their original revisions, rules, public state and memory. Current mechanics come from the matching standalone settlement or durable logical receipt. Earlier steps are verified against their full action arguments, revision and public event, with narrated receipt linkage checked for logical turns. Unverified earlier history stops packet dispatch and enters existing recovery. Continuation history carries only verified identifiers.

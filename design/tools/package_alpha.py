@@ -14,9 +14,9 @@ old = json.loads(pathlib.Path("channel.json").read_text())
 assert old["channel"] == "godot"
 assert tuple(map(int, version.split("."))) > tuple(map(int, old["version"].split(".")))
 start = git("rev-parse", "HEAD").decode().strip()
-run("fetch", "origin", "godot", "qa/v027-settlement")
+run("fetch", "origin", "godot")
 assert git("rev-parse", "origin/godot").decode().strip() == start
-run("merge-base", "--is-ancestor", candidate, "origin/qa/v027-settlement")
+run("merge-base", "--is-ancestor", candidate, start)
 run("config", "user.name", "1NFINITY release bot")
 run("config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com")
 run("checkout", candidate, "--", "game", "design")

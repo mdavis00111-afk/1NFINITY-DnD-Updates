@@ -32,7 +32,7 @@ func read(id: String) -> Dictionary:
 			var intent=work[slot].get("intent")
 			if not (session.request_valid(intent,"1") or session.request_valid(intent,"2")) or intent["campaign_id"]!=id or intent["actor_id"]!=state["actor_id"]:
 				return session.fail("Work journal identity invalid.")
-			if not work[slot].get("stage") in ["new","interpret","execute","narrate","critical","background","reconcile","post_story","retry","clarification","critical_blocked","adjudicate"] or not work[slot].get("tool") is Dictionary or not work[slot].get("attempt") is Dictionary:
+			if not work[slot].get("stage") in ["new","interpret","execute","narrate","critical","background","reconcile","post_story","retry","clarification","critical_blocked","adjudicate","attribute"] or not work[slot].get("tool") is Dictionary or not work[slot].get("attempt") is Dictionary:
 				return session.fail("Invalid durable work phase.")
 	return {"ok":true,"state":state,"raw":raw,"work":work}
 

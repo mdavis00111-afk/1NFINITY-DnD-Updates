@@ -263,8 +263,46 @@ func recover_active() -> void:
 	else:
 		ask("narrate",job,payload)
 
+func missing_attributes(req: Dictionary,result: Dictionary) -> void:
+	var job = active().duplicate(true)
+	if req["kind"]!="inspect_inscription" or job.get("attribute_attempted",false):
+		super.missing_attributes(req,result)
+		return
+	job["attribute_attempted"]=true
+	job["attribute_details"]=result["details"].duplicate(true)
+	# The base dispatch saves the one-attempt marker before sending anything.
+	super.ask("attribute",job,result["details"]["context"])
+
+func receive_attribute(identity: Dictionary,result: Dictionary) -> Dictionary:
+	if not matches(identity,"attribute"):
+		return failure("Stale inscription proposal.")
+	var job = active().duplicate(true)
+	var req = job["tool"]
+	retire_attempt()
+	if not DTO.exact_keys(result,["inscription"]) or not registry.noncombat.inscription_valid(result["inscription"]):
+		reject_local(req,"Invalid inscription proposal.")
+		return failure("Invalid inscription proposal.")
+	if not prepare_review(req,"execute"):
+		return failure("Inscription inspection is no longer eligible.")
+	running=true
+	var resumed = registry.execute(campaign_id,req,review_tool,{"details":job.get("attribute_details"),"inscription":result["inscription"]})
+	running=false
+	if not reload():
+		return failure("Inscription settlement unavailable.")
+	var settled = registry.session.settlement(campaign_id,req["request_id"])
+	if settled.get("found",false) and settled["status"]=="committed" and registry.session.same_request(settled["request"],req):
+		finish("committed",tool_message(req,settled,"Inscription inspected."))
+		return {"ok":true}
+	if resumed.get("code") in ["invalid","unsupported","decision_required","review_required"]+REG.ITEM_REJECTIONS:
+		reject_local(req,str(resumed.get("error","Inscription proposal rejected.")))
+	else:
+		stop("retry",str(resumed.get("error","Inscription settlement requires recovery.")))
+	return failure(status)
+
 func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 	var stage=identity.get("stage","")
+	if stage=="attribute":
+		return receive_attribute(identity,result)
 	if not matches(identity,stage) or JSON.stringify(result).length()>65536:
 		return failure("Stale semantic response.")
 	var job=active().duplicate(true)
@@ -860,6 +898,9 @@ func advance() -> void:
 	if not inflight.is_empty() and registry.session.typed_equal(inflight,active().get("attempt")):
 		return
 	var job=active().duplicate(true)
+	if job.get("stage")=="attribute":
+		stop("retry","Inscription proposal interrupted. Retry to check settlement or cancel.")
+		return
 	if job.get("stage")=="adjudicate":
 		# Legacy pending assessment cannot authorize a write or restart an obsolete provider stage.
 		stop("clarification","Legacy contextual assessment interrupted. Recover or clarify the pending action.")
