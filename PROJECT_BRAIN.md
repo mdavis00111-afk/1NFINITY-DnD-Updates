@@ -693,3 +693,5 @@ Owner prioritizes game-side AI lookup interpretation and Godot hard logic before
 
 ## v0.0.28 scoped lookup bridge
 Enabled bounded read-only lookup list alongside existing typed action; local registry executes once, forwards successful results via existing selected_context, no interpreter follow-up. Existing contextual assessment safety remains; pure lookup-only protocol, automatic rejection turn completion, owned-item missing attribute exception and full combat remain outstanding. No DM changes. Native/live tests not executed. Owner alpha publication requested.
+
+Published v0.0.28 manifest delta: four changed game blobs fetched from immutable source; 397 entries retained. No native tests executed.

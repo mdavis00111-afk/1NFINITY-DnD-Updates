@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.27",
-  "source_commit": "5425e3c35a40ed04a7c8583bd0493c8ca090d963",
-  "notes": "Alpha live test: persistence, semantic authorization, narration context and recovery corrections. Known semantic and GUI issues remain; use disposable campaign.",
+  "version": "0.0.28",
+  "source_commit": "e4cd886a9bd89d65c8649466cfcec09901e4547c",
+  "notes": "Alpha: bounded local lookup bridge; existing mechanical review retained. Live testing pending.",
   "files": [
     {
       "path": "art/arcane.svg",
@@ -1238,11 +1238,11 @@
     },
     {
       "path": "gameplay/semantic_adapter.gd",
-      "blob": "ba171b23ce87fc11863f17b6a480973ffb457ad1"
+      "blob": "4587874dd1f3b09add1d2aa542219e9db1d242c7"
     },
     {
       "path": "gameplay/semantic_controller.gd",
-      "blob": "a391c9ebc0f3a89ffd1c240e1ebe19f484e194be"
+      "blob": "a22fa587d98e7c5cd5057eabbe82b95ef81b3573"
     },
     {
       "path": "gameplay/semantic_policy.gd",
@@ -1346,7 +1346,7 @@
     },
     {
       "path": "project.godot",
-      "blob": "afbc114485cd7787f5d4dd47eaa618e7beaf8ef6"
+      "blob": "a7b2925403db70bedc52105653a5f240d5f34c4e"
     },
     {
       "path": "rules/MASTER_REFERENCE.md",
@@ -1570,7 +1570,7 @@
     },
     {
       "path": "version.txt",
-      "blob": "24ff85581f81976c5f70fe1a8c3c0f62b5275c91"
+      "blob": "1fe6958562df8f355e1ca457397cb58c1c815b3f"
     },
     {
       "path": "world/geography_reconciler.gd",
