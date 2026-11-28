@@ -137,12 +137,29 @@ func run() -> void:
 	var args = actor_args(id,at,opening_event,mara,"Mara")
 	var generate = request(id,"actor_generate",args)
 	expect(not GENERATOR.new().generate(id,generate).get("ok",false),"Unreviewed generation accepted")
+	var before_generation = session.token(id)["revision"]
 	var generated = GENERATOR.new().generate(id,generate,true)
+	var reopened = SESSION.new().settlement(id,generate["request_id"])
+	print("Canonical upgrade durable settlement: ",reopened)
+	expect(reopened.get("ok",false) and reopened.get("found",false) and reopened.get("status")=="committed","Reopened committed generation unavailable")
 	expect(generated.get("ok",false) and generated.get("result",{}).get("actor_id")==mara,"Canonical upgrade failed: "+str(generated))
 	if not generated.get("ok",false):
 		finish()
 		return
 	expect(GENERATOR.new().generate(id,generate,true).get("replayed",false),"Generation replay not settled")
+	expect(SESSION.new().token(id)["revision"]==before_generation+1,"Generation replay advanced revision")
+	expect(SESSION.new().settlement(id,generate["request_id"])==reopened,"Reopened settlement changed after replay")
+	var changed_generation = generate.duplicate(true)
+	changed_generation["args"]["name"]="Different NPC"
+	expect(not GENERATOR.new().generate(id,changed_generation,true).get("ok",false),"Changed generation replay accepted")
+	expect(SESSION.new().token(id)["revision"]==before_generation+1,"Changed replay advanced revision")
+	var unsafe_request = generate.duplicate(true)
+	unsafe_request["request_id"]=session.make_id()
+	unsafe_request["expected_revision"]=before_generation+1
+	unsafe_request["args"]["possessions"][0]["quantity"]=9007199254740992
+	expect(not session.request_valid(unsafe_request),"Unsafe request passed prewrite validation")
+	expect(not GENERATOR.new().generate(id,unsafe_request,true).get("ok",false),"Unsafe generation accepted")
+	expect(not SESSION.new().settlement(id,unsafe_request["request_id"]).get("found",false),"Unsafe request durably written")
 	var reused = GENERATOR.new().generate(id,request(id,"actor_generate",args),true)
 	expect(reused.get("ok",false) and reused.get("result",{}).get("actor_id")==mara,"Existing individual regenerated")
 	var public_sheet = query(id,"actor_sheet",{"actor_id":mara})

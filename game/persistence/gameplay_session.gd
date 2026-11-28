@@ -28,7 +28,7 @@ func read(state: Dictionary, statements: Array) -> Dictionary:
 	return WORLD.new().read_sets(state,statements)
 
 func request_valid(request: Variant,version: String = VERSION) -> bool:
-	return DTO.exact_keys(request,["schema_version","campaign_id","actor_id","expected_revision","request_id","kind","args"]) and request["schema_version"]==version and DTO.id_valid(request["campaign_id"]) and DTO.id_valid(request["actor_id"]) and DTO.id_valid(request["request_id"]) and DTO.whole(request["expected_revision"],0,DTO.MAX_INT-2) and DTO.bounded_text(request["kind"],80) and request["args"] is Dictionary and JSON.stringify(request).length()<=65536
+	return DTO.exact_keys(request,["schema_version","campaign_id","actor_id","expected_revision","request_id","kind","args"]) and request["schema_version"]==version and DTO.id_valid(request["campaign_id"]) and DTO.id_valid(request["actor_id"]) and DTO.id_valid(request["request_id"]) and DTO.whole(request["expected_revision"],0,DTO.MAX_INT-2) and DTO.bounded_text(request["kind"],80) and request["args"] is Dictionary and json_safe(request) and JSON.stringify(request,"",true,true).length()<=65536
 
 # Compare requests in the same JSON representation used by durable storage.
 # Godot JSON decodes numbers as floats, including nested integer operands.
@@ -156,7 +156,7 @@ func _commit(context: Dictionary,commands: Array,result_data: Dictionary,message
 		result_data=result_data.duplicate(true)
 		result_data["elapsed_seconds"]=action_seconds
 	batch.append(SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(?,?,'gameplay_change',?)",[state["turn"],game_time,JSON.stringify({"request_id":rid,"kind":request["kind"],"text":message,"visibility":visibility,"location_id":state["location_id"]})]))
-	batch.append(SQL.stmt("INSERT INTO gameplay_requests(request_id,actor_id,kind,expected_revision,status,request_payload,result_payload,settled_revision,event_id) VALUES(?,?,?,?,'committed',?,?,?,last_insert_rowid())",[rid,state["actor_id"],request["kind"],state["revision"],JSON.stringify(request),JSON.stringify(result_data),state["revision"]+1]))
+	batch.append(SQL.stmt("INSERT INTO gameplay_requests(request_id,actor_id,kind,expected_revision,status,request_payload,result_payload,settled_revision,event_id) VALUES(?,?,?,?,'committed',?,?,?,last_insert_rowid())",[rid,state["actor_id"],request["kind"],state["revision"],JSON.stringify(request,"",true,true),JSON.stringify(result_data,"",true,true),state["revision"]+1]))
 	batch.append_array(commands)
 	batch.append(SQL.stmt("UPDATE world_state SET revision=revision+1,elapsed_seconds=? WHERE campaign_id=?",[elapsed,id]))
 	batch.append(SQL.stmt("DELETE FROM meta WHERE key='c2_request_guard'"))
@@ -199,7 +199,7 @@ func _adopt(id: String,request: Dictionary,turn_id: String) -> Dictionary:
 		return prior if same_request(prior["request"],request) and prior["logical_turn_id"]==turn_id else fail("Request already bound.")
 	if state["revision"]!=request["expected_revision"] or state["pending_turn_id"]!=null:
 		return fail("Cannot adopt stale or pending request.")
-	var batch = [TURN.new().guard(state),SQL.stmt("INSERT INTO meta(key,value) VALUES('c2_adopt_guard',(SELECT 'ok' WHERE NOT EXISTS(SELECT 1 FROM gameplay_requests WHERE status='accepted_pending' OR logical_turn_id=?) AND NOT EXISTS(SELECT 1 FROM turn_receipts WHERE turn_id=?)))",[turn_id,turn_id]),SQL.stmt("INSERT INTO gameplay_requests(request_id,actor_id,kind,expected_revision,logical_turn_id,status,request_payload,result_payload,settled_revision) VALUES(?,?,?,?,?,'accepted_pending',?,'{}',?)",[request["request_id"],state["actor_id"],request["kind"],state["revision"],turn_id,JSON.stringify(request),state["revision"]]),SQL.stmt("DELETE FROM meta WHERE key='c2_adopt_guard'"),SQL.stmt("DELETE FROM meta WHERE key='turn_write_guard'")]
+	var batch = [TURN.new().guard(state),SQL.stmt("INSERT INTO meta(key,value) VALUES('c2_adopt_guard',(SELECT 'ok' WHERE NOT EXISTS(SELECT 1 FROM gameplay_requests WHERE status='accepted_pending' OR logical_turn_id=?) AND NOT EXISTS(SELECT 1 FROM turn_receipts WHERE turn_id=?)))",[turn_id,turn_id]),SQL.stmt("INSERT INTO gameplay_requests(request_id,actor_id,kind,expected_revision,logical_turn_id,status,request_payload,result_payload,settled_revision) VALUES(?,?,?,?,?,'accepted_pending',?,'{}',?)",[request["request_id"],state["actor_id"],request["kind"],state["revision"],turn_id,JSON.stringify(request,"",true,true),state["revision"]]),SQL.stmt("DELETE FROM meta WHERE key='c2_adopt_guard'"),SQL.stmt("DELETE FROM meta WHERE key='turn_write_guard'")]
 	var saved = SQL.run(path(id),batch)
 	var confirmed = settlement(id,request["request_id"])
 	if confirmed.get("found",false) and same_request(confirmed["request"],request) and confirmed["logical_turn_id"]==turn_id:
@@ -250,7 +250,7 @@ func settle_adopted(id: String,request_id: String,status: String,local_no_prepar
 		batch.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('c2_receipt_guard',(SELECT 'ok' FROM turn_narrations WHERE turn_id=? AND event_id=?))",[turn_id,event_id]))
 	else:
 		batch.append(SQL.stmt("INSERT INTO meta(key,value) VALUES('c2_receipt_guard',(SELECT 'ok' WHERE NOT EXISTS(SELECT 1 FROM turn_receipts WHERE turn_id=?)))",[turn_id]))
-	batch.append(SQL.stmt("UPDATE gameplay_requests SET status=?,result_payload=?,settled_revision=?,event_id=? WHERE request_id=?",[status,JSON.stringify(result_data),state["revision"],event_id,request_id]))
+	batch.append(SQL.stmt("UPDATE gameplay_requests SET status=?,result_payload=?,settled_revision=?,event_id=? WHERE request_id=?",[status,JSON.stringify(result_data,"",true,true),state["revision"],event_id,request_id]))
 	for key in ["c2_settle_guard","c2_receipt_guard","turn_write_guard"]:
 		batch.append(SQL.stmt("DELETE FROM meta WHERE key=?",[key]))
 	SQL.run(path(id),batch)
@@ -265,7 +265,7 @@ func _reuse(ctx: Dictionary,result_data: Dictionary,event_id: Variant) -> Dictio
 	var request: Dictionary = ctx["request"]
 	if not DTO.whole(event_id,1) or source(state,event_id).is_empty():
 		return fail("Reuse provenance unavailable.")
-	var batch = [TURN.new().guard(state),SQL.stmt("INSERT INTO meta(key,value) VALUES('c2_reuse_guard',(SELECT 'ok' WHERE NOT EXISTS(SELECT 1 FROM gameplay_requests WHERE status='accepted_pending' OR request_id=?)))",[request["request_id"]]),SQL.stmt("INSERT INTO gameplay_requests(request_id,actor_id,kind,expected_revision,status,request_payload,result_payload,settled_revision,event_id) VALUES(?,?,?,?,'committed',?,?,?,?)",[request["request_id"],state["actor_id"],request["kind"],state["revision"],JSON.stringify(request),JSON.stringify(result_data),state["revision"],int(event_id)]),SQL.stmt("DELETE FROM meta WHERE key='c2_reuse_guard'"),SQL.stmt("DELETE FROM meta WHERE key='turn_write_guard'")]
+	var batch = [TURN.new().guard(state),SQL.stmt("INSERT INTO meta(key,value) VALUES('c2_reuse_guard',(SELECT 'ok' WHERE NOT EXISTS(SELECT 1 FROM gameplay_requests WHERE status='accepted_pending' OR request_id=?)))",[request["request_id"]]),SQL.stmt("INSERT INTO gameplay_requests(request_id,actor_id,kind,expected_revision,status,request_payload,result_payload,settled_revision,event_id) VALUES(?,?,?,?,'committed',?,?,?,?)",[request["request_id"],state["actor_id"],request["kind"],state["revision"],JSON.stringify(request,"",true,true),JSON.stringify(result_data,"",true,true),state["revision"],int(event_id)]),SQL.stmt("DELETE FROM meta WHERE key='c2_reuse_guard'"),SQL.stmt("DELETE FROM meta WHERE key='turn_write_guard'")]
 	SQL.run(path(state["campaign_id"]),batch)
 	var prior = settlement(state["campaign_id"],request["request_id"])
 	if prior.get("found",false) and same_request(prior["request"],request) and prior["status"]=="committed":

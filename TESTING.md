@@ -398,3 +398,7 @@ Corrected durable request comparison to compare both envelopes after JSON round-
 
 ### Scoped settlement QA candidate
 Prior run 46084904289 completed on both OS: 6/14 each, matching failures; Windows production SQLite confirms canonical upgrade and loot settlement errors. Scoped branch push trigger enabled without changing engine hashes or test isolation. Request comparison now requires valid envelopes, JSON-safe operands, successful dictionary decoding and full precision serialization; native fixture logs baseline equality and checks identity, argument, type and precision boundaries. Existing persistence replay and recovery assertions retained. Native results pending; no integration or publication. Architect DEV_BRIEF.md on godot preserved.
+
+
+### Settlement prewrite precision and recovery follow-up
+Request validation now rejects unsafe JSON operands before begin/adoption; all three durable request insert paths serialize with full precision, as do settlement results. Added canonical generation fresh-service readback, exact revision increment, immutable replay, changed-argument rejection and unsafe prewrite regression assertions. Candidate push run ID not accessible via PR-filtered connector; awaiting exact Actions run ID. No native pass claimed, no workflow change, no integration or publication.
