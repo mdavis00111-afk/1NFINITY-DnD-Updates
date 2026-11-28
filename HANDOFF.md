@@ -1,3 +1,7 @@
+## Chat blocker recovery
+
+Fixed the chat blocker UX in game/gameplay/game_workspace.gd and verified it through the actual composer in semantic_integration_smoke.gd. Scoped feature/chat-blocker-recovery includes the preceding scrollable update notes patch. No release inputs changed.
+
 ## Update confirmation layout
 
 Codex Cloud patch on feature/update-notes-scroll from published godot b85b5abdab863404fb9d93e2986254c58d1bf9a3. Scope is the update notes layout in game/main.gd. No overlapping work recorded. Implemented in game/main.gd. Headless layout checks passed at 1280x720 and 400x350. Live publication remains separate.

@@ -869,8 +869,22 @@ func can_intent(kind: String) -> bool:
 	return not pending and data_error.is_empty() and intents.available(kind)
 
 func intent_reason(kind: String) -> String:
-	if pending or not data_error.is_empty():
-		return "Campaign busy or unavailable."
+	if not data_error.is_empty():
+		return data_error
+	if pending:
+		return "Wait for the campaign opening to finish."
+	if is_instance_valid(development_controller):
+		if not local_pending_id.is_empty() or not intents.outstanding_id.is_empty():
+			return "Previous delivery needs confirmation. Use Turn → Retry / recover current request."
+		var ext = extension()
+		if ext.get("queue_wait",false):
+			return "An action is saved in the queue. Open Turn to resume it or return it to the draft."
+		if not str(ext.get("queued_text","")).is_empty():
+			return "One action is already queued. Open Turn to manage it."
+		if ext.get("phase") in ["retryable","awaiting_decision","blocked"]:
+			return str(ext.get("status_text","Current turn needs recovery."))+" Open Turn for recovery options."
+		if ext.get("phase")=="busy":
+			return "The current turn is still processing."
 	return intents.reason(kind)
 
 func track_intent(control: Button,kind: String,local_allowed: bool = true,local_reason: String = "") -> void:
@@ -908,12 +922,12 @@ func refresh_intent_controls() -> void:
 	if is_instance_valid(send_button):
 		send_button.disabled = not can_intent("chat")
 		send_button.text="Queue" if is_instance_valid(development_controller) and extension().get("can_queue",false) else "Send"
-		send_button.tooltip_text = "One durable next action; resolves only after settlement." if is_instance_valid(development_controller) else intent_reason("chat")
+		send_button.tooltip_text = "Send your action to the Dungeon Master." if can_intent("chat") else intent_reason("chat")
 
 func request_intent(kind: String,args: Dictionary) -> Dictionary:
 	var reply: Dictionary
 	if is_instance_valid(development_controller):
-		reply=dev_submit(kind,args,"1") if can_intent(kind) else {"ok":false,"message":"Action unavailable or previous work pending."}
+		reply=dev_submit(kind,args,"1") if can_intent(kind) else {"ok":false,"message":intent_reason(kind)}
 	else:
 		reply = intents.request(kind,args) if can_intent(kind) else {"ok":false,"message":intent_reason(kind)}
 	var message = str(reply.get("message","Request unavailable."))
@@ -929,6 +943,12 @@ func request_intent(kind: String,args: Dictionary) -> Dictionary:
 
 func submit_chat() -> void:
 	if not is_instance_valid(composer):
+		return
+	if is_instance_valid(development_controller) and not can_intent("chat"):
+		show_status(intent_reason("chat"))
+		var ext = extension()
+		if not local_pending_id.is_empty() or ext.get("queue_wait",false) or ext.get("phase") in ["retryable","awaiting_decision","blocked"]:
+			show_processing()
 		return
 	var sent=request_intent("chat",{"text":composer.text})
 	if is_instance_valid(development_controller):
@@ -1714,7 +1734,11 @@ func selected_target(target: OptionButton) -> Variant:
 	return target.get_item_metadata(target.selected) if is_instance_valid(target) and target.selected>=0 else null
 
 func show_processing() -> void:
+	var existing = get_node_or_null("TurnProcessing")
+	if is_instance_valid(existing) and not existing.is_queued_for_deletion():
+		return
 	var popup=popup_base("Turn and processing")
+	popup.name="TurnProcessing"
 	var col=vbox(popup,6)
 	col.custom_minimum_size.x=530
 	label(col,str(extension().get("status_text","Controller ready.")),18,GOLD)

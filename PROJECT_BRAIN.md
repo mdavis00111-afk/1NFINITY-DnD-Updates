@@ -1,3 +1,7 @@
+## Chat blocker recovery
+
+A blocked chat submission now identifies the queue, delivery check or recovery state instead of displaying a generic unavailable message. Pressing Enter while the turn needs recovery opens the existing Turn controls and preserves the unsent draft. Request and save gates are unchanged. The exact state on the owner’s PC remains unverified.
+
 ## Update confirmation notes layout
 
 The update confirmation wraps release notes inside a 120-pixel tall scrollable panel sized to the game window. The version, restart notice and buttons stay outside the scroll area. Headless Godot 4.7.2 checks verified long multiline and unbroken notes at 1280×720 and 400×350, plus a short-note reopen with the scrollbar reset.

@@ -1,3 +1,7 @@
+## Chat blocker recovery
+
+Godot 4.7.2 Linux --chat-recovery passed with mock Gemini and the isolated SQLite bridge. It queued a literal hello behind malformed provider output, preserved unsent text on blocked Enter, canceled the uncommitted turn, resumed hello, and committed the DM reply in two calls. Windows and the owner campaign were not tested.
+
 ## v0.0.31 response boundary correction
 
 Godot 4.7.2 Linux controller check-only, the native AI profile smoke, standalone GDScript parsing and Git whitespace checks passed. The focused integration suite uses mock Gemini and an isolated test-only SQLite bridge, with no production Python dependency. Provider-format coverage includes five ordinary prompts, empty translation, prose-only replies, empty world envelopes, malformed optional world fields, a blocked consequential proposal, duplicate replies, exact prompt hash and save isolation. The DM-first, conditional-check, DM-map and typed-invite modes cover owned and missing items and spells, Mage Hand lookup with no slot requirement, a real leveled healing roll and slot debit, reopen and inscription, a selected check branch, valid geography and one-call invitation.

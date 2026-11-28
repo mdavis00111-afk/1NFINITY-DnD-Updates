@@ -240,6 +240,13 @@ func run() -> void:
 	if not expect(not shield.is_empty(),"Owned shield"):
 		finish()
 		return
+	if "--chat-recovery" in OS.get_cmdline_user_args():
+		await chat_recovery_case(id)
+		ctrl.close_session()
+		workspace.queue_free()
+		ctrl.queue_free()
+		finish()
+		return
 	if "--provider-format" in OS.get_cmdline_user_args():
 		await provider_format_case(id)
 		expect(players.load_record(master)==original and base.gameplay_view(b["id"])==sibling,"Independent master and sibling saves unchanged")
@@ -303,6 +310,44 @@ func run() -> void:
 	workspace.queue_free()
 	ctrl.queue_free()
 	finish()
+
+func chat_recovery_case(id: String) -> void:
+	var calls = outbound.size()
+	var initial = session.token(id)
+	workspace.composer.text="A request that the provider will fail."
+	workspace.submit_chat()
+	if not await pump("interpret"):
+		return
+	reply("Malformed provider text")
+	for _i in range(40):
+		await process_frame
+		if ctrl.active().get("stage")=="retry":
+			break
+	if not expect(ctrl.active().get("stage")=="retry","Failed request is waiting for recovery"):
+		return
+	workspace.composer.text="hello"
+	workspace.submit_chat()
+	await process_frame
+	expect(ctrl.data["work"]["queued"].get("intent",{}).get("args",{}).get("text")=="hello","Hello is durably queued while previous request needs recovery")
+	workspace.composer.text="keep this unsent draft"
+	workspace.submit_chat()
+	expect(workspace.get_node_or_null("TurnProcessing")!=null and workspace.status.text.contains("queued"),"A blocked Enter explains the queue and opens recovery")
+	expect(workspace.composer.text=="keep this unsent draft" and outbound.size()==calls+1,"Blocked chat keeps the draft and sends no request")
+	expect(ctrl.cancel().get("ok",false),"Cancel only the uncommitted failed turn")
+	await process_frame
+	expect(session.token(id)["revision"]==initial["revision"] and ctrl.view["interaction_extension"]["queue_wait"],"Cancel preserves saved hello without mutating the game")
+	expect(ctrl.resume_queue().get("ok",false),"Resume the existing queued hello")
+	if not await pump("interpret"):
+		return
+	expect(ctrl.adapter.payload["intent"]["args"]["text"]=="hello","Recovered hello keeps exact input")
+	reply({})
+	if not await pump("narrate"):
+		return
+	expect(ctrl.inspect_dm_packet().get("player_text")=="hello","The DM receives the exact hello")
+	reply({"text":"The innkeeper looks up. Hello, traveler."})
+	if not await pump("idle"):
+		return
+	expect(outbound.size()==calls+3 and workspace.can_intent("chat"),"Hello completes with two calls and the composer accepts more input")
 
 func provider_format_case(id: String) -> void:
 	var inputs = ["Hello.","I look around.","What can I see?","I ask the innkeeper about the town.","I sit down and have a conversation."]
