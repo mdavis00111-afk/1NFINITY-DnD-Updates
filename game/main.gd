@@ -12,6 +12,8 @@ var check_button: Button
 var request: HTTPRequest
 var remote: Dictionary = {}
 var dialog: ConfirmationDialog
+var update_version: Label
+var update_notes: RichTextLabel
 var screen: Control
 var backdrop: TextureRect
 var config = ConfigFile.new()
@@ -80,6 +82,24 @@ func _ready() -> void:
 	dialog.title = "Install update"
 	add_child(dialog)
 	dialog.confirmed.connect(install_update)
+	var update_content = VBoxContainer.new()
+	dialog.add_child(update_content)
+	update_version = Label.new()
+	update_content.add_child(update_version)
+	update_notes = RichTextLabel.new()
+	update_notes.custom_minimum_size.y = 120
+	update_notes.fit_content = false
+	update_notes.scroll_active = true
+	update_notes.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	update_notes.selection_enabled = true
+	var notes_style = StyleBoxFlat.new()
+	notes_style.bg_color = Color("#21180f")
+	notes_style.set_content_margin_all(8)
+	update_notes.add_theme_stylebox_override("normal", notes_style)
+	update_content.add_child(update_notes)
+	var update_footer = Label.new()
+	update_footer.text = "The game will close and restart."
+	update_content.add_child(update_footer)
 	backdrop = TextureRect.new()
 	backdrop.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	backdrop.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
@@ -621,8 +641,11 @@ func on_response(result: int, code: int, _headers: PackedStringArray, body: Pack
 		status.text = "You are up to date.  |  v" + version
 		return
 	remote = data
-	dialog.dialog_text = "Version " + latest + "\n\n" + str(data.get("notes", "")) + "\n\nThe game will close and restart."
-	dialog.popup_centered(Vector2i(480, 220))
+	update_version.text = "Version " + latest
+	update_notes.custom_minimum_size.x = clampf(get_window().size.x - 64.0, 0.0, 400.0)
+	update_notes.text = str(data.get("notes", ""))
+	dialog.popup_centered(Vector2i(clampi(get_window().size.x - 16, 1, 480), 220))
+	update_notes.scroll_to_line.call_deferred(0)
 	status.text = "Update available: v" + latest
 
 func install_update() -> void:

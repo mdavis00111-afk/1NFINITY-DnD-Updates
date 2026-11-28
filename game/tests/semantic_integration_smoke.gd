@@ -240,6 +240,20 @@ func run() -> void:
 	if not expect(not shield.is_empty(),"Owned shield"):
 		finish()
 		return
+	if "--transport-retry" in OS.get_cmdline_user_args():
+		await transport_retry_case(id)
+		ctrl.close_session()
+		workspace.queue_free()
+		ctrl.queue_free()
+		finish()
+		return
+	if "--chat-recovery" in OS.get_cmdline_user_args():
+		await chat_recovery_case(id)
+		ctrl.close_session()
+		workspace.queue_free()
+		ctrl.queue_free()
+		finish()
+		return
 	if "--provider-format" in OS.get_cmdline_user_args():
 		await provider_format_case(id)
 		expect(players.load_record(master)==original and base.gameplay_view(b["id"])==sibling,"Independent master and sibling saves unchanged")
@@ -304,6 +318,86 @@ func run() -> void:
 	ctrl.queue_free()
 	finish()
 
+func transport_retry_case(id: String) -> void:
+	var before = SQL.metrics()["calls"]
+	expect(ctrl.reload(),"Independent bounded journal read")
+	var journal_reads = SQL.metrics()["calls"]-before
+	before=SQL.metrics()["calls"]
+	ctrl.advance()
+	expect(SQL.metrics()["calls"]-before==journal_reads,"Idle tick reads the journal once")
+	var intent = pipeline_intent(id,"hello")
+	expect(ctrl.submit(intent).get("ok",false),"Submit hello")
+	if not await pump("interpret"):
+		return
+	reply({})
+	if not await pump("narrate"):
+		return
+	var initial = ctrl.inspect_dm_packet()
+	ctrl.adapter.transport.completed.emit(false,"Gemini HTTP 400. Fixture transport rejection.")
+	for _i in range(40):
+		await process_frame
+		if ctrl.active().get("stage")=="retry":
+			break
+	if not expect(ctrl.active().get("stage")=="retry" and not session.settlement(id,intent["request_id"]).get("found",false),"Transport failure holds hello before mechanics"):
+		return
+	expect(ctrl.retry().get("ok",false),"Retry uncommitted narration")
+	if not await pump("narrate"):
+		return
+	var retry_packet = ctrl.inspect_dm_packet()
+	expect(outbound.size()==3 and retry_packet["player_text"]=="hello" and retry_packet["outbound"]["attempt_id"]!=initial["outbound"]["attempt_id"],"Retry refreshes attempt without translating or settling twice")
+	var state = session.token(id)
+	var bumped = SQL.run(session.path(id),[SQL.stmt("UPDATE world_state SET revision=revision+1 WHERE campaign_id=?",[id])])
+	expect(bumped.get("ok",false),"Simulate intervening canonical revision")
+	expect(ctrl.retry().get("ok",false),"Revise only the unresolved lookup context")
+	if not await pump("interpret"):
+		return
+	expect(ctrl.adapter.payload["intent"]["args"]["text"]=="hello" and ctrl.inflight["revision"]==state["revision"]+1,"Stale unresolved retry rereads facts at live revision")
+	reply({})
+	if not await pump("narrate"):
+		return
+	reply({"text":"The innkeeper says hello."})
+	if not await pump("idle"):
+		return
+	expect(session.settlement(id,intent["request_id"]).get("status")=="committed" and outbound.size()==5,"Recovered original request commits once")
+
+func chat_recovery_case(id: String) -> void:
+	var calls = outbound.size()
+	var initial = session.token(id)
+	workspace.composer.text="A request that the provider will fail."
+	workspace.submit_chat()
+	if not await pump("interpret"):
+		return
+	reply("Malformed provider text")
+	for _i in range(40):
+		await process_frame
+		if ctrl.active().get("stage")=="retry":
+			break
+	if not expect(ctrl.active().get("stage")=="retry","Failed request is waiting for recovery"):
+		return
+	workspace.composer.text="hello"
+	workspace.submit_chat()
+	await process_frame
+	expect(ctrl.data["work"]["queued"].get("intent",{}).get("args",{}).get("text")=="hello","Hello is durably queued while previous request needs recovery")
+	workspace.composer.text="keep this unsent draft"
+	workspace.submit_chat()
+	expect(workspace.get_node_or_null("TurnProcessing")!=null and workspace.status.text.contains("queued"),"A blocked Enter explains the queue and opens recovery")
+	expect(workspace.composer.text=="keep this unsent draft" and outbound.size()==calls+1,"Blocked chat keeps the draft and sends no request")
+	expect(ctrl.cancel().get("ok",false),"Cancel only the uncommitted failed turn")
+	await process_frame
+	expect(session.token(id)["revision"]==initial["revision"] and ctrl.view["interaction_extension"]["queue_wait"],"Cancel preserves saved hello without mutating the game")
+	expect(ctrl.retry().get("ok",false),"Retry resumes the existing queue when no active turn remains")
+	if not await pump("interpret"):
+		return
+	expect(ctrl.adapter.payload["intent"]["args"]["text"]=="hello","Recovered hello keeps exact input")
+	reply({})
+	if not await pump("narrate"):
+		return
+	expect(ctrl.inspect_dm_packet().get("player_text")=="hello","The DM receives the exact hello")
+	reply({"text":"The innkeeper looks up. Hello, traveler."})
+	if not await pump("idle"):
+		return
+	expect(outbound.size()==calls+3 and workspace.can_intent("chat"),"Hello completes with two calls and the composer accepts more input")
+
 func provider_format_case(id: String) -> void:
 	var inputs = ["Hello.","I look around.","What can I see?","I ask the innkeeper about the town.","I sit down and have a conversation."]
 	for index in range(inputs.size()):
@@ -320,7 +414,8 @@ func provider_format_case(id: String) -> void:
 		var packet = ctrl.inspect_dm_packet()
 		var attempt = ctrl.inflight.duplicate(true)
 		expect(packet.get("player_text")==inputs[index] and packet["outbound"]["sha256"]==outbound.back()["prompt"].sha256_text() and packet["outbound"]["attempt_id"]==attempt["attempt_id"],"Exact command, prompt hash and attempt survive to DM")
-		expect(ctrl.adapter.transport.supplied_schema.has("anyOf"),"DM gets a stage-specific response schema")
+		var dm_schema: Dictionary = ctrl.adapter.transport.supplied_schema
+		expect(dm_schema.get("type")=="object" and not dm_schema.has("anyOf") and dm_schema["properties"]["geography"]=={"type":"object"} and dm_schema["properties"].has("check"),"DM provider gets a compact stage-specific schema")
 		var text = "The innkeeper turns toward the table."
 		var response = {"text":text}
 		if index==1:

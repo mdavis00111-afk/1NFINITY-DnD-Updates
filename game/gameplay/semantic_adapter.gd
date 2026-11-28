@@ -68,15 +68,15 @@ func schema() -> Dictionary:
 		"attribute":
 			return PACK.obj({"inscription":text})
 		"narrate":
-			var expected = {"schema_version":"1","campaign_id":identity["campaign_id"],"actor_id":identity["actor_id"],"turn_id":payload["turn_id"],"request_id":identity["attempt_id"],"expected_revision":identity["revision"]}
-			var props = {"text":text,"recap":text,"geography":PACK.geo_schema(expected),"story":PACK.arr(PACK.obj({"evidence":text,"args":{"type":"object"}}),8),"discoveries":PACK.arr(PACK.obj({"evidence":text,"kind":text,"args":{"type":"object"}}),8),"requires_world_update":{"type":"boolean"}}
-			var narration = {"type":"object","properties":props,"required":["text"],"additionalProperties":false}
-			if not payload.get("unresolved_intent",false):
-				return narration
-			var check = PACK.obj({"ability":PACK.enum_text(["str","dex","con","int","wis","cha"]),"skill":PACK.nullable(text),"difficulty":PACK.enum_text(["very_easy","easy","medium","hard","very_hard","nearly_impossible"])})
-			var item = PACK.obj({"kind":PACK.enum_text(["item_use"]),"args":PACK.obj({"instance_id":text,"quantity":{"type":"integer"},"target_id":PACK.nullable(text)})})
-			var spell = PACK.obj({"kind":PACK.enum_text(["spell_cast"]),"args":PACK.obj({"spell_id":text,"source":PACK.enum_text(REG.SPELL_SOURCES),"slot_level":{"type":"integer"},"target_id":PACK.nullable(text)})})
-			return {"anyOf":[narration,PACK.obj({"mechanics":{"anyOf":[item,spell]}}),PACK.obj({"check":check}),PACK.obj({"check":check,"branches":PACK.obj({"success":text,"failure":text})})]}
+			# Gemini constrains the outer response. World and mechanical
+			# variants are specified in the prompt and validated by Godot.
+			var object = {"type":"object"}
+			var props = {"text":text,"recap":text,"geography":object,"story":PACK.arr(object,8),"discoveries":PACK.arr(object,8),"requires_world_update":{"type":"boolean"}}
+			var required: Array = ["text"]
+			if payload.get("unresolved_intent",false):
+				props.merge({"check":object,"branches":object,"mechanics":object})
+				required.clear()
+			return {"type":"object","properties":props,"required":required,"additionalProperties":false}
 	return {}
 
 func instruction(stage: String) -> String:
@@ -132,7 +132,9 @@ func send() -> void:
 		failed()
 		return
 	add_child(transport)
-	transport.completed.connect(func(ok: bool,message: String): received.call_deferred(epoch,clock,ok,message))
+	transport.completed.connect(func(ok: bool,message: String):
+		var details: Dictionary = transport.response_diagnostic() if transport.has_method("response_diagnostic") else {}
+		received.call_deferred(epoch,clock,ok,message,details))
 	var prose=identity["stage"]=="narrate"
 	var payload_size = payload["outbound"]["payload_characters"] if prose else JSON.stringify(payload).length()
 	metrics.append({"stage":identity["stage"],"call":calls,"prompt_characters":input.length(),"payload_characters":payload_size,"phase":"dispatch"})
@@ -147,7 +149,7 @@ func diagnostic(code: String) -> void:
 	print("SEMANTIC_QA ",code," stage=",identity.get("stage","none"))
 
 # Log shape only. Unknown keys and value text may contain campaign data.
-func boundary(code: String,expected: String,actual: Variant) -> void:
+func boundary(code: String,expected: String,actual: Variant,details: Dictionary={}) -> void:
 	var fields: Dictionary = {}
 	if actual is Dictionary:
 		for key in ["spells","items","skills","abilities","features","resources","rules","world","text","recap","geography","story","discoveries","requires_world_update","mechanics","check","branches","inscription"]:
@@ -159,9 +161,9 @@ func boundary(code: String,expected: String,actual: Variant) -> void:
 	var state = controller.data.get("state",{})
 	var sent = controller.last_dm_packet if identity.get("stage")=="narrate" else {}
 	var committed = "yes" if state.get("pending_turn_id")!=null or sent.has("settlement") or sent.has("receipt") else "no verified commit"
-	print("SEMANTIC_BOUNDARY ",JSON.stringify({"request_id":identity.get("request_id"),"attempt_id":identity.get("attempt_id"),"stage":identity.get("stage"),"boundary":code,"expected":expected,"actual_shape":fields,"recoverable":true,"mechanics_committed":committed}))
+	print("SEMANTIC_BOUNDARY ",JSON.stringify({"request_id":identity.get("request_id"),"attempt_id":identity.get("attempt_id"),"stage":identity.get("stage"),"boundary":code,"expected":expected,"actual_shape":fields,"recoverable":true,"mechanics_committed":committed,"transport":details}))
 
-func received(epoch: int,clock: int,ok: bool,message: String) -> void:
+func received(epoch: int,clock: int,ok: bool,message: String,details: Dictionary={}) -> void:
 	if epoch!=serial or not current():
 		diagnostic("response_stale")
 		return
@@ -169,7 +171,7 @@ func received(epoch: int,clock: int,ok: bool,message: String) -> void:
 	metrics=metrics.slice(maxi(0,metrics.size()-64))
 	retire()
 	if not ok:
-		boundary("provider_transport","complete provider response",TYPE_NIL)
+		boundary("provider_transport","complete provider response",TYPE_NIL,details)
 		failed(message)
 		return
 	# Invalid provider JSON is an expected recoverable input, not an engine error.

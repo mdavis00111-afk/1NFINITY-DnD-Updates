@@ -48,6 +48,15 @@ func run() -> void:
 	var campaign_request = GEMINI.request_payload("Fixture",{},2048,0.8,"family")
 	expect(campaign_request["safetySettings"]==MATURITY.safety_settings("family") and campaign_request["safetySettings"][3]["threshold"]=="BLOCK_LOW_AND_ABOVE","Campaign transport uses saved thresholds")
 	expect(not GEMINI.request_payload("Non-campaign fixture").has("safetySettings"),"Non-campaign transport keeps provider defaults")
+	var provider = GEMINI.new()
+	provider.active=true
+	provider.mode="generate"
+	provider.current_key="fixture secret"
+	provider.received(HTTPRequest.RESULT_SUCCESS,400,PackedStringArray(),JSON.stringify({"error":{"message":"Schema too complex: fixture secret"}}).to_utf8_buffer())
+	var diagnostic = provider.response_diagnostic()
+	expect(diagnostic=={"http_status":400,"http_result":HTTPRequest.RESULT_SUCCESS,"category":"schema_rejected"},"Transport diagnostic logs code and category only")
+	provider.free()
+
 	var prompt = NARRATOR.build("family",{"outcome":"MISS"},{"type":"object"})
 	expect(prompt.contains(NARRATOR.AUTHORITY) and prompt.contains("Custom story guidance") and prompt.contains("Custom family guidance") and prompt.contains("MISS") and prompt.contains("ENGINE RESPONSE SCHEMA"),"Prompt composition")
 	expect(NARRATOR.build("unknown",{}).contains("[CONTENT LEVEL: Standard]"),"Unknown fallback in prompt")

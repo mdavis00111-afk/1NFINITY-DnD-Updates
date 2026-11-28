@@ -1,3 +1,15 @@
+## Narration transport recovery
+
+Codex Cloud checkpoint on `feature/narration-transport-recovery` from `feature/chat-blocker-recovery` at `310419e368e95a22e295594253d9579b75681a79`. Published base is `godot` at `b85b5abdab863404fb9d93e2986254c58d1bf9a3`, v0.0.31. Scope covers `game/campaigns/campaign_manager.gd`, `game/gameplay/complete_controller.gd`, `semantic_adapter.gd`, `semantic_controller.gd`, `game/systems/gemini.gd`, and `game/tests/ai_profile_smoke.gd` and `semantic_integration_smoke.gd`. This branch includes the earlier update-notes and chat-blocker patches. See TESTING.md for the headless evidence and required Windows validation. The laptop's exact provider failure remains open because its log predates transport diagnostics. The release channel and packaging inputs remain at the published checkpoint.
+
+## Chat blocker recovery
+
+Fixed the chat blocker UX in game/gameplay/game_workspace.gd and verified it through the actual composer in semantic_integration_smoke.gd. Scoped feature/chat-blocker-recovery includes the preceding scrollable update notes patch. No release inputs changed.
+
+## Update confirmation layout
+
+Codex Cloud patch on feature/update-notes-scroll from published godot b85b5abdab863404fb9d93e2986254c58d1bf9a3. Scope is the update notes layout in game/main.gd. No overlapping work recorded. Implemented in game/main.gd. Headless layout checks passed at 1280x720 and 400x350. Live publication remains separate.
+
 ## v0.0.31 response boundary correction
 
 Started from verified godot f8d2989502d820dfb3106d0000828e7a84122fc4 and feature/v031-dm-first 7eff8b0a2c540ec397682c81199866d8c9a38ab3. No diverging godot changes were present. This correction changes semantic_adapter.gd, semantic_controller.gd and semantic_integration_smoke.gd, plus the four development records. The approved packaging workflow stamps the version and publishes the immutable manifest. No updater or schema changes.
