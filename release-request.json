@@ -1,6 +1,6 @@
 {
-  "version": "0.0.32",
-  "source_commit": "0bf28256e7d131ffc36c3924544d8a89d657230d",
+  "version": "0.0.33",
+  "source_commit": "a3a109b91f71b832e23084aa91bde1fb3d53e707",
   "approved_new_paths": [],
-  "notes": "Windows playtest. Retry can recover saved input after a DM connection failure. Includes clearer Gemini diagnostics, fewer duplicate campaign reads, scrollable update notes, a top-right Copy log button, and Esc to return to Main while preserving the draft."
+  "notes": "Windows playtest. Separates the Gemini DM's narration, check and mechanical request replies. Valid narration can recover from empty response placeholders. Genuine mechanical requests still go through Godot. Reopen the affected campaign and use Turn > Retry to recover the saved message."
 }
