@@ -58,3 +58,6 @@ Independently reviewed 4a7a17567bacc7d4775e6968e1f8ccb033dbb18a diff: typed recu
 
 ## Oversight milestone — rollback harness correction (2026-11-28)
 Reviewed 3518ac6c30470bcb8ebefaf4a198b3ee9c86a0fc: only runtime-adjacent change is persistence_smoke.gd requiring both SQL reads ok, results arrays and ordered row equality; developer confirmed SQL.run results versus wrapper sets contract. Accepted harness correction for QA; production unchanged from 4a7a175. Prior Windows job 140798143338 independently still in progress. Prefer latest 3518ac6 native run, verify SHA, retrieve full diagnostics; owner run URL required due connector listing limitation. Previous active corrections and release gates unchanged; no integration/publication, live v0.0.26.
+
+## Oversight milestone — preferred candidate workflow located (2026-11-28)
+Owner supplied run 46087923985. Independently verified Ubuntu job 140801778483 and Windows job 140801778750 both executing native suites; checkout, setup and Godot archive verification passed. No artifacts yet; exact pinned SHA and suite outcomes pending. Retrieve full diagnostics on completion, verify expected 3518ac6c30470bcb8ebefaf4a198b3ee9c86a0fc before accepting evidence. Existing instructions unchanged; no integration/publication, live v0.0.26.
