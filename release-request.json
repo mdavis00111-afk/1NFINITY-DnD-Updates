@@ -1,6 +1,6 @@
 {
-  "version": "0.0.29",
-  "source_commit": "65ce911d3131a318238b9d26facd21ebf564b46a",
+  "version": "0.0.30",
+  "source_commit": "738d1e383360e5531c8974b55f069497a2b6dc4d",
   "approved_new_paths": [],
-  "notes": "Owner live-test alpha. Includes the inspectable narration packet and descriptive inscription inspection for owned custom gear. See NEXT_CHAT.md and TESTING.md for defect triage and Windows cases."
+  "notes": "Separates compact intent interpretation from the complete, verified DM packet. Includes local lookup selection, inspectable outbound narration binding and preserved inscription recovery. See TESTING.md for owner Windows acceptance."
 }
