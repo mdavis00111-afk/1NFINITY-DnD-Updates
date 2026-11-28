@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.34",
-  "source_commit": "257feb6442d176b8125c64ab6aa2212b71eb85c6",
-  "notes": "Windows playtest. Saved DM replies appear in the open campaign before deferred work. Chat updates reuse the existing workspace panels and avoid redundant database reads. Stalled requests offer Retry, and Copy log includes the installed version and newest validation detail.",
+  "version": "0.0.35",
+  "source_commit": "a5b2b4168779303bdfbbe5f583302e3008b1d855",
+  "notes": "Gameplay GUI redesign: compact Menu, streamlined character HUD, expanded conversation, multiline input, nine information tabs and permanently positioned party. Existing gameplay systems retained. Windows visual and runtime acceptance pending; separate gameplay hang not addressed.",
   "files": [
     {
       "path": "art/arcane.svg",
@@ -38,7 +38,7 @@
     },
     {
       "path": "campaigns/campaign_manager.gd",
-      "blob": "9803428af213ac77cb58aa4e69959b34d3a01af5"
+      "blob": "ddee8d692c5452815961a3fedc8456e76bd046a2"
     },
     {
       "path": "campaigns/campaign_starts.gd",
@@ -1202,7 +1202,7 @@
     },
     {
       "path": "gameplay/game_workspace.gd",
-      "blob": "f71d6ee053d8b83fa0d45bb49aff18714d6d9db7"
+      "blob": "c3217e1d003c11a81a997817032af7d1aff5ba6d"
     },
     {
       "path": "gameplay/independent_review.gd",
@@ -1266,7 +1266,7 @@
     },
     {
       "path": "main.gd",
-      "blob": "0dba89917933d94b8f96dbf115a026aa771953d6"
+      "blob": "07b849335621c2cc4080a14bf89a811414bf1c96"
     },
     {
       "path": "main.tscn",
@@ -1346,7 +1346,7 @@
     },
     {
       "path": "project.godot",
-      "blob": "81e4fcad398c265ce12c390ca634bfdaeb8eae8a"
+      "blob": "432bf8df7159fbbb66e40c3950281ddc7a5dc1fb"
     },
     {
       "path": "rules/MASTER_REFERENCE.md",
@@ -1450,7 +1450,7 @@
     },
     {
       "path": "tests/gameplay_smoke.gd",
-      "blob": "2856f1afd8757e31215d5de949b8f8abf1e96eb9"
+      "blob": "c9b9a3b942939058bb6c89815e17d4ec85c60d80"
     },
     {
       "path": "tests/layout_smoke.gd",
@@ -1466,7 +1466,7 @@
     },
     {
       "path": "tests/semantic_integration_smoke.gd",
-      "blob": "2c090e5d8558053b00d8729ca1bfdbfca083d76f"
+      "blob": "192ac3db9e5b0dc647427b61acb877813005aa91"
     },
     {
       "path": "tests/sqlite_smoke.gd",
@@ -1570,7 +1570,7 @@
     },
     {
       "path": "version.txt",
-      "blob": "bb951c884e30d8f7580c6ee59a74312a8350275b"
+      "blob": "155069a391da5b53d931c94d552690c07ce6f854"
     },
     {
       "path": "world/geography_reconciler.gd",
