@@ -650,3 +650,6 @@ Source checkpoints 3–5 implemented; do not restart historical C1–C6. Native 
 
 ### Alpha packaging infrastructure
 Owner approved push-triggered packaging only, no mandatory gameplay CI. Packager merges pinned candidate, synchronizes versions, verifies immutable blobs and path safety, requires explicit new file allowlist, and publishes via non-force push. First execution unverified. No release request in infrastructure commit.
+
+
+Owner explicitly requested v0.0.27 live alpha publication. Pinned candidate 6b74eaae48887dfd4524083963f2fa18c6df1d9e. Packaging request submitted; publication not yet verified. Candidate game/design checkout avoids conflicting append-only docs; live packaging script retained.

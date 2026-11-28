@@ -1,0 +1,8 @@
+{
+  "version": "0.0.27",
+  "source_commit": "6b74eaae48887dfd4524083963f2fa18c6df1d9e",
+  "approved_new_paths": [
+    "gameplay/turn_context.gd"
+  ],
+  "notes": "Alpha live test: persistence, semantic authorization, narration context and recovery corrections. Known semantic and GUI issues remain; use disposable campaign."
+}

@@ -19,7 +19,11 @@ assert git("rev-parse", "origin/godot").decode().strip() == start
 run("merge-base", "--is-ancestor", candidate, "origin/qa/v027-settlement")
 run("config", "user.name", "1NFINITY release bot")
 run("config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com")
-run("merge", "--no-commit", "--no-ff", candidate)
+run("checkout", candidate, "--", "game", "design")
+# Retain live documentation and packaging script; candidate notes are archived below.
+run("checkout", start, "--", "design/tools/package_alpha.py")
+with open("PROJECT_BRAIN.md", "a", encoding="utf-8") as f:
+    f.write("\n\n### Candidate development record\n"+git("show", candidate+":PROJECT_BRAIN.md").decode().split("### Native run 46100906635 follow-up")[-1])
 project = pathlib.Path("game/project.godot").read_text()
 project, count = re.subn(r'^config/version="[^"]+"$', 'config/version="'+version+'"', project, flags=re.M)
 assert count == 1
