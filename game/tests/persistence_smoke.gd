@@ -458,11 +458,16 @@ func run() -> void:
 					expect(repeated_migration.get("ok",false) and not repeated_migration.get("migrated",true) and base.gameplay_view(missing_id)==once,"Repeat migration changed stable repaired state")
 	expect(base.gameplay_view(b["id"])==sibling and players.load_record(master_id)==original_master,"Missing ownership fixture affected sibling/master")
 	if failures.is_empty():
+		var final_state=session.token(id)
+		if not final_state.get("ok",false) or not reopened.get("ok",false) or not reopened.get("found",false):
+			expect(false,"Restart checkpoint state unavailable")
+			finish()
+			return
 		var checkpoint=FileAccess.open("user://qa-reopen.json",FileAccess.WRITE)
 		if checkpoint==null:
 			expect(false,"Restart checkpoint write failed")
 		else:
-			checkpoint.store_string(JSON.stringify({"request":generate,"settlement":reopened,"revision":session.token(id)["revision"]},"",true,true))
+			checkpoint.store_string(JSON.stringify({"request":generate,"settlement":reopened,"revision":final_state["revision"]},"",true,true))
 			checkpoint.close()
 	finish()
 
@@ -482,10 +487,14 @@ func reopen_run() -> void:
 	var id=req["campaign_id"]
 	var prior=session.settlement(id,req["request_id"])
 	expect(prior.get("ok",false) and prior.get("found",false) and session.typed_equal(prior,data["settlement"]),"Restart durable settlement differs")
+	var before=session.token(id)
+	expect(before.get("ok",false) and before.get("revision")==data["revision"],"Restart initial state unavailable or changed")
 	var replay=GENERATOR.new().generate(id,req,true)
 	expect(replay.get("ok",false) and replay.get("replayed",false),"Restart replay failed")
-	expect(session.token(id).get("revision")==data["revision"],"Restart replay changed revision")
-	expect(session.typed_equal(session.settlement(id,req["request_id"]),prior),"Restart replay changed settlement")
+	var after=session.token(id)
+	var settled=session.settlement(id,req["request_id"])
+	expect(after.get("ok",false) and after.get("revision")==data["revision"],"Restart replay changed revision or state unavailable")
+	expect(settled.get("ok",false) and settled.get("found",false) and session.typed_equal(settled,prior),"Restart replay changed settlement")
 	for message in failures:
 		push_error(message)
 	print("C2 process restart failures: ",failures.size())

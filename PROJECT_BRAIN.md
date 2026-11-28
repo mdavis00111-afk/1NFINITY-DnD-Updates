@@ -682,3 +682,6 @@ Run 46088962585 Linux artifact 15240452068 persistence.log: C2 failures 0; ±saf
 
 ### Process restart QA and resource settlement identity
 Windows/Linux 3518ac6 both import PASS, 6/14 suites, identical five persistence failures. Added second Godot process on same isolated persistence root after successful writer, checkpoint canonical request/settlement/revision and verify replay unchanged. Scoped noncombat prepared durable settlement/cancellation request identity checks use same_request; no healing/rest rules changed. Native execution pending; resource failure attribution remains unverified. No integration/publication.
+
+### Architect-authorized limited repair
+Restored intact b3ad69a QA runner and added isolated restart helper using literal replacement callback. Local helper syntax checked; full runner compilation and native execution remain pending. Strengthened checkpoint and restart state/settlement reads; cancellation full precision and explicit successful confirmation; added committed prepared replay/conflict fixture. No loot or resource formulas changed. Cancellation replay regression still outstanding. No integration/publication.

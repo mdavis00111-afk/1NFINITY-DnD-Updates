@@ -440,10 +440,10 @@ func abandon_prepared(id: String,rid: String) -> Dictionary:
 	var state=token(id)
 	if not state.get("ok",false) or state["actor_id"]!=req["actor_id"] or state["pending_turn_id"]!=null:
 		return fail("Campaign or pending narration changed.")
-	var batch=[TURN.new().guard(state),SQL.stmt("INSERT INTO meta(key,value) VALUES('c3_cancel_guard',(SELECT 'ok' WHERE NOT EXISTS(SELECT 1 FROM gameplay_requests WHERE request_id=? OR status='accepted_pending')))",[rid]),SQL.stmt("INSERT INTO gameplay_requests(request_id,actor_id,kind,expected_revision,status,request_payload,result_payload,settled_revision) VALUES(?,?,?,?,'cancelled',?,'{}',?)",[rid,req["actor_id"],req["kind"],req["expected_revision"],JSON.stringify(req),state["revision"]]),SQL.stmt("DELETE FROM meta WHERE key='c3_cancel_guard'"),SQL.stmt("DELETE FROM meta WHERE key='turn_write_guard'")]
+	var batch=[TURN.new().guard(state),SQL.stmt("INSERT INTO meta(key,value) VALUES('c3_cancel_guard',(SELECT 'ok' WHERE NOT EXISTS(SELECT 1 FROM gameplay_requests WHERE request_id=? OR status='accepted_pending')))",[rid]),SQL.stmt("INSERT INTO gameplay_requests(request_id,actor_id,kind,expected_revision,status,request_payload,result_payload,settled_revision) VALUES(?,?,?,?,'cancelled',?,'{}',?)",[rid,req["actor_id"],req["kind"],req["expected_revision"],JSON.stringify(req,"",true,true),state["revision"]]),SQL.stmt("DELETE FROM meta WHERE key='c3_cancel_guard'"),SQL.stmt("DELETE FROM meta WHERE key='turn_write_guard'")]
 	SQL.run(path(id),batch)
 	var confirmed=settlement(id,rid)
-	if not confirmed.get("found",false) or confirmed["status"]!="cancelled" or not same_request(confirmed["request"],req):
+	if not confirmed.get("ok",false) or not confirmed.get("found",false) or confirmed["status"]!="cancelled" or not same_request(confirmed["request"],req):
 		return fail("Cancellation not confirmed; retain prepared request.")
 	prepared.erase(id)
 	return confirmed

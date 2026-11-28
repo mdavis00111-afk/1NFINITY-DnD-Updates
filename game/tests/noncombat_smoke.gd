@@ -155,10 +155,21 @@ func run() -> void:
 	var interrupted=registry.execute(id,resource,review)
 	expect(not interrupted.get("ok",false) and registry.noncombat.prepared.has(id),"Injected failure not retained for retry")
 	expect(session.token(id)["revision"]==before["revision"] and base.actor_record(id)["resources"]["second_wind"]["spent"]==0,"Resource partially committed")
-	var held=registry.noncombat.prepared.get(id,{}).get("result",{}).get("rolls",[])
+	var held_entry=registry.noncombat.prepared.get(id,{}).duplicate(true)
+	var held=held_entry.get("result",{}).get("rolls",[])
 	SQL.run(base.path_for(id),[SQL.stmt("DROP TRIGGER c3_fixture_abort")])
 	var retried=registry.execute(id,resource,review)
 	expect(retried.get("ok",false) and retried.get("result",{}).get("rolls",[])==held and base.actor_record(id)["resources"]["second_wind"]["spent"]==1,"Prepared retry changed dice or expenditure")
+	if retried.get("ok",false) and not held_entry.is_empty():
+		var committed_state=session.token(id)
+		var conflicting=held_entry.duplicate(true)
+		conflicting["context"]["request"]["args"]["quantity"]=2
+		registry.noncombat.prepared[id]=conflicting
+		expect(not registry.noncombat.retry_prepared(id,resource["request_id"]).get("ok",false),"Conflicting prepared replay accepted")
+		registry.noncombat.prepared[id]=held_entry
+		var durable_replay=registry.noncombat.retry_prepared(id,resource["request_id"])
+		var replay_state=session.token(id)
+		expect(durable_replay.get("ok",false) and durable_replay.get("replayed",false) and committed_state.get("ok",false) and replay_state.get("ok",false) and replay_state["revision"]==committed_state["revision"],"Committed prepared replay failed or changed revision")
 	var short=action(id,"rest",{"rest_kind":"short","hit_dice":0,"prepared_ids":null})
 	expect(short.get("ok",false) and base.actor_record(id)["resources"]["second_wind"]["spent"]==0,"Short rest reset failed")
 	# Source-backed object and contextual difficulty, no keyword matching.
