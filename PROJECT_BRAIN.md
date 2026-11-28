@@ -713,3 +713,7 @@ Both platforms tested 99a71aa: 10/14 suites pass; campaign, noncombat and cartog
 
 ### Semantic QA boundary diagnostics
 Active suite already excludes legacy_scenarios; do not attribute active failures to that dead fixture. Add fixed-code diagnostics gated by disposable QA environment for transport parse/stale response, controller acceptance, identity, assessment, combined world validation and journal write, plus fixture timeout stage and call count. No prompts, response bodies, credentials or campaign identifiers added to diagnostics. No mechanics, request budgets or GUI changes. Native rerun required; no release.
+
+
+### Canonical semantic authorization and discovery recovery
+Owner authorized deferring intermediate native QA to consolidated release-candidate validation. Static review found remaining raw dictionary comparisons at combined assessment authorization, discovery definition reference recovery, deferred discovery request/argument validation and repeated dependent action detection. Use existing same_request and typed_equal helpers, retaining exact IDs, revision, source and registry checks. Six targeted substitutions verified in source; native syntax and behavioral tests outstanding. No GUI, provider budget or release changes.

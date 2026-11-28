@@ -188,7 +188,7 @@ func receive_interpretation(identity: Dictionary,result: Dictionary,selected: Ar
 	if not job.get("completed_steps",[]).is_empty():
 		req["request_id"]=job.get("next_id",registry.session.make_id())
 		for previous in job["completed_steps"]:
-			if previous["kind"]==req["kind"] and previous["args"]==req["args"]:
+			if previous["kind"]==req["kind"] and registry.session.typed_equal(previous["args"],req["args"]):
 				stop("clarification","Repeated dependent action requires explicit new intent.")
 				return failure(status)
 	job["remaining"]=remaining
@@ -512,7 +512,7 @@ func discovery_arguments(job: Dictionary,state: Dictionary,index: int,request_id
 				var prior=registry.session.settlement(state["campaign_id"],str(recorded.get("request_id","")))
 				var expected=original["args"].duplicate(true)
 				expected["source_event_id"]=event_id
-				if not prior.get("ok",false) or not prior.get("found",false) or prior.get("status")!="committed" or prior.get("request")!=recorded or recorded.get("kind")!=original["kind"] or recorded.get("args")!=expected or prior["revision"]>state["revision"]:
+				if not prior.get("ok",false) or not prior.get("found",false) or prior.get("status")!="committed" or not registry.session.same_request(prior.get("request"),recorded) or recorded.get("kind")!=original["kind"] or not registry.session.typed_equal(recorded.get("args"),expected) or prior["revision"]>state["revision"]:
 					return {}
 				var definition=prior["result"].get("definition_id")
 				if not definition is String or definition.is_empty() or definition.begins_with("@"):
@@ -523,7 +523,7 @@ func discovery_arguments(job: Dictionary,state: Dictionary,index: int,request_id
 func discovery_request_valid(req: Dictionary,job: Dictionary,state: Dictionary,settled: Dictionary={}) -> bool:
 	var index=int(job.get("discovery_index",0))
 	var entries=job.get("discoveries",[])
-	if index<0 or index>=entries.size() or req!=job.get("story_request") or req.get("kind")!=entries[index]["kind"] or req.get("campaign_id")!=state["campaign_id"] or req.get("actor_id")!=state["actor_id"]:
+	if index<0 or index>=entries.size() or not registry.session.same_request(req,job.get("story_request")) or req.get("kind")!=entries[index]["kind"] or req.get("campaign_id")!=state["campaign_id"] or req.get("actor_id")!=state["actor_id"]:
 		return false
 	if settled.is_empty():
 		if req.get("expected_revision")!=state["revision"]:
@@ -531,7 +531,7 @@ func discovery_request_valid(req: Dictionary,job: Dictionary,state: Dictionary,s
 	elif not registry.session.same_request(settled.get("request"),req) or settled.get("status")!="committed" or settled.get("revision")!=state["revision"]:
 		return false
 	var expected=discovery_arguments(job,state,index,req.get("request_id",""),settled)
-	return not expected.is_empty() and req.get("args")==expected and registry.arguments_valid(expected,REG.TOOLS[req["kind"]][0])
+	return not expected.is_empty() and registry.session.typed_equal(req.get("args"),expected) and registry.arguments_valid(expected,REG.TOOLS[req["kind"]][0])
 
 func process_story() -> void:
 	if not reload():
@@ -849,7 +849,7 @@ func prepare_review(req: Dictionary,resume_stage: String) -> bool:
 			job["context_review"]={"request":req.duplicate(true),"revision":state["revision"],"attempt_id":registry.session.make_id(),"report":descriptive,"authorization_version":"committed-description-v027"}
 			return update_active(job)
 	var record=job.get("context_review",{})
-	if record.get("authorization_version")=="combined-v027" and record.get("request")==req and record.get("revision")==state["revision"]:
+	if record.get("authorization_version")=="combined-v027" and registry.session.same_request(record.get("request"),req) and record.get("revision")==state["revision"]:
 		var checked=policy.validate_assessment(req,record.get("report"),job,state)
 		if checked.get("ok",false):
 			return true
