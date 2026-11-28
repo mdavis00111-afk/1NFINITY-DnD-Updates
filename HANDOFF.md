@@ -1,3 +1,7 @@
+## v0.0.32 Windows DM response follow-up
+
+Codex Cloud is investigating the owner's live `narration_shape` failure from `godot` publication `09514e1a0d6ba5ff2691e78fccbf4165f66cdf4a` on `feature/dm-response-variants`. Scope is the provider schema, the unresolved-DM boundary, focused mocks and development records. Screen-transition performance follows successful Windows DM acceptance.
+
 ## v0.0.32 owner test release
 
 Owner confirmed the API connection and authorized packaging the narration recovery with Copy log and Esc navigation. On `feature/log-and-menu-shortcuts`, the new UI changes are in `game/main.gd`, `game/campaigns/campaign_manager.gd` and `game/gameplay/game_workspace.gd`, with coverage in `game/tests/semantic_integration_smoke.gd`. Game version stamps and the immutable manifest come from the existing package workflow. See the live `channel.json` for the packaged source and TESTING.md for Windows acceptance.
