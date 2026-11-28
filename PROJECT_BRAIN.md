@@ -1,3 +1,7 @@
+## Update confirmation notes layout
+
+The update confirmation wraps release notes inside a 120-pixel tall scrollable panel sized to the game window. The version, restart notice and buttons stay outside the scroll area. Headless Godot 4.7.2 checks verified long multiline and unbroken notes at 1280×720 and 400×350, plus a short-note reopen with the scrollbar reset.
+
 ## v0.0.31 response boundary correction
 
 The DM-first response correction now sends stage-specific Gemini schemas. AI 1 accepts an object of optional lookup subject arrays, including {}. The DM can return text without a recap or world updates. Optional geography and story entries are validated separately. Discoveries are validated as a group to preserve definition references. Invalid optional data is excluded from the save while independent prose can commit. Replies that declare a dependency on unverifiable world changes stop in recovery. Geography reconciliation still checks semantic conflicts before committing.

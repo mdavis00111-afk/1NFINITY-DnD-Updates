@@ -1,3 +1,7 @@
+## Update confirmation layout
+
+Codex Cloud patch on feature/update-notes-scroll from published godot b85b5abdab863404fb9d93e2986254c58d1bf9a3. Scope is the update notes layout in game/main.gd. No overlapping work recorded. Implemented in game/main.gd. Headless layout checks passed at 1280x720 and 400x350. Live publication remains separate.
+
 ## v0.0.31 response boundary correction
 
 Started from verified godot f8d2989502d820dfb3106d0000828e7a84122fc4 and feature/v031-dm-first 7eff8b0a2c540ec397682c81199866d8c9a38ab3. No diverging godot changes were present. This correction changes semantic_adapter.gd, semantic_controller.gd and semantic_integration_smoke.gd, plus the four development records. The approved packaging workflow stamps the version and publishes the immutable manifest. No updater or schema changes.
