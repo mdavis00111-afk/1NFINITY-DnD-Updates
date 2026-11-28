@@ -292,7 +292,7 @@ func advance() -> void:
 		return
 	var work=data["work"]
 	if work["active"].is_empty():
-		if work["queued"].is_empty() or data["state"]["pending_turn_id"]!=null or work["last"].get("status")!="committed" or not idle_database():
+		if work["queued"].is_empty() or data["state"]["pending_turn_id"]!=null or not work["last"].get("status") in ["committed","rejected"] or not idle_database():
 			return
 		var next=work.duplicate(true)
 		next["active"]=next["queued"]
@@ -334,6 +334,21 @@ func advance() -> void:
 		"retry","clarification","critical_blocked":
 			status=str(job.get("message","Awaiting recovery or clarification."))
 			refresh()
+
+# Only retire a rejected root action when no durable or in-memory outcome
+# can still require recovery. Never cancel a prepared or adopted transaction.
+func reject_local(req: Dictionary,message: String) -> void:
+	if not reload():
+		return
+	var job=active()
+	if job.is_empty() or not registry.session.same_request(job.get("tool"),req):
+		stop("retry","Local rejection identity changed; recover original request.")
+		return
+	var prior=registry.session.settlement(campaign_id,req["request_id"])
+	if not prior.get("ok",false) or prior.get("found",false) or registry.noncombat.prepared.has(campaign_id) or registry.resolver.unresolved.has(campaign_id) or data["state"]["pending_turn_id"]!=null or data["state"]["revision"]!=req["expected_revision"] or not idle_database():
+		stop("retry",message+" Recovery required before new input.")
+		return
+	finish("rejected",message)
 
 func execute_active() -> void:
 	if running or not reload():
@@ -387,7 +402,11 @@ func execute_active() -> void:
 		else:
 			stop("retry","Tool acknowledgement needs recovery.")
 	else:
-		stop("retry",str(result.get("error","Tool not resolved.")))
+		var message=str(result.get("error","Tool not resolved."))
+		if result.get("code") in ["invalid","unsupported","decision_required","review_required"] and not result.get("adopted_pending",false):
+			reject_local(req,message)
+		else:
+			stop("retry",message)
 
 func legacy_review_stages() -> bool:
 	return true

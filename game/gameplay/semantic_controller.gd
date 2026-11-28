@@ -819,13 +819,17 @@ func cancel() -> Dictionary:
 	advance.call_deferred()
 	return {"ok":true}
 
-func prepare_review(req: Dictionary,_resume_stage: String) -> bool:
+func prepare_review(req: Dictionary,resume_stage: String) -> bool:
 	if not reload():
 		return false
 	var checked=policy.local_decision(req,active(),data["state"])
 	if checked.get("ok",false):
 		return true
-	stop("clarification",checked.get("error","Local contextual authorization unavailable."))
+	var message=str(checked.get("error","Local contextual authorization unavailable."))
+	if resume_stage=="execute":
+		reject_local(req,message)
+	else:
+		stop("clarification",message)
 	return false
 
 func advance() -> void:
