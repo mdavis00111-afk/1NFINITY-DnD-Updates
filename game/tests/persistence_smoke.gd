@@ -227,7 +227,7 @@ func run() -> void:
 	expect(session.token(id)["revision"]==frozen["revision"] and not session.settlement(id,pickup["request_id"]).get("found",false) and base.gameplay_view(id)["actor"]["coins"]==money(2),"Failed pickup partially persisted")
 	var after_failed_pickup = loot_sql(id,container_id)
 	print("After failed pickup SQL: ",after_failed_pickup)
-	expect(before_failed_pickup==after_failed_pickup,"Failed pickup changed authoritative SQL state")
+	expect(before_failed_pickup.get("ok",false) and after_failed_pickup.get("ok",false) and before_failed_pickup.get("results") is Array and after_failed_pickup.get("results") is Array and before_failed_pickup["results"]==after_failed_pickup["results"],"Failed pickup changed authoritative SQL state or SQL read failed")
 	expect(SQL.run(base.path_for(id),[SQL.stmt("DROP TRIGGER c2_fixture_reject")]).get("ok",false),"Rollback fixture cleanup failed")
 	var collected = loot.pickup(id,pickup,clearance(pickup,"loot_transfer"))
 	expect(collected.get("ok",false) and collected.get("result",{}).get("items",[]).size()==1,"Selective pickup failed")

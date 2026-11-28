@@ -406,3 +406,7 @@ Request validation now rejects unsafe JSON operands before begin/adoption; all t
 
 ### Scoped native settlement follow-up
 Run 46086797815 Linux job 140798143633 pinned 8785e166: import pass, 6/14 suites, baseline raw equality false, canonical committed revision 3 from 2 and exact-once assertions passed. Windows pending. Safe integer boundary failed; added exact encoded/decoded diagnostic and fail-closed round-trip validation before writes, retaining boundary assertion. Typed numeric leaf comparison scoped to requests and custom definition reuse; no string/bool coercion. Added SQL definition count and loot ownership/currency/status/request/transfer snapshots, including rollback equality. Existing loot assertions retained. New candidate unexecuted; full process restart pending. No integration/publication.
+
+
+### Scoped QA harness contract verification
+Confirmed raw SQL.run and Windows bridge return results; world read_sets wraps as sets. Rollback assertion now explicitly requires successful reads and compares ordered result arrays, not transport metadata. No production change. Run 46086797815 Windows still in progress at observation; new push run ID unavailable via PR-filtered connector. Native validation pending; no integration/publication.
