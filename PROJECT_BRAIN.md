@@ -1549,3 +1549,5 @@ Published v0.0.28 manifest delta: four changed game blobs fetched from immutable
 
 ### Alpha 0.0.29 packaging
 Owner authorized live testing instead of mandatory GitHub gameplay regression. Latest Linux baseline 12/14; semantic corrections unverified; GUI owner-managed. No claim of native or live acceptance. Packaging only.
+
+Packaged 0.0.29 source ad20368865d280560785240490ce34f16c78edd7; 397 verified Git blobs. Live acceptance outstanding.

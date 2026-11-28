@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.28",
-  "source_commit": "e4cd886a9bd89d65c8649466cfcec09901e4547c",
-  "notes": "Alpha: bounded local lookup bridge; existing mechanical review retained. Live testing pending.",
+  "version": "0.0.29",
+  "source_commit": "ad20368865d280560785240490ce34f16c78edd7",
+  "notes": "Owner live-test alpha. Includes the inspectable narration packet and descriptive inscription inspection for owned custom gear. See NEXT_CHAT.md and TESTING.md for defect triage and Windows cases.",
   "files": [
     {
       "path": "art/arcane.svg",
@@ -1194,7 +1194,7 @@
     },
     {
       "path": "gameplay/complete_controller.gd",
-      "blob": "3548c1b1586f634982bd25c0ff39733ae5eb4ce7"
+      "blob": "726347306f5de76fedeafc02e45d29108ea55d5c"
     },
     {
       "path": "gameplay/display_values.gd",
@@ -1238,23 +1238,23 @@
     },
     {
       "path": "gameplay/semantic_adapter.gd",
-      "blob": "4587874dd1f3b09add1d2aa542219e9db1d242c7"
+      "blob": "850393d63f9cc2e5930496bd8813633fb6bc2da4"
     },
     {
       "path": "gameplay/semantic_controller.gd",
-      "blob": "a22fa587d98e7c5cd5057eabbe82b95ef81b3573"
+      "blob": "e596b36f84c717701a43b73bfa2c7716c7cf3e01"
     },
     {
       "path": "gameplay/semantic_policy.gd",
-      "blob": "b3ecc45efa5db1b0b6926a96531f95c7e2387dd3"
+      "blob": "0102946e4fe640833dcd52f32b18713c41aa7968"
     },
     {
       "path": "gameplay/tool_registry.gd",
-      "blob": "276f0086aa94af1b9914a2e765bdad20a0ff5baa"
+      "blob": "2c539f5b60f2ffca3bd61faed5269ed076a919fd"
     },
     {
       "path": "gameplay/turn_context.gd",
-      "blob": "e3fd8743701fa237929072b332b9c9e643538a1d"
+      "blob": "1d7a04b522398229b89bf820d750b8e713d2545d"
     },
     {
       "path": "gameplay/ui_intents.gd",
@@ -1262,7 +1262,7 @@
     },
     {
       "path": "gameplay/work_journal.gd",
-      "blob": "158f1238fc2e46a73c72ffa7fd74e4aa920ba7d8"
+      "blob": "7340ab9fdf94ddc76f1031c39d82fac4b228f5ea"
     },
     {
       "path": "main.gd",
@@ -1302,15 +1302,15 @@
     },
     {
       "path": "persistence/item_catalog.gd",
-      "blob": "10634190e1e93eff009d387f1e93182a67bfbb35"
+      "blob": "205e4567f1e9abce299c7ff55d1a01872ac4d1d0"
     },
     {
       "path": "persistence/loot_store.gd",
-      "blob": "8c465b5a6401e7d3c766e12787cbe24565d46f6d"
+      "blob": "6ceabe535cbfc39d05318796497cc362449b3a9f"
     },
     {
       "path": "persistence/noncombat_store.gd",
-      "blob": "30c5ee5fc9dabe6b4d8f5415cde2b3ffe1a7ab10"
+      "blob": "fbd65653f8c4d497703f995bee2af4408cc62c3e"
     },
     {
       "path": "persistence/story_store.gd",
@@ -1346,7 +1346,7 @@
     },
     {
       "path": "project.godot",
-      "blob": "a7b2925403db70bedc52105653a5f240d5f34c4e"
+      "blob": "de78ad2012abb03b9e07484ec75f53dc30f6b17c"
     },
     {
       "path": "rules/MASTER_REFERENCE.md",
@@ -1570,7 +1570,7 @@
     },
     {
       "path": "version.txt",
-      "blob": "1fe6958562df8f355e1ca457397cb58c1c815b3f"
+      "blob": "369bd4c2a47a2735a9358125fb1b95a6bcb53bb4"
     },
     {
       "path": "world/geography_reconciler.gd",
