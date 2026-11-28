@@ -697,3 +697,7 @@ Split rest eligibility guard into field-specific errors; validate persisted hit 
 
 ### Travel speed persistence boundary
 World and cartography renderer native failures on ea43535 share travel eligibility rejection. World fixture has speed 30, no conditions or exhaustion. Validate speed as a whole number before integer membership, preserving allowed 25/30/35 only. Add integer/JSON float positive and invalid speed, exhaustion and condition negative fixtures. Root cause inferred from source; native confirmation pending. No map, pace or distance changes. No integration/publication.
+
+
+### Playable milestone campaign acceptance
+Owner clarified v0.0.27 is a development milestone, not feature complete. Existing safety and core gameplay gates retained. Campaign smoke compared full controller-enriched workspace view to bare store view; complete_controller.refresh deliberately adds interaction capabilities, queue and status fields. Compare committed campaign, actor, inventory, events, location and opening eligibility instead, with mismatch diagnostics. Preserve exact campaign selection and duplicate-opening assertions. No production campaign behavior changed; native confirmation pending. No integration/publication.

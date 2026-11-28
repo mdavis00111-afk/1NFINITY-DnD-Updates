@@ -258,13 +258,13 @@ func exercise_ui(campaigns) -> void:
 				valid_source.completed.emit(true,JSON.stringify(proposal))
 			var committed = campaigns.gameplay_view(created_id)
 			expect(committed.get("events",[]).size()==2 and committed.get("location",{}).get("name")=="North Road" and not committed.get("opening_available",true),"Opening failed to reload or remained eligible")
-			expect(not is_instance_valid(manager.opening_button) and manager.workspace.view==committed,"Workspace did not refresh committed log")
+			expect(not is_instance_valid(manager.opening_button) and same_committed_view(manager.workspace.view,committed),"Workspace did not refresh committed log")
 			var save = find_button(manager.workspace,"Save & Exit")
 			expect(is_instance_valid(save),"Save & Exit missing")
 			if is_instance_valid(save): save.pressed.emit()
 			expect(manager.mode=="library" and manager.active.get("id")==created_id and manager.synopsis.text.contains("North Road"),"Save & Exit lost selection or synopsis")
 			manager.resume()
-			expect(manager.workspace.view==committed and not is_instance_valid(manager.opening_button),"Resume duplicated or lost opening")
+			expect(same_committed_view(manager.workspace.view,committed) and not is_instance_valid(manager.opening_button),"Resume duplicated or lost opening")
 			expect(campaigns.gameplay_view(other_id)==other_before,"Opening changed another campaign")
 			# A concurrent successful opening invalidates a button rendered earlier.
 			if not other_id.is_empty():
@@ -277,7 +277,7 @@ func exercise_ui(campaigns) -> void:
 				if not external.is_empty():
 					expect(campaigns.commit_opening(other_id,external["previous"],JSON.stringify(proposal)).is_empty(),"External opening commit failed")
 					manager.request_opening()
-					expect(manager.pending_campaign.is_empty() and manager.workspace.view==campaigns.gameplay_view(other_id) and not is_instance_valid(manager.opening_button),"Stale retry did not refresh committed opening")
+					expect(manager.pending_campaign.is_empty() and same_committed_view(manager.workspace.view,campaigns.gameplay_view(other_id)) and not is_instance_valid(manager.opening_button),"Stale retry did not refresh committed opening")
 					expect(campaigns.gameplay_view(created_id)==committed,"Stale retry changed sibling campaign")
 		root.remove_child(base)
 		base.queue_free()
@@ -308,16 +308,27 @@ func exercise_ui(campaigns) -> void:
 	expect(main.active_screen=="Game Workspace","Content rules did not return to gameplay")
 	if main.active_screen=="Game Workspace":
 		var returned = main.screen.get_child(0)
-		expect(returned.mode=="workspace" and returned.active.get("id")==last_id and returned.workspace.view==committed_view,"Settings returned to wrong campaign or lost log")
+		expect(returned.mode=="workspace" and returned.active.get("id")==last_id and same_committed_view(returned.workspace.view,committed_view),"Settings returned to wrong campaign or lost log")
 		returned.workspace.navigate("Settings")
 		await settle()
 		main.navigate("Return to Main")
 		await settle()
 		var again = main.screen.get_child(0)
-		expect(again.mode=="workspace" and again.active.get("id")==last_id and again.workspace.view==committed_view,"Settings menu return did not preserve exact campaign")
+		expect(again.mode=="workspace" and again.active.get("id")==last_id and same_committed_view(again.workspace.view,committed_view),"Settings menu return did not preserve exact campaign")
 	root.remove_child(main)
 	main.queue_free()
 	await settle()
+
+# Controller-bound views intentionally enrich interaction fields with queue and
+# capability state. Compare the committed campaign content, not those fields.
+func same_committed_view(actual: Dictionary, expected: Dictionary) -> bool:
+	if actual.is_empty() or expected.is_empty():
+		return false
+	for key in ["campaign","actor","inventory","events","location","opening_available"]:
+		if not actual.has(key) or not expected.has(key) or actual[key]!=expected[key]:
+			print("Committed workspace mismatch: ",key)
+			return false
+	return true
 
 func stage_reply(manager, campaigns, id: String):
 	var prepared = campaigns.prepare_opening(id)
