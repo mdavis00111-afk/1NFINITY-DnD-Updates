@@ -1,3 +1,7 @@
+## Windows DM response acceptance
+
+Review the live channel and the Separate DM response forms entry in PROJECT_BRAIN.md, plus HANDOFF.md and TESTING.md. On the owner PC, recover the saved `hello` with Turn → Retry and confirm a single reply. If the DM replies, measure screen switching separately before changing the render or SQLite paths. If the turn stops again, use Copy log and inspect the matching `SEMANTIC_BOUNDARY` before altering the contract further.
+
 ## v0.0.32 Windows acceptance
 
 Read the live updater channel and the latest PROJECT_BRAIN.md, HANDOFF.md and TESTING.md entries. The owner confirmed the API connection and authorized the test update. In the affected campaign, use Turn → Retry for the saved `hello`. Check for a single DM reply and note the campaign opening and screen transition times. Use the top-right Copy log button if another provider request fails. Verify that Esc returns to Main and the draft survives reopening the campaign.

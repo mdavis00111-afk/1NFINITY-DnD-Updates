@@ -68,15 +68,15 @@ func schema() -> Dictionary:
 		"attribute":
 			return PACK.obj({"inscription":text})
 		"narrate":
-			# Gemini constrains the outer response. World and mechanical
-			# variants are specified in the prompt and validated by Godot.
+			# Keep mutually exclusive envelopes shallow. Godot validates the
+			# nested world data and authorizes each requested mechanic.
 			var object = {"type":"object"}
 			var props = {"text":text,"recap":text,"geography":object,"story":PACK.arr(object,8),"discoveries":PACK.arr(object,8),"requires_world_update":{"type":"boolean"}}
-			var required: Array = ["text"]
-			if payload.get("unresolved_intent",false):
-				props.merge({"check":object,"branches":object,"mechanics":object})
-				required.clear()
-			return {"type":"object","properties":props,"required":required,"additionalProperties":false}
+			var narration = {"type":"object","properties":props,"required":["text"],"additionalProperties":false}
+			if not payload.get("unresolved_intent",false):
+				return narration
+			var check = {"type":"object","properties":{"check":object,"branches":object},"required":["check"],"additionalProperties":false}
+			return {"type":"object","anyOf":[narration,check,PACK.obj({"mechanics":object})]}
 	return {}
 
 func instruction(stage: String) -> String:
@@ -107,7 +107,7 @@ static func narration_prompt(payload: Dictionary,identity: Dictionary) -> String
 		context["VERIFIED LOOKUP FACTS"]=payload["lookup_facts"]
 	if payload.get("unresolved_intent",false):
 		context["SUPPORTED MECHANICAL REQUESTS"]=payload["mechanical_catalogue"]
-		stage_requirements=" The player action is unresolved. If a listed operation is needed, return only {mechanics:{kind,args}} once. For a simple uncontested ability or skill check in a quiet scene, return {check:{ability,skill,difficulty},branches:{success,failure}} when both outcomes can be described in advance. Use str,dex,con,int,wis,cha, a pinned skill ID or null, and very_easy,easy,medium,hard,very_hard,nearly_impossible. Each branch is a short prose string without roll numbers, resource changes, or persistent world updates. The engine chooses exactly one branch. If the result must inform a later decision, return only {check:{ability,skill,difficulty}} and await the roll. Use only disclosed IDs and supported targets. Await the engine result before narrating an effect. Respond to spoken invitations as the NPC, using their established situation and agency. An invitation does not establish party membership. If no mechanical resolution is necessary, use the usual narration envelope. For an unsupported effect, describe the unresolved situation and leave its outcome open."
+		stage_requirements=" The player action is unresolved. Choose exactly one response form: narration with text, check with optional branches, or mechanics. Omit the fields for the forms you did not choose, including empty placeholders. If a listed operation is needed, return only {mechanics:{kind,args}} once. For a simple uncontested ability or skill check in a quiet scene, return {check:{ability,skill,difficulty},branches:{success,failure}} when both outcomes can be described in advance. Use str,dex,con,int,wis,cha, a pinned skill ID or null, and very_easy,easy,medium,hard,very_hard,nearly_impossible. Each branch is a short prose string without roll numbers, resource changes, or persistent world updates. The engine chooses exactly one branch. If the result must inform a later decision, return only {check:{ability,skill,difficulty}} and await the roll. Use only disclosed IDs and supported targets. Await the engine result before narrating an effect. Respond to spoken invitations as the NPC, using their established situation and agency. An invitation does not establish party membership. If no mechanical resolution is necessary, use the usual narration envelope. For an unsupported effect, describe the unresolved situation and leave its outcome open."
 	var expected={"schema_version":"1","campaign_id":identity["campaign_id"],"actor_id":identity["actor_id"],"turn_id":payload["turn_id"],"request_id":identity["attempt_id"],"expected_revision":identity["revision"]}
 	context["WORLD UPDATE SCHEMA"]=PACK.geo_schema(expected)
 	context["WORLD TOOL CATALOGUE"]=payload.get("world_catalogue",{})
@@ -155,6 +155,8 @@ func boundary(code: String,expected: String,actual: Variant,details: Dictionary=
 		for key in ["spells","items","skills","abilities","features","resources","rules","world","text","recap","geography","story","discoveries","requires_world_update","mechanics","check","branches","inscription"]:
 			if actual.has(key):
 				fields[key]=type_string(typeof(actual[key]))
+				if key in ["mechanics","check","branches"] and actual[key] is Dictionary and actual[key].is_empty():
+					fields[key]="empty Dictionary"
 		fields["unknown_count"]=actual.size()-fields.size()
 	else:
 		fields["type_code"]=actual

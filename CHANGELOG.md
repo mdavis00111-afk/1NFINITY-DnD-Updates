@@ -1,6 +1,10 @@
 # 1NFINITY D&D — Changelog
 Live channel: godot. Entries below are reconstructed from published Git commit messages, not evidence of runtime test success. Source commit and manifest commit prefixes are provided for traceability.
 
+## 0.0.33 Windows playtest
+
+- Separate Gemini's narration, check and mechanical request forms. Accept literal empty mechanical placeholders alongside otherwise valid prose and send mixed substantive replies to guarded Retry.
+
 ## 0.0.32 Windows playtest
 
 - Simplify the Gemini narration response schema, report sanitized transport failures, and recover the original saved input through Retry.

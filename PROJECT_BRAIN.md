@@ -1,3 +1,9 @@
+## Separate DM response forms
+
+The v0.0.32 Windows log showed Gemini delivered a JSON object containing both prose and mechanical keys. At that boundary, the flat provider schema allowed the combination, which Godot could not settle. The unresolved DM schema now offers three shallow, mutually exclusive forms for prose, a check with optional branches, or a mechanical request. The prompt also asks Gemini to omit unused forms.
+
+If a bounded prose response still contains unused mechanical dictionaries, Godot can discard literal empty dictionaries before applying the existing narration and world validation. A populated or wrongly typed mechanical field beside prose stops in Retry before a dice roll, receipt or resource change. Standalone checks and operations keep their existing engine validation, and post-settlement narration still accepts only prose and optional world proposals. Boundary logs distinguish empty dictionaries from populated ones without recording values.
+
 ## Copy log and Esc navigation
 
 Copy log is available in the top-right corner. It copies up to the latest 256 KiB from the launcher's `game.log`, with Godot's user log as a fallback. Esc returns to the main menu after widgets handle their own input. In a campaign, it uses the existing leave guard to save the composer draft and keep unconfirmed delivery in recovery.

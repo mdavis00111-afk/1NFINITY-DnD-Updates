@@ -1,3 +1,9 @@
+## v0.0.33 DM response forms
+
+Godot 4.7.2 Linux `--check-only` passed for the adapter, controller and integration fixture. `semantic_integration_smoke.gd` passed in `--provider-format`, `--conditional-check`, `--dm-first` and `--transport-retry` modes using mock Gemini and the isolated SQLite test bridge. The provider-format fixture uses the key and type shape captured on Windows, with explicitly empty mechanical dictionaries, and verifies that two calls settle only the authored observation. A populated check beside prose stayed retryable before any receipt or revision change. The other modes retained local mechanics, conditional narration, spell expenditure, inscription and pending-request recovery. `git diff --check` passed.
+
+Windows acceptance remains open. Click Update, reopen the affected campaign, and choose Turn → Retry once for the saved `hello`. Confirm the DM replies once, then submit a fresh conversational prompt. If either fails, copy the latest matching `SEMANTIC_BOUNDARY` line. The old Windows log showed the key types only, so the fixture did not assume it contained any specific values. Screen-transition performance is a follow-up after the DM path is confirmed.
+
 ## v0.0.32 Copy log and Esc acceptance
 
 Godot 4.7.2 Linux passed `semantic_integration_smoke.gd -- --menu-shortcuts` with the test-only SQLite bridge, disposable user directory and `--log-file` targeting the fixture installation's `game.log`. It verified the launcher log source, bounded copying of a long log, missing log behavior, a real mouse event on the toolbar button, and Esc with the composer focused. Unconfirmed delivery retained the workspace, and reopening after Esc restored the exact draft.

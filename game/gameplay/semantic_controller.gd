@@ -243,6 +243,19 @@ func receive_interpreter_envelope(identity: Dictionary,envelope: Dictionary) -> 
 func receive_unresolved_dm(identity: Dictionary,result: Dictionary,job: Dictionary) -> Dictionary:
 	var state = data["state"]
 	var text = job["intent"]["args"].get("text","")
+	if DTO.bounded_text(result.get("text"),12000):
+		# Older Gemini output may fill unused object properties with {}.
+		# A populated mechanical field is always ambiguous beside prose.
+		var prose = result.duplicate()
+		for key in ["check","branches","mechanics"]:
+			if not result.has(key):
+				continue
+			if not result[key] is Dictionary or not result[key].is_empty():
+				adapter.boundary("mixed_dm_response","narration, check, or mechanics as a separate response",result)
+				stop("retry","The DM combined narration and mechanics in one reply. Retry the saved request.")
+				return failure(status)
+			prose.erase(key)
+		result=prose
 	var operation = result.get("mechanics",{})
 	if DTO.exact_keys(result,["check"]) or DTO.exact_keys(result,["check","branches"]):
 		var check = result["check"]

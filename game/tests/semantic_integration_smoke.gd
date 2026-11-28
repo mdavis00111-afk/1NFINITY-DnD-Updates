@@ -475,9 +475,16 @@ func provider_format_case(id: String) -> void:
 		var attempt = ctrl.inflight.duplicate(true)
 		expect(packet.get("player_text")==inputs[index] and packet["outbound"]["sha256"]==outbound.back()["prompt"].sha256_text() and packet["outbound"]["attempt_id"]==attempt["attempt_id"],"Exact command, prompt hash and attempt survive to DM")
 		var dm_schema: Dictionary = ctrl.adapter.transport.supplied_schema
-		expect(dm_schema.get("type")=="object" and not dm_schema.has("anyOf") and dm_schema["properties"]["geography"]=={"type":"object"} and dm_schema["properties"].has("check"),"DM provider gets a compact stage-specific schema")
+		var forms = dm_schema.get("anyOf",[])
+		if not expect(dm_schema.get("type")=="object" and forms.size()==3,"DM provider gets three distinct response forms"):
+			return
+		expect(forms[0]["required"]==["text"] and forms[0]["properties"]["geography"]=={"type":"object"} and not forms[0]["properties"].has("check"),"Narration form has only prose fields and shallow world proposals")
+		expect(forms[1]["required"]==["check"] and forms[1]["properties"].has("branches") and forms[2]["required"]==["mechanics"] and forms.all(func(form): return not form["additionalProperties"]),"Checks and operations are mutually exclusive with prose")
 		var text = "The innkeeper turns toward the table."
 		var response = {"text":text}
+		if index==0:
+			# Reproduce the key and type shape from the v0.0.32 Windows log.
+			response.merge({"check":{},"branches":{},"mechanics":{},"geography":{},"story":[],"discoveries":[],"recap":"","requires_world_update":false})
 		if index==1:
 			response.merge({"geography":{"facts":[{"kind":"unsupported"}]},"story":[{}],"discoveries":[{}]})
 		if index==2:
@@ -489,7 +496,24 @@ func provider_format_case(id: String) -> void:
 		var token = session.token(id)
 		var source = session.source(token,settled.get("event_id"))
 		expect(settled.get("status")=="committed" and source.get("data",{}).get("text")==text and outbound.size()-calls==2,"Prose commits in two calls with or without optional world data")
+		expect(settled.get("request",{}).get("kind")=="observe","Prose and empty placeholders authorize only the existing observation")
 		expect(not ctrl.receive(attempt,response).get("ok",false) and session.token(id)["revision"]==token["revision"],"Duplicate response cannot mutate settled turn")
+	var mixed = pipeline_intent(id,"I say hello again.")
+	expect(ctrl.submit(mixed).get("ok",false),"Mixed response test submitted")
+	if not await pump("interpret"):
+		return
+	reply({})
+	if not await pump("narrate"):
+		return
+	var unchanged = session.token(id)
+	reply({"text":"The innkeeper says hello.","check":{"ability":"int","skill":null,"difficulty":"easy"}})
+	for _i in range(40):
+		await process_frame
+		if ctrl.active().get("stage")=="retry":
+			break
+	expect(ctrl.active().get("stage")=="retry" and ctrl.status.contains("combined narration and mechanics") and session.token(id)["revision"]==unchanged["revision"] and not session.settlement(id,mixed["request_id"]).get("found",false),"A populated mechanical field beside prose leaves the turn uncommitted")
+	if not expect(ctrl.cancel().get("ok",false),"Uncommitted mixed reply can be canceled"):
+		return
 	var guarded = pipeline_intent(id,"I ask whether the road is open.")
 	expect(ctrl.submit(guarded).get("ok",false),"Consequential response test submitted")
 	if not await pump("interpret"):
