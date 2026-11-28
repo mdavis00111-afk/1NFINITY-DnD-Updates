@@ -1,3 +1,17 @@
+## v0.0.30 interpreter and narration validation
+
+Static checks used gdtoolkit 4.5.0 on all six changed GDScript files, Godot 4.7.2 check-only on semantic_controller.gd, source assertions for stage separation, validation-before-lookup order and single dispatch, and git diff --check. The focused context-pipeline mode in semantic_integration_smoke.gd uses the live controller, policy, registry, RAW resolver, settlement and prompt builder with a capture transport. Codex Cloud ran it under Linux Godot 4.7.2 against an isolated campaign with a temporary stdlib SQLite shim for the Windows bridge protocol. The shim and modified Linux-only transport entry stay outside the repository and release. The focused mode covers exact input, no pre-interpreter DM reads, spell and skill rules, disclosed NPC and location references, omitted mandatory rules, prompt hash equality, ambiguity, invalid input, stale replies, illegal equipment, committed ration use, dependent steps, interrupted narration and first versus repeated inscription reads. Existing master and sibling save records are checked for isolation. No live Gemini, Windows bridge, GUI or updater installation acceptance was run.
+
+### Owner Windows acceptance
+
+1. From v0.0.29, click Update and verify v0.0.30 opens the existing campaign. Confirm settings, portraits, gear, and saved campaign history remain present. Check update.log, import.log and smoke.log if startup fails.
+2. In a disposable copy, talk to a named local NPC about a known location. Confirm one interpretation and one narration call in the capture fixture, exact original text, an omitted mandatory RAW section, requested records, and the inspected outbound prompt hash matching the captured prompt.
+3. Submit an ambiguous reference and an illegal action, such as wearing a shield as a ring. Confirm local clarification or rejection, zero narration calls, and unchanged mechanics. The fixture also sends an invalid schema and mismatched revision.
+4. Use an owned ration as the second step of an ordered conversation and ration request. Verify the first receipt appears as earlier committed context, the ration decrements once, and the item definition and rule are present. Reopen during the second narration and verify recovery sends only narration for the same settled result.
+5. Read the inscription on an intact owned custom object by exact name, then read it again. Confirm the first read allows one attribute proposal, the second uses saved text, and neither dispatches narration.
+
+To run the focused capture fixture on Windows use Godot 4.7.2 with an empty disposable user directory, set INFINITY_TEST_USER_ROOT to its exact globalized user:// path, and run --headless --path game --script res://tests/semantic_integration_smoke.gd -- --context-pipeline after asset import. No Gemini key is required. The broader historical smoke mode contains older interpreter contracts and was outside this focused run.
+
 ## v0.0.29 Step 7B inscription checks
 
 Codex Cloud parsed all seven changed GDScript files with gdtoolkit 4.5.0. Python SQLite exercised the actual parameterized origin/old-value guard and update against the three existing schemas. The stale guard failed as expected and preserved the stored inscription. Foreign-key and Git whitespace checks passed. No Windows, Godot runtime or live Gemini calls were run.

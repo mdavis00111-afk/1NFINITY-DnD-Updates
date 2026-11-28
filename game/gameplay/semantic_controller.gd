@@ -3,8 +3,6 @@ extends "res://gameplay/complete_controller.gd"
 const ADAPTER=preload("res://gameplay/semantic_adapter.gd")
 const POLICY=preload("res://gameplay/semantic_policy.gd")
 const REVIEW=preload("res://gameplay/independent_review.gd")
-const CONTEXT=preload("res://gameplay/turn_context.gd")
-var context_builder=CONTEXT.new()
 var last_dm_packet: Dictionary={}
 var scene_cache_key: Array=[]
 var scene_cache: Dictionary={}
@@ -59,9 +57,29 @@ func inspect_dm_packet() -> Dictionary:
 	var binding = last_dm_packet["binding"]
 	var current = registry.session.token(campaign_id)
 	var job = active()
-	if not current.get("ok",false) or current["revision"]!=binding["revision"] or current["actor_id"]!=binding["actor_id"] or job.get("stage")!="narrate" or job.get("intent",{}).get("request_id")!=binding["intent_request_id"] or not registry.session.same_request(job.get("tool"),last_dm_packet["interpreted"]) or not registry.session.typed_equal(job.get("attempt"),inflight) or inflight.is_empty():
+	if not current.get("ok",false) or current["revision"]!=binding["revision"] or current["actor_id"]!=binding["actor_id"] or job.get("stage")!="narrate" or job.get("intent",{}).get("request_id")!=binding["intent_request_id"] or not registry.session.same_request(job.get("tool"),last_dm_packet["interpreted"]) or not registry.session.typed_equal(job.get("attempt"),inflight) or inflight.get("attempt_id")!=last_dm_packet["outbound"]["attempt_id"]:
 		return {}
 	return last_dm_packet.duplicate(true)
+
+func interpreter_context(state: Dictionary,job: Dictionary) -> Dictionary:
+	var clock = Time.get_ticks_msec()
+	var packet = super.interpreter_context(state,job)
+	sample("interpreter_context_build",Time.get_ticks_msec()-clock)
+	return packet
+
+func prepare_dispatch(stage: String,payload: Dictionary,identity: Dictionary) -> Dictionary:
+	if stage!="narrate":
+		return super.prepare_dispatch(stage,payload,identity)
+	var prompt = ADAPTER.narration_prompt(payload,identity)
+	if prompt.length()>ADAPTER.MAX_CONTEXT:
+		return {}
+	var dispatch = payload.duplicate(true)
+	dispatch["outbound"]={"attempt_id":identity["attempt_id"],"prompt":prompt,"sha256":prompt.sha256_text(),"characters":prompt.length(),"payload_characters":JSON.stringify(payload).length()}
+	last_dm_packet=dispatch.duplicate(true)
+	return dispatch
+
+func dispatch_narration(_state: Dictionary,job: Dictionary,payload: Dictionary) -> void:
+	ask("narrate",job,payload)
 
 func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	var rid=job["intent"]["request_id"]
@@ -70,6 +88,10 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 		timing[rid]["first_stage"]=clock
 		if timing[rid].get("queued",false):
 			sample("queue_wait",clock-int(timing[rid]["accepted"]))
+	if stage!="narrate":
+		super.ask(stage,job,payload)
+		return
+	last_dm_packet={}
 	var expanded=payload.duplicate(true)
 	var state=data["state"]
 	var snap=context_view(state)
@@ -86,7 +108,7 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	character["owned_instances"]=ext.get("inventory_instances",[]).slice(0,64)
 	character["slot_assignments"]=ext.get("known_slot_assignments",[])
 	expanded["character"]=character
-	var memory=context_builder.memory(state,registry.session,str(job.get("tool",{}).get("request_id","")) if stage=="narrate" else "")
+	var memory=context_builder.memory(state,registry.session,str(job.get("tool",{}).get("request_id","")))
 	if not memory.get("ok",false):
 		stop("retry","Revision-consistent recent moves unavailable.")
 		return
@@ -110,54 +132,48 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	# Keep overview records in one packet field, not twice.
 	expanded["story"]=expanded["story"].filter(func(row): return not row["kind"] in ["overview","situation"])
 	expanded["selected_context"]=job.get("selected_context",[])
-	expanded["recent_outcomes"]=job.get("completed_steps",[])
 	expanded["interpreted"]=job.get("tool",{})
 	expanded["remaining_intents"]=job.get("remaining",[])
-	expanded.erase("original_intent")
-	expanded["original_player_text"]=job["intent"]["args"].get("text",payload.get("player_text",""))
+	expanded["player_text"]=job["intent"]["args"].get("text",payload.get("player_text",""))
 	expanded["campaign_context"]={"id":campaign_id,"title":state["campaign"].get("title",""),"maturity_id":state["campaign"].get("maturity_id","standard"),"elapsed_seconds":state["elapsed_seconds"]}
-	expanded["situational_context"]=context_builder.situational(expanded["original_player_text"],job.get("tool",{}).get("kind",""),scene,ext)
+	expanded["situational_context"]=context_builder.situational(expanded["player_text"],job["tool"]["kind"],scene,ext)
 	expanded["local_loot"]=ext.get("loot_containers",[]).slice(0,16)
-	expanded["rules"]=context_builder.rules(expanded["situational_context"],job.get("tool",{}).get("kind",""))
+	var rules = context_builder.rules(expanded,job["tool"]["kind"])
+	if not rules.get("ok",false):
+		stop("retry","Pinned narration rule records unavailable.")
+		return
+	expanded["rules"]=rules["records"]
 	expanded["correction"]=job.get("correction","")
 	expanded["prior_outcome"]=job.get("prior_outcome",{})
-	if job.has("pending_consequence") and stage=="narrate":
+	if job.has("pending_consequence"):
 		expanded["pending_for_narrator"]={"proposal":job["pending_consequence"]["proposal"],"status":"pending, not committed"}
-	if stage=="critical":
-		expanded.erase("correction") # independent review sees actual text/outcome, not prior correction rationale
-		expanded["candidate_hash"]=job["candidate"]["text"].sha256_text()
-		expanded["candidate_length"]=job["candidate"]["text"].length()
-		expanded["independent_review"]=job.has("first_review")
-		expanded["known_public_ids"]=independent.public_ids(expanded.get("scene",{}),ext)
-		expanded["original_player_text"]=job["intent"]["args"].get("text","")
-		expanded["verified_outcome"]=expanded.get("receipt",expanded.get("settlement",{}))
-	if stage=="interpret":
-		expanded["intent"]=job["intent"]
-		expanded.erase("original_player_text") # exact original already in intent
-		expanded["catalogue"]=context_builder.catalogue(registry)
-		expanded["lookup_catalogue"]=REG.QUERY_TYPES
-		expanded["completed_steps"]=job.get("completed_steps",[])
-
-	elif stage=="narrate":
-		expanded["player_text"]=job["intent"]["args"].get("text",payload.get("player_text",""))
-		expanded.erase("original_player_text")
-		expanded["world_catalogue"]=context_builder.world_catalogue(registry)
-		last_dm_packet={}
-		expanded=context_builder.dm_packet(state,job,expanded,registry)
-		if expanded.is_empty():
-			stop("retry","Narration packet could not verify the current or earlier committed outcomes.")
-			return
-
-	# Base C4 payload has its own limit. Trim duplicate large fields only,
-	# retaining exact original input and verified outcome.
-	if JSON.stringify(expanded).length()>85000:
-		for key in ["selected_context","recent_events","story","inventory","public_actors"]:
-			if expanded.get(key) is Array:
-				expanded[key]=expanded[key].slice(0,8)
-	if stage=="narrate" and JSON.stringify(expanded).length()<=120000:
-		last_dm_packet=expanded.duplicate(true)
-	sample("context_build",Time.get_ticks_msec()-clock)
+	expanded["world_catalogue"]=context_builder.world_catalogue(registry)
+	expanded=context_builder.dm_packet(state,job,expanded,registry)
+	if expanded.is_empty():
+		stop("retry","Narration packet could not verify the current or earlier committed outcomes.")
+		return
+	sample("narration_context_build",Time.get_ticks_msec()-clock)
 	super.ask(stage,job,expanded)
+
+func receive_interpreter_envelope(identity: Dictionary,envelope: Dictionary) -> Dictionary:
+	if not matches(identity,"interpret"):
+		return failure("Stale interpretation.")
+	if not registry.interpreter_envelope_valid(envelope):
+		stop("clarification","Invalid typed interpretation envelope.")
+		return failure(status)
+	var result = envelope.duplicate(true)
+	var selected: Array = []
+	if result.has("queries"):
+		var clock = Time.get_ticks_msec()
+		var lookups = registry.interpreter_lookups(identity["campaign_id"],identity["revision"],result["queries"])
+		sample("interpreter_lookups",Time.get_ticks_msec()-clock,lookups.get("selected",[]).size())
+		if not lookups.get("ok",false):
+			stop("retry",str(lookups.get("error","Godot lookup unavailable.")))
+			return failure(status)
+		selected=lookups["selected"]
+		result.erase("queries")
+	return receive_interpretation(identity,result,selected)
+
 
 func receive_interpretation(identity: Dictionary,result: Dictionary,selected: Array) -> Dictionary:
 	if not matches(identity,"interpret") or JSON.stringify(result).length()>65536:
@@ -719,8 +735,11 @@ func submit(intent: Dictionary) -> Dictionary:
 		timing[intent["request_id"]]={"accepted":clock,"queued":was_busy}
 	return result
 
-func sample(stage: String,elapsed: int) -> void:
-	timing_samples.append({"stage":stage,"elapsed_ms":maxi(0,elapsed)})
+func sample(stage: String,elapsed: int,lookup_count: int=-1) -> void:
+	var metric = {"stage":stage,"elapsed_ms":maxi(0,elapsed)}
+	if lookup_count>=0:
+		metric["lookup_count"]=lookup_count
+	timing_samples.append(metric)
 	timing_samples=timing_samples.slice(maxi(0,timing_samples.size()-128))
 
 # Explicit recovery path: retain the committed mechanical result when the

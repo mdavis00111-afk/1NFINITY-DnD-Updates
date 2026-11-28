@@ -4,6 +4,7 @@ const SQL=preload("res://systems/sqlite.gd")
 const DTO=preload("res://world/world_dto.gd")
 const CAT=preload("res://rules/catalog.gd")
 const PACK=preload("res://turns/agent_packets.gd")
+const UI=preload("res://gameplay/ui_intents.gd")
 const REG=preload("res://gameplay/tool_registry.gd")
 const DIRECT_KINDS="'equip','quick_equip','swap','unequip','attune','unattune','item_use','item_drop','item_transfer','currency_transfer','loot_pickup','loot_take_all','spell_cast','spell_prepare','spell_unprepare','resource_use','rest','object_interact'"
 # Only durable narration linked by the existing turn receipt or standalone
@@ -17,6 +18,41 @@ var cached_world: Dictionary={}
 var memory_reads=0
 var memory_hits=0
 var rules_catalogue=CAT.new()
+
+# One revision-checked read of names and IDs. No scene projection, rules
+# records, character sheets or campaign memory assembly at this stage.
+func interpreter_packet(state: Dictionary,intent: Dictionary,registry) -> Dictionary:
+	var location = state["location_id"]
+	var actor = state["actor_id"]
+	var text = intent["args"].get("text","")
+	var rows = registry.session.read(state,[
+		SQL.stmt("SELECT l.id,substr(l.name,1,100) AS name FROM locations l JOIN world_discovery d ON d.location_id=l.id WHERE d.visibility='player' AND d.status<>'unknown' ORDER BY l.id=? DESC,instr(lower(?),lower(l.name))>0 DESC,l.id LIMIT 24",[location,text]),
+		SQL.stmt("SELECT a.id,substr(json_extract(a.payload,'$.name'),1,100) AS name FROM actors a JOIN world_discovery d ON d.location_id=a.location_id LEFT JOIN actor_instances i ON i.actor_id=a.id WHERE a.location_id=? AND a.kind IN ('npc','enemy') AND d.visibility='player' AND d.status<>'unknown' AND (i.visibility='player' OR (i.actor_id IS NULL AND json_extract(a.payload,'$.descriptive_only')=1 AND EXISTS(SELECT 1 FROM world_links w JOIN events e ON e.id=w.source_event_id WHERE w.actor_id=a.id AND e.kind='narration' AND "+PUBLIC+" AND instr(json_extract(e.payload,'$.text'),json_extract(a.payload,'$.name'))>0 AND instr(json_extract(e.payload,'$.text'),json_extract(a.payload,'$.occupation'))>0 AND (json_extract(e.payload,'$.phase')='opening' OR (json_extract(e.payload,'$.b4_reconciled')=1 AND json_extract(a.payload,'$.public')=1))))) ORDER BY instr(lower(?),lower(json_extract(a.payload,'$.name')))>0 DESC,a.id LIMIT 16",[location,text]),
+		SQL.stmt("SELECT i.id AS instance_id,d.id AS definition_id,substr(d.name,1,100) AS name,i.quantity FROM item_instances i JOIN item_definitions d ON d.id=i.definition_id WHERE i.actor_id=? ORDER BY instr(lower(?),lower(d.name))>0 DESC,i.id LIMIT 32",[actor,text]),
+		SQL.stmt("SELECT slot,instance_id,grip FROM equipment_assignments WHERE actor_id=? ORDER BY slot",[actor]),
+		SQL.stmt("SELECT c.id AS container_id,c.source_event_id,i.id AS instance_id,substr(d.name,1,100) AS name,i.quantity FROM loot_containers c LEFT JOIN item_instances i ON i.container_id=c.id LEFT JOIN item_definitions d ON d.id=i.definition_id WHERE c.location_id=? AND c.visibility='player' AND c.status='available' ORDER BY instr(lower(?),lower(d.name))>0 DESC,c.id,i.id LIMIT 16",[location,text]),
+		SQL.stmt("SELECT r.id,substr(r.name,1,100) AS name,r.from_id,r.to_id FROM world_routes r JOIN world_discovery d ON d.route_id=r.id JOIN world_discovery f ON f.location_id=r.from_id JOIN world_discovery t ON t.location_id=r.to_id WHERE ? IN (r.from_id,r.to_id) AND d.visibility='player' AND f.visibility='player' AND t.visibility='player' AND d.status<>'unknown' AND f.status<>'unknown' AND t.status<>'unknown' ORDER BY r.id LIMIT 16",[location]),
+		SQL.stmt("SELECT e.id,substr(json_extract(e.payload,'$.text'),1,360) AS text FROM events e WHERE e.kind='narration' AND "+PUBLIC+" AND "+LINKED+" ORDER BY e.id DESC LIMIT 1",[actor,actor])
+	])
+	if not rows.get("ok",false):
+		return {}
+	var sets = rows["sets"]
+	for index in [2,4]:
+		for row in sets[index]:
+			row["quantity"]=DTO.sql_int(row["quantity"])
+			if row.has("source_event_id"):
+				row["source_event_id"]=DTO.sql_int(row["source_event_id"])
+	for row in sets[6]:
+		row["id"]=DTO.sql_int(row["id"])
+	var casting = state["actor"].get("spellcasting",{})
+	var spells: Dictionary = {}
+	if casting is Dictionary:
+		var sources = {"known":"known_ids","prepared":"prepared_ids","always_prepared":"always_prepared_ids","class_cantrip":"cantrip_ids","racial_cantrip":"racial_cantrip_ids"}
+		for source in sources:
+			var ids = casting.get(sources[source],[])
+			if ids is Array and not ids.is_empty():
+				spells[source]=ids.slice(0,24)
+	return {"intent":intent,"revision":state["revision"],"catalogue":catalogue(registry),"lookup_catalogue":REG.QUERY_TYPES,"rule_categories":CAT.TABLES,"argument_choices":{"slot":UI.SLOTS,"grip":UI.GRIPS,"spell_source":REG.SPELL_SOURCES},"references":{"location_id":location,"locations":sets[0],"npcs":sets[1],"inventory":sets[2],"slots":sets[3],"local_loot":sets[4],"routes":sets[5],"recent_narration":sets[6],"actor":{"id":actor,"name":state["actor"].get("name",""),"class_id":state["actor"].get("class_id",""),"race_id":state["actor"].get("race_id",""),"spell_ids_by_source":spells}}}
 
 func memory(state: Dictionary,session,excluded_request_id: String="") -> Dictionary:
 	if not state.get("ok",false):
@@ -84,27 +120,75 @@ func situational(text: String,kind: String,_scene: Dictionary,_extension: Dictio
 	var combat=kind in ["saving_throw"] or ["fight","attack","combat","strike","defend"].any(func(word): return lower.contains(word))
 	return {"travel":travel,"trade":trade,"casting":casting,"rest":rest,"combat":combat,"combat_supported":false}
 
-func rules(situation: Dictionary,kind: String) -> Array:
-	var ids: Array=["ability-checks","using-each-ability","saving-throws"]
-	ids.append_array(REG.TOOLS.get(kind,[{},"",[]])[2])
-	if situation.get("travel",false): ids.append_array(["movement","time"])
-	if situation.get("trade",false): ids.append_array(["standard-exchange-rates","wearing-and-wielding-items"])
-	if situation.get("casting",false): ids.append("casting-a-spell")
-	if situation.get("rest",false): ids.append("resting")
-	if situation.get("combat",false): ids.append("damage-and-healing")
-	var output: Array=[]
-	var seen: Array=[]
-	var budget=10000
-	for id in ids:
-		if id in seen: continue
-		seen.append(id)
-		var record=rules_catalogue.get_record("rule-sections",id)
-		if record.is_empty(): continue
-		var size=JSON.stringify(record).length()
-		if size>budget: continue
-		budget-=size
-		output.append({"id":id,"record":record})
-	return output
+# Load applicable immutable records in one pinned catalogue read. Keep exact
+# interpreter lookup results in their own field, including historical revision.
+func rules(packet: Dictionary,kind: String) -> Dictionary:
+	var requested: Array = []
+	for id in REG.TOOLS.get(kind,[{},"",[]])[2]:
+		requested.append(["rule-sections",id])
+	var outcome = packet.get("receipt",packet.get("settlement",{}).get("result",{}))
+	for ref in outcome.get("rule_refs",[]):
+		# Older standalone equipment settlements use section IDs as strings.
+		var key: Array = []
+		if ref is String and DTO.bounded_text(ref,128):
+			key=["rule-sections",ref]
+		elif ref is Dictionary and ref.get("category") in CAT.TABLES and DTO.bounded_text(ref.get("id"),128) and ref.get("ruleset")==CAT.RULESET and ref.get("revision")==CAT.REVISION:
+			key=[ref["category"],ref["id"]]
+		else:
+			return {"ok":false}
+		if not key in requested:
+			requested.append(key)
+	var mandatory_count = requested.size()
+	var situation = packet["situational_context"]
+	var optional: Array = []
+	if situation.get("travel",false): optional.append_array(["movement","time"])
+	if situation.get("trade",false): optional.append_array(["standard-exchange-rates","wearing-and-wielding-items"])
+	if situation.get("casting",false): optional.append("casting-a-spell")
+	if situation.get("rest",false): optional.append("resting")
+	if situation.get("combat",false): optional.append("damage-and-healing")
+	for id in optional:
+		var key = ["rule-sections",id]
+		if not key in requested:
+			requested.append(key)
+	var commands: Array = []
+	var required: Array = []
+	for index in range(requested.size()):
+		var key = requested[index]
+		var selected: bool = packet["selected_context"].any(func(entry):
+			if not entry is Dictionary or not entry.get("query") is Dictionary or not entry.get("result") is Dictionary:
+				return false
+			var query = entry["query"]
+			var result = entry["result"]
+			var record = result.get("data")
+			return query.get("kind")=="rule_record" and query.get("args")=={"category":key[0],"id":key[1]} and result.get("ok",false) and record is Dictionary and record.get("index")==key[1])
+		if not selected:
+			commands.append(SQL.stmt("SELECT category,id,payload FROM catalog WHERE category=? AND id=?",key))
+			required.append(index<mandatory_count)
+	if commands.is_empty():
+		return {"ok":true,"records":[]}
+	var path = rules_catalogue.database_path()
+	if path.is_empty():
+		return {"ok":false}
+	var result = SQL.run(path,commands,true)
+	if not result.get("ok",false) or result["results"].size()!=commands.size():
+		return {"ok":false}
+	var records: Array = []
+	var optional_budget = 10000
+	for index in range(commands.size()):
+		var rows = result["results"][index]
+		var row = rows[0] if rows.size()==1 else {}
+		var record = JSON.parse_string(row.get("payload",""))
+		if not record is Dictionary or record.get("index")!=row.get("id"):
+			if required[index]:
+				return {"ok":false}
+			continue
+		if not required[index]:
+			var size = row["payload"].length()
+			if size>optional_budget:
+				continue
+			optional_budget-=size
+		records.append({"category":row["category"],"id":row["id"],"record":record})
+	return {"ok":true,"records":records}
 
 # Rank existing disclosed memory by current scene, named references, open
 # threads and recency. This changes context selection only, not game rules.

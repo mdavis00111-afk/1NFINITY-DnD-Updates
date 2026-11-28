@@ -4,6 +4,7 @@ signal view_changed(snapshot: Dictionary)
 signal semantic_requested(stage: String, packet: Dictionary)
 signal semantic_cancelled(identity: Dictionary)
 static var bindings: Dictionary={}
+const CONTEXT=preload("res://gameplay/turn_context.gd")
 const REG=preload("res://gameplay/tool_registry.gd")
 const JOURNAL=preload("res://gameplay/work_journal.gd")
 const BASE=preload("res://campaigns/campaign_store.gd")
@@ -19,6 +20,7 @@ const DIRECT=["equip","swap","unequip","attune","unattune","item_use","item_drop
 const CHOICES=["rest","resource_use","spell_prepare","spell_unprepare","travel","loot_pickup","loot_take_all","reconcile_legacy_slots"]
 const SEMANTIC=["chat","skill_check","ability_check","saving_throw","quest_interact","party_add"]
 var registry=REG.new()
+var context_builder=CONTEXT.new()
 var journal=JOURNAL.new()
 var campaign_id=""
 var actor_id=""
@@ -256,6 +258,10 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 		return
 	var state=data["state"]
 	var identity={"campaign_id":campaign_id,"actor_id":actor_id,"request_id":job["intent"]["request_id"],"attempt_id":registry.session.make_id(),"revision":state["revision"],"stage":stage}
+	var dispatch = prepare_dispatch(stage,payload,identity)
+	if dispatch.is_empty():
+		stop("retry","Semantic request could not fit or bind its outbound packet.")
+		return
 	job["stage"]=stage
 	job["attempt"]=identity
 	if not update_active(job):
@@ -263,7 +269,10 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	inflight=identity.duplicate(true)
 	status="Processing "+stage.replace("_"," ")+"…"
 	refresh()
-	semantic_requested.emit(stage,{"identity":identity.duplicate(true),"data":payload.duplicate(true)})
+	semantic_requested.emit(stage,{"identity":identity.duplicate(true),"data":dispatch.duplicate(true)})
+
+func prepare_dispatch(_stage: String,payload: Dictionary,_identity: Dictionary) -> Dictionary:
+	return payload
 
 # Read-only context may reuse the currently emitted committed projection
 # when identity, revision and campaign metadata all match a fresh token.
@@ -316,15 +325,7 @@ func advance() -> void:
 				if update_active(job):
 					execute_active()
 			else:
-				var context=scene_context(state)
-				if not context.get("ok",false):
-					stop("retry","Relevant context unavailable.")
-					return
-				var public_view=context_view(state).get("interaction_extension",{})
-				if public_view.get("revision")!=state["revision"]:
-					stop("retry","Public action context changed.")
-					return
-				ask("interpret",job,{"intent":job["intent"],"catalogue":command_catalogue(),"scene":context["scene"],"actor":PACK.actor_projection(state),"public_actors":public_view.get("public_actors",[]),"public_quests":public_view.get("public_quests",[]),"story":public_view.get("story_records",[]),"inventory":public_view.get("inventory_instances",[]),"loot":public_view.get("loot_containers",[])})
+				ask_interpreter(state,job)
 		"execute":
 			execute_active()
 		"narrate","critical","background","reconcile":
@@ -334,6 +335,16 @@ func advance() -> void:
 		"retry","clarification","critical_blocked":
 			status=str(job.get("message","Awaiting recovery or clarification."))
 			refresh()
+
+func interpreter_context(state: Dictionary,job: Dictionary) -> Dictionary:
+	return context_builder.interpreter_packet(state,job["intent"],registry)
+
+func ask_interpreter(state: Dictionary,job: Dictionary) -> void:
+	var packet = interpreter_context(state,job)
+	if packet.is_empty():
+		stop("retry","Revision-consistent interpreter references unavailable.")
+		return
+	ask("interpret",job,packet)
 
 # Only retire a rejected root action when no durable or in-memory outcome
 # can still require recovery. Never cancel a prepared or adopted transaction.
@@ -450,18 +461,24 @@ func recover_active() -> void:
 	if not context.get("ok",false):
 		stop("retry","Narration context unavailable.")
 		return
+	var payload={"receipt":PACK.public_receipt(receipt),"player_text":result.get("player_text",""),"scene":context["scene"],"maturity_id":state["campaign"].get("maturity_id","standard"),"turn_id":job["turn_id"]}
+	if job.get("stage")=="reconcile":
+		reconcile(job,receipt,context["ids"])
+	else:
+		dispatch_narration(state,job,payload)
+
+func dispatch_narration(state: Dictionary,job: Dictionary,payload: Dictionary) -> void:
 	var public_view=context_view(state).get("interaction_extension",{})
 	if public_view.get("revision")!=state["revision"]:
 		stop("retry","Committed narration context changed.")
 		return
-	var payload={"receipt":PACK.public_receipt(receipt),"player_text":result.get("player_text",""),"scene":context["scene"],"maturity_id":state["campaign"].get("maturity_id","standard"),"turn_id":job["turn_id"],"public_actors":public_view.get("public_actors",[]),"public_quests":public_view.get("public_quests",[]),"story":public_view.get("story_records",[])}
-	if job.get("stage")=="reconcile":
-		reconcile(job,receipt,context["ids"])
-	elif legacy_review_stages() and job.get("stage") in ["critical","background"]:
-		payload["candidate"]=job.get("candidate",{}).duplicate(true)
+	for key in ["public_actors","public_quests"]:
+		payload[key]=public_view.get(key,[])
+	payload["story"]=public_view.get("story_records",[])
+	if legacy_review_stages() and job.get("stage") in ["critical","background"]:
+		payload["candidate"]=job["candidate"].duplicate(true)
 		ask(job["stage"],job,payload)
 	else:
-		# The durable receipt remains authoritative; regenerate narration only.
 		ask("narrate",job,payload)
 
 # Provider/mock replies are data only. The trusted review callback, not an

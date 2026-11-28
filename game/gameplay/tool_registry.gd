@@ -14,6 +14,7 @@ const ITEMS = preload("res://persistence/item_catalog.gd")
 const CAT = preload("res://rules/catalog.gd")
 const SQL = preload("res://systems/sqlite.gd")
 const UI = preload("res://gameplay/ui_intents.gd")
+const SPELL_SOURCES = ["class_cantrip","racial_cantrip","known","prepared","always_prepared"]
 const MATERIAL_AC = {"cloth":11,"paper":11,"rope":11,"crystal":13,"glass":13,"ice":13,"wood":15,"bone":15,"stone":17,"iron":19,"steel":19,"mithral":21,"adamantine":23}
 const OBJECT_HP = {"tiny":[2,5],"small":[3,10],"medium":[4,18],"large":[5,27]}
 const ADOPTED = ["ability_check","skill_check","saving_throw","object_check","conversation","observe","wait","move","travel"]
@@ -58,7 +59,7 @@ func typed(value: Variant,spec: String) -> bool:
 		"ability": return value in RAW.ABILITIES
 		"difficulty": return RAW.DIFFICULTY.has(value)
 		"pace": return RAW.PACE.has(value)
-		"spell_source": return value in ["class_cantrip","racial_cantrip","known","prepared","always_prepared"]
+		"spell_source": return value in SPELL_SOURCES
 		"rest_kind": return value in ["short","long"]
 		"actor_kind": return value in ["npc","enemy"]
 		"visibility": return value in ["player","private"]
@@ -132,6 +133,8 @@ func interpreter_queries_valid(value: Variant) -> bool:
 		return false
 	for query in value:
 		if not DTO.exact_keys(query,["kind","args","limit"]) or not query["kind"] is String or not QUERY_TYPES.has(query["kind"]) or not arguments_valid(query["args"],QUERY_TYPES[query["kind"]]) or not DTO.whole(query["limit"],1,16):
+			return false
+		if query["kind"] in ["rule_record","rules_search"] and not query["args"]["category"] in CAT.TABLES:
 			return false
 	return true
 

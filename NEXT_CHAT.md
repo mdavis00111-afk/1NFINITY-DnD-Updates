@@ -1,3 +1,7 @@
+## v0.0.30 owner acceptance and defect triage
+
+Verify channel.json and read PROJECT_BRAIN.md, HANDOFF.md and TESTING.md. The normal command path now uses a compact interpreter packet, local lookups and mechanics, and a single ready-to-send DM packet. Run the owner acceptance cases in TESTING.md. If a path fails, report the exact input, expected and observed behavior, and relevant game.log or updater logs. Preserve the existing updater, player data and mechanical authority while addressing the reported defect.
+
 ## v0.0.29 owner live-test and defect-fix brief
 
 Read live channel.json, PROJECT_BRAIN.md, HANDOFF.md and TESTING.md. Start with the owner's actual update or gameplay observation. Use the reported steps, expected and actual behavior, and logs to identify the first failed boundary. For updater startup failures use update.log, import.log and smoke.log. For gameplay use game.log and a disposable save. Preserve the verified updater, original 2014 RAW, Godot/SQLite authority, saves, settings and approved GUI. Deliver a focused fix, run suitable static checks, and record live testing separately. Do not treat old QA or handoff entries as new defect reports.

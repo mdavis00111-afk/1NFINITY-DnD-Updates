@@ -238,6 +238,14 @@ func run() -> void:
 	if not expect(not shield.is_empty(),"Owned shield"):
 		finish()
 		return
+	if "--context-pipeline" in OS.get_cmdline_user_args():
+		await context_pipeline_case(id,mara,shield)
+		expect(players.load_record(master)==original and base.gameplay_view(b["id"])==sibling,"Master and sibling isolation")
+		ctrl.close_session()
+		workspace.queue_free()
+		ctrl.queue_free()
+		finish()
+		return
 	await interrupted_consumption(id)
 	await duplicate_response_cases(id,b["id"])
 	await legacy_recovery_cases(id)
@@ -256,6 +264,153 @@ func run() -> void:
 	workspace.queue_free()
 	ctrl.queue_free()
 	finish()
+
+# Focused v0.0.30 mode. The legacy suite includes older provider contracts.
+func context_pipeline_case(id: String,mara: String,shield: String) -> void:
+	var legacy_rules = ctrl.context_builder.rules({"settlement":{"result":{"rule_refs":["movement"]}},"selected_context":[],"situational_context":{}},"equip")
+	expect(legacy_rules.get("ok",false) and legacy_rules["records"].any(func(row): return row["id"]=="movement"),"Legacy equipment settlement rule string still resolves")
+	var state = session.token(id)
+	var original = "  I ask Mara about the Oak Inn.  "
+	var intent = {"schema_version":"1","campaign_id":id,"actor_id":state["actor_id"],"request_id":session.make_id(),"expected_revision":state["revision"],"kind":"chat","args":{"text":original}}
+	var counter = ctrl.context_builder.memory_reads
+	var scene_counter = ctrl.scene_reads
+	var calls = outbound.size()
+	expect(ctrl.submit(intent).get("ok",false),"Exact command accepted")
+	if not await pump("interpret"):
+		return
+	var input = ctrl.adapter.payload
+	expect(input["intent"]["args"]["text"]==original and input["revision"]==state["revision"],"Exact command and revision reach interpreter")
+	expect(input["references"]["npcs"].any(func(npc): return npc["id"]==mara) and input["references"]["inventory"].any(func(item): return item["instance_id"]==shield) and input["references"]["locations"].any(func(place): return place["id"]==state["location_id"]),"Public NPC, location and owned item IDs included")
+	expect(not input.has("rules") and not input.has("character") and not input.has("story") and not input.has("recent_moves") and not input.has("scene"),"Comprehensive fields excluded")
+	expect(ctrl.context_builder.memory_reads==counter and ctrl.scene_reads==scene_counter,"No DM context reads before first response")
+	var lookups = [
+		{"kind":"rule_record","args":{"category":"spells","id":"cure-wounds"},"limit":1},
+		{"kind":"rule_record","args":{"category":"skills","id":"persuasion"},"limit":1},
+		{"kind":"actors","args":{"location_id":state["location_id"]},"limit":4}
+	]
+	var envelope = {"kind":"conversation","args":{"text":original},"queries":lookups}
+	var stale = ctrl.inflight.duplicate(true)
+	stale["revision"]+=1
+	expect(not ctrl.receive_interpreter_envelope(stale,envelope).get("ok",false),"Stale envelope rejected")
+	reply(envelope)
+	if not await pump("narrate"):
+		return
+	var packet = ctrl.inspect_dm_packet()
+	if not expect(not packet.is_empty(),"Completed packet inspectable during dispatch"):
+		return
+	var outbound_prompt: String = outbound.back()["prompt"]
+	expect(packet["player_text"]==original and packet["binding"]["intent_request_id"]==intent["request_id"],"DM original input and intent binding")
+	expect(packet["outbound"]["prompt"]==outbound_prompt and packet["outbound"]["sha256"]==outbound_prompt.sha256_text(),"Inspected instructions and outbound prompt are identical")
+	expect(outbound_prompt.contains(NARRATOR.load_prompt()) and outbound_prompt.contains("WORLD UPDATE SCHEMA"),"Existing DM instructions and response contract")
+	expect(packet["selected_context"].size()==lookups.size() and outbound_prompt.contains("cure-wounds") and outbound_prompt.contains("persuasion"),"All requested lookup records reach DM")
+	expect(packet["rules"].any(func(row): return row["id"]=="time"),"Engine attaches mandatory omitted time rule")
+	expect(outbound.size()-calls==2 and outbound[calls]["stage"]=="interpret" and outbound[calls+1]["stage"]=="narrate","Exactly one interpreter and one narration transport call")
+	reply(combined("Mara nods quietly."))
+	if not await pump("idle"):
+		return
+	expect(ctrl.inspect_dm_packet().is_empty(),"Settled packet is unavailable as an active attempt")
+
+	for case in [
+		{"response":{"status":"clarification","message":"Which item?"},"stage":"clarification"},
+		{"response":{"kind":"conversation","args":{"text":"Invented"},"queries":[{"kind":"unknown","args":{},"limit":1}]},"stage":"clarification"},
+		{"response":{"kind":"equip","args":{"instance_id":shield,"slot":"ring","grip":"worn"},"queries":[]},"stage":"idle"}
+	]:
+		var before = session.token(id)
+		var attempt = intent.duplicate(true)
+		attempt["expected_revision"]=before["revision"]
+		attempt["request_id"]=session.make_id()
+		calls=outbound.size()
+		expect(ctrl.submit(attempt).get("ok",false),"Negative route submitted")
+		if not await pump("interpret"):
+			return
+		reply(case["response"])
+		for _i in range(30):
+			await process_frame
+			if ctrl.active().get("stage","idle")==case["stage"]:
+				break
+		expect(ctrl.active().get("stage","idle")==case["stage"] and outbound.size()-calls==1 and session.token(id)["revision"]==before["revision"],"Ambiguous, invalid or illegal response does not reach DM or mutate state")
+		if not ctrl.active().is_empty():
+			expect(ctrl.cancel().get("ok",false),"Cancel unresolved negative test")
+			if not await pump("idle"):
+				return
+
+	# First action settles, second action starts from the new revision. Reopen
+	# in the middle to exercise durable receipt and selected query recovery.
+	var sequence = pipeline_intent(id,"I ask Mara about the inn and eat a ration.")
+	var ration = ""
+	for item in ctrl.view["interaction_extension"]["inventory_instances"]:
+		if item["definition_id"]=="rations-1-day":
+			ration=item["instance_id"]
+	if not expect(not ration.is_empty(),"Ration fixture available"):
+		return
+	var sequence_calls = outbound.size()
+	expect(ctrl.submit(sequence).get("ok",false),"Dependent sequence accepted")
+	if not await pump("interpret"):
+		return
+	reply({"steps":[{"kind":"conversation","args":{"text":"Ask"}},{"kind":"item_use","args":{"instance_id":ration,"quantity":1,"target_id":state["actor_id"]}}],"queries":[lookups[0],{"kind":"item_definition","args":{"definition_id":"rations-1-day"},"limit":1}]})
+	if not await pump("narrate"):
+		return
+	var serial = ctrl.adapter.serial
+	reply(combined("Mara gestures toward the hearth."))
+	if not await pump("narrate",serial):
+		return
+	var later = ctrl.inspect_dm_packet()
+	if not expect(not later.is_empty() and later["recent_outcomes"].size()==1,"Dependent packet contains one verified predecessor"):
+		return
+	expect(later["recent_outcomes"][0].has("receipt") and later["selected_context"][0]["revision"]==sequence["expected_revision"],"Earlier receipt and historical enquiry revision retained")
+	expect(later.get("settlement",{}).get("result",{}).get("consumed")==1 and later["selected_context"].size()==2 and later["rules"].any(func(row): return row["category"]=="equipment" and row["id"]=="rations-1-day"),"Ration settlement, requested item lookup and pinned item rule reach DM")
+	expect(outbound.size()-sequence_calls==3,"Two dependent turns share one interpreter call")
+	var before_restart = session.token(id)
+	ctrl.close_session()
+	workspace.queue_free()
+	ctrl.queue_free()
+	await process_frame
+	if not bind(id) or not await pump("narrate"):
+		return
+	var rebuilt = ctrl.inspect_dm_packet()
+	expect(not rebuilt.is_empty() and rebuilt["binding"]==later["binding"] and session.token(id)["revision"]==before_restart["revision"],"Interrupted narration rebuilds packet from same committed turn")
+	expect(outbound.size()-sequence_calls==4 and outbound.back()["stage"]=="narrate","Restart retries narration only")
+	reply(combined("The ration tastes of dried grain."))
+	if not await pump("idle"):
+		return
+	await pipeline_inscription_case(id)
+
+func pipeline_intent(id: String,text: String) -> Dictionary:
+	var state = session.token(id)
+	return {"schema_version":"1","campaign_id":id,"actor_id":state["actor_id"],"request_id":session.make_id(),"expected_revision":state["revision"],"kind":"chat","args":{"text":text}}
+
+func pipeline_inscription_case(id: String) -> void:
+	# Insert an owned custom definition and its existing inventory mirror in
+	# the disposable fixture. The production inspection transaction stays real.
+	var state = session.token(id)
+	var actor = state["actor_id"]
+	var definition = "custom-pipeline-token"
+	var instance = session.make_id()
+	var event = state["turn"]
+	var seeds = SQL.run(session.path(id),[
+		SQL.stmt("INSERT INTO events(turn,game_time,kind,payload) VALUES(?,?,'gameplay_change',?)",[event,"Unspecified",JSON.stringify({"text":"A fixture token is present.","visibility":"player"})]),
+		SQL.stmt("INSERT INTO item_definitions(id,origin,name,unit_weight_lb,attributes,source_event_id) VALUES(?,'custom','Amber Token',0,?,last_insert_rowid())",[definition,JSON.stringify({"name":"Amber Token","category":"object","description":"A polished amber token."})]),
+		SQL.stmt("INSERT INTO item_instances(id,definition_id,actor_id,quantity,condition,attunement,provenance) VALUES(?,?,?,1,'intact','not_required','{}')",[instance,definition,actor]),
+		SQL.stmt("INSERT INTO inventory(actor_id,item_id,quantity,payload) VALUES(?,?,1,?)",[actor,definition,JSON.stringify({"item_id":definition,"quantity":1,"equipped":false})]),
+		SQL.stmt("UPDATE world_state SET revision=revision+1 WHERE campaign_id=?",[id])
+	])
+	if not expect(seeds.get("ok",false),"Custom inscription fixture seed"):
+		return
+	ctrl.refresh()
+	for already_saved in [false,true]:
+		var calls = outbound.size()
+		var intent = pipeline_intent(id,"Read the inscription on Amber Token")
+		expect(ctrl.submit(intent).get("ok",false),"Inscription requested")
+		if not await pump("interpret"):
+			return
+		reply({"kind":"inspect_inscription","args":{"instance_id":instance},"queries":[]})
+		if not already_saved:
+			if not await pump("attribute"):
+				return
+			reply({"inscription":"Morning tide"})
+		if not await pump("idle"):
+			return
+		expect(outbound.size()-calls==(1 if already_saved else 2) and ctrl.status.contains("Morning tide"),"Inscription uses one bounded proposal only on first read and no narration")
 
 func persistent_npc_location(id: String) -> void:
 	var before=durable_snapshot(id)
