@@ -774,7 +774,7 @@ func on_response(result: int, code: int, _headers: PackedStringArray, body: Pack
 	update_feedback("Update available: v" + latest)
 
 func install_update() -> void:
-	if is_instance_valid(update_workspace) and update_workspace.is_inside_tree() and not update_workspace.can_leave():
+	if is_instance_valid(campaign_screen) and not campaign_screen.can_return_to_main():
 		return
 	if OS.get_name() != "Windows":
 		update_feedback("The packaged updater currently supports Windows only.")

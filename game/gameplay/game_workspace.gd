@@ -218,6 +218,7 @@ func apply_authoritative_view(snapshot: Dictionary) -> bool:
 			last_chat_request_id = ""
 	var lightweight=is_instance_valid(development_controller) and is_instance_valid(composer) and can_refresh_transcript(view,intents.snapshot)
 	var transcript_changed=view.get("events")!=intents.snapshot.get("events") or extension().get("reviewed_preview")!=intents.snapshot.get("interaction_extension",{}).get("reviewed_preview")
+	var map_revision_changed = extension().get("revision")!=intents.snapshot.get("interaction_extension",{}).get("revision")
 	view = intents.snapshot
 	campaign = view["campaign"]
 	actor = view["actor"]
@@ -228,6 +229,10 @@ func apply_authoritative_view(snapshot: Dictionary) -> bool:
 		status_refreshes+=1
 		if transcript_changed:
 			refresh_transcript()
+		if map_revision_changed:
+			map_cache.clear()
+			if current_tab=="Map":
+				show_tab("Map")
 		restore_composer(draft,caret_line,caret_column)
 		refresh_intent_controls()
 		show_status(str(extension().get("status_text","Campaign view refreshed.")))
@@ -527,12 +532,12 @@ func build_left(parent: VBoxContainer) -> void:
 	var combat = actor.get("combat",{})
 	stat(info,"HP",number(combat.get("hp_current"))+" / "+number(combat.get("hp_max")),"health",true)
 	var coins: PackedStringArray = []
-	for denomination in ["gp","pp","ep","sp","cp"]:
-		if actor.get("coins",{}).has(denomination):
+	for denomination in ["pp","ep","sp","cp"]:
+		if actor.get("coins",{}).has(denomination) and actor["coins"][denomination]!=0:
 			coins.append(number(actor["coins"][denomination])+" "+denomination)
 	one_line(info,"Gold: "+number(actor.get("coins",{}).get("gp"))+" gp",16,GOLD)
-	var other = one_line(info,"Coins: "+(" · ".join(coins) if not coins.is_empty() else "Not recorded"),13,IVORY)
-	other.tooltip_text = other.text
+	if not coins.is_empty():
+		one_line(info,"Other: "+" · ".join(coins),13,IVORY)
 	var sp = actor.get("spellcasting",{})
 	var slot_lines: PackedStringArray = []
 	for level in range(1,10):
@@ -1074,7 +1079,7 @@ func build_rules() -> void:
 	var references = right_content
 	one_line(references,"✧  Quick References (5e)",19,GOLD)
 	var grid = GridContainer.new()
-	grid.columns = 3
+	grid.columns = 2
 	grid.add_theme_constant_override("h_separation",3)
 	grid.add_theme_constant_override("v_separation",3)
 	references.add_child(grid)
@@ -1216,6 +1221,8 @@ func build_map_tab() -> void:
 	load_map_preview.call_deferred(canvas,caption,map_load_serial)
 
 func load_map_preview(canvas: Control, caption: Label, serial: int) -> void:
+	if not is_inside_tree() or serial!=map_load_serial:
+		return
 	await get_tree().process_frame
 	if serial!=map_load_serial or not is_instance_valid(canvas) or not is_instance_valid(caption) or not is_inside_tree():
 		return

@@ -154,10 +154,17 @@ func run() -> void:
 		expect(not ui.last_roll.is_empty(),"Manual UI roll failed")
 		ui.dice_tool("Clear")
 		expect(ui.last_roll.is_empty(),"Clear did not clear informational dice")
-		for tab in ["Spells","Skills","Features","Notes","Inventory"]:
+		var composer_ref = ui.composer
+		var party_ref = ui.party_body
+		for tab in ["Spells","Skills","Features","Character","Quest Log","Map","Notes","Rules","Inventory"]:
 			ui.right_tabs[tab].pressed.emit()
 			await settle()
 			expect(ui.current_tab==tab and ui.right_content.get_child_count()>0,"Right panel switch failed")
+			expect(ui.composer==composer_ref and ui.party_body==party_ref,"Tab switch rebuilt a permanent control")
+			inside(ui.party_body,bounds,"Persistent party panel")
+			inside(ui.send_button,bounds,"Persistent Send button")
+			if tab=="Rules":
+				expect(find_button(ui.right_content,"Rules (SRD)")!=null and find_button(ui.right_content,"Equipment")!=null,"Rules references missing")
 			if tab=="Spells":
 				expect(has_text(ui.right_content,"Class Save DC 13") and has_text(ui.right_content,"Attack +5") and has_text(ui.right_content,"Level 1 slots: 1 / 2"),"Spell statistics not displayed from actor")
 			elif tab=="Skills":
@@ -435,15 +442,23 @@ func test_bound_ui_fixture(snapshot: Dictionary,campaign: Dictionary,base: Contr
 	var previous_count = received.size()
 	var stale = ui.map_intention({"kind":"travel_intention","campaign_id":campaign["id"],"expected_revision":ui.intents.revision-1,"destination_id":TEST_DEST})
 	expect(not stale.get("ok",false) and received.size()==previous_count,"Stale map intent reached controller")
-	ui.composer.text = "  I inspect the door.  "
-	ui.send_button.pressed.emit()
+	var original_input = "  I inspect the door.  \nThen I look inside.  "
+	ui.composer.text = original_input
+	ui.composer.grab_focus()
+	var enter = InputEventKey.new()
+	enter.pressed=true
+	enter.keycode=KEY_ENTER
+	root.push_input(enter,true)
+	var repeat_enter = enter.duplicate() as InputEventKey
+	repeat_enter.echo=true
+	root.push_input(repeat_enter,true)
 	await settle()
-	expect(received.size()==previous_count+1 and received[-1]["kind"]=="chat" and received[-1]["args"]["text"]=="  I inspect the door.  ","Chat altered original input")
-	expect(not ui.composer.editable and ui.composer.text=="  I inspect the door.  ","Chat draft cleared before settlement")
+	expect(received.size()==previous_count+1 and received[-1]["kind"]=="chat" and received[-1]["args"]["text"]==original_input,"Chat altered original input")
+	expect(not ui.composer.editable and ui.composer.text==original_input,"Chat draft cleared before settlement")
 	var chat_id = ui.intents.outstanding_id
 	if not chat_id.is_empty():
 		var pending_view = settled_view(fixture,chat_id,"busy","accepted_pending")
-		expect(ui.apply_authoritative_view(pending_view) and ui.composer.text=="  I inspect the door.  " and not ui.composer.editable,"Pending chat refresh cleared draft or unlocked")
+		expect(ui.apply_authoritative_view(pending_view) and ui.composer.text==original_input and not ui.composer.editable,"Pending chat refresh cleared draft or unlocked")
 		var final_view = settled_view(pending_view,chat_id)
 		expect(ui.apply_authoritative_view(final_view) and ui.composer.text.is_empty() and ui.composer.editable,"Committed chat refresh did not settle draft")
 	base.remove_child(ui)

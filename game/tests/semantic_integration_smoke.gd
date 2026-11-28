@@ -385,7 +385,7 @@ func menu_shortcuts_case(id: String) -> void:
 	var escape = InputEventKey.new()
 	escape.pressed=true
 	escape.keycode=KEY_ESCAPE
-	current.composer.text="Keep this draft after Esc."
+	current.composer.text="Keep this draft after Esc.\nSecond line with spaces.  "
 	current.composer.grab_focus()
 	current.local_pending_id="unconfirmed"
 	root.push_input(escape,true)
@@ -400,7 +400,7 @@ func menu_shortcuts_case(id: String) -> void:
 	game.show_screen("Game Workspace")
 	await process_frame
 	await process_frame
-	expect(game.campaign_screen.workspace.composer.text=="Keep this draft after Esc.","Reopened campaign restores the exact draft")
+	expect(game.campaign_screen.workspace.composer.text=="Keep this draft after Esc.\nSecond line with spaces.  ","Reopened campaign restores the exact draft")
 	game.queue_free()
 
 func transport_retry_case(id: String) -> void:
