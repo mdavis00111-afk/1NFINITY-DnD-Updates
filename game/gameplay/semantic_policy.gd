@@ -1,6 +1,6 @@
 extends RefCounted
-## C5b local policy: semantic judgments are bounded evidence. Only this
-## local code creates C3 clearance; C3 independently validates mechanics.
+## Local authorization from journal-bound requests and persisted facts.
+## C3 independently validates mechanics; provider assessments are never authority.
 const REG=preload("res://gameplay/tool_registry.gd")
 const DTO=preload("res://world/world_dto.gd")
 const RAW=preload("res://turns/raw_mechanics.gd")
@@ -47,85 +47,57 @@ func direct_safe(req: Dictionary,job: Dictionary,state: Dictionary) -> bool:
 		return true
 	return exact and req["kind"] in DIRECT_SAFE and controller.registry.noncombat.safe_actor(state)
 
-func validate_assessment(req: Dictionary,report: Variant,job: Dictionary,state: Dictionary) -> Dictionary:
-	if not bound_request(req,job,state) or not DTO.exact_keys(report,["disposition","intent_evidence","context","ruling","reason"]) or report["disposition"]!="supported" or not DTO.bounded_text(report["reason"],1000) or not report["ruling"] is Dictionary or not report["context"] is Array or report["context"].size()>12:
-		return {"ok":false,"error":"Contextual action not established."}
+# Only local state and the exact journal-bound request can authorize mechanics.
+func local_decision(req: Dictionary,job: Dictionary,state: Dictionary) -> Dictionary:
+	if not bound_request(req,job,state):
+		return {"ok":false,"error":"Request identity or campaign revision changed."}
 	var kind=req["kind"]
-	if kind in DESCRIPTIVE and kind!="story_update" and not controller.discovery_request_valid(req,job,state):
-		return {"ok":false,"error":"Discovery arguments differ from staged proposal."}
 	var args=req["args"]
-	var original=intent_text(req,job,state)
-	if not DTO.bounded_text(report["intent_evidence"],2000) or not original.contains(report["intent_evidence"]):
-		return {"ok":false,"error":"Contextual decision lacks exact intent/source evidence."}
-	if not controller.registry.noncombat.quiet_context(state):
-		return {"ok":false,"error":"Active encounter outside supported mechanics."}
-	var evidence_ids: Array=[]
-	for entry in report["context"]:
-		if not DTO.exact_keys(entry,["event_id","evidence"]) or not DTO.whole(entry["event_id"],1) or not DTO.bounded_text(entry["evidence"],2000):
-			return {"ok":false,"error":"Malformed contextual evidence."}
-		var event=controller.registry.session.source(state,entry["event_id"])
-		if not controller.registry.session.public_source(event) or not source_text(event).contains(entry["evidence"]):
-			return {"ok":false,"error":"Context evidence is not a committed public event."}
-		if controller.registry.source_valid(state,int(entry["event_id"])):
-			evidence_ids.append(entry["event_id"])
-	# Consequential context is assessed against actual public local events;
-	# a semantic inference from silence is not evidence of access/consent.
-	if kind in CHECKS+ROUTES+["rest","attune","unattune","item_transfer","currency_transfer","loot_pickup","loot_take_all","object_interact","party_membership","loot_discover","actor_generate","story_update","define_custom","define_official"] and evidence_ids.is_empty():
-		return {"ok":false,"error":"Local context evidence is required."}
-	if args.has("source_event_id") and not args["source_event_id"] in evidence_ids:
-		return {"ok":false,"error":"Proposed source does not match the contextual evidence."}
+	var nc=controller.registry.noncombat
+	if not nc.quiet_context(state):
+		return {"ok":false,"error":"Active encounter or unavailable encounter state; noncombat action blocked."}
 	var ruling: Dictionary={}
-	var proposed=report["ruling"]
-	if kind in CHECKS:
-		if not RAW.actor_ready(state["actor"]) or not state["actor"].get("review_required",[]).is_empty() or not DTO.exact_keys(proposed,["seconds","establish_clock","optional_features_resolved","verified_circumstances","effect_dc"]) or proposed["establish_clock"]!=false or proposed["optional_features_resolved"]!=true or proposed["verified_circumstances"]!=args["circumstances"] or (proposed["seconds"]!=null and not DTO.whole(proposed["seconds"],0,RAW.MAX_WALK_SECONDS)):
-			return {"ok":false,"error":"Check features, timing or circumstances not established."}
-		for circumstance in args["circumstances"]:
-			if not circumstance["source_event_id"] in evidence_ids:
-				return {"ok":false,"error":"Advantage/disadvantage needs actual local evidence."}
-		var dc: Variant=null
-		if kind=="saving_throw":
-			# Only an already persisted structured triggering effect can supply DC.
-			var trigger=controller.registry.session.source(state,args["source_event_id"]).get("data",{})
-			var effect=trigger.get("verified_saving_throw",{})
-			if not effect is Dictionary or effect.get("actor_id")!=state["actor_id"] or effect.get("ability")!=args["ability"] or not DTO.whole(effect.get("dc"),0,DTO.MAX_INT) or proposed["effect_dc"]!=effect["dc"]:
-				return {"ok":false,"error":"No verified triggering saving-throw DC."}
-			dc=effect["dc"]
-		elif proposed["effect_dc"]!=null or not RAW.DIFFICULTY.has(args["difficulty"]):
-			return {"ok":false,"error":"Use actual RAW difficulty category, not invented numeric DC."}
-		ruling={"seconds":proposed["seconds"],"establish_clock":false,"optional_features_resolved":true,"verified_circumstances":args["circumstances"],"effect_dc":dc}
+	if kind in DESCRIPTIVE:
+		if descriptive_assessment(req,job,state).is_empty():
+			return {"ok":false,"error":"Committed descriptive source or staged proposal unavailable."}
+	elif direct_safe(req,job,state):
+		if kind in ROUTINE:
+			ruling={"safe_nonmechanical":true,"seconds":0,"establish_clock":false}
+	elif kind in ["equip","quick_equip","swap","unequip","item_use","item_drop","resource_use","spell_prepare","spell_unprepare"]:
+		if not nc.safe_actor(state):
+			return {"ok":false,"error":"Actor outside supported noncombat mechanics."}
+		# Self-contained handlers independently validate ownership, equipment,
+		# target, quantities, resources and the committed preparation window.
+		if args.has("target_id") and args["target_id"]!=state["actor_id"]:
+			return {"ok":false,"error":"Only explicit self-target use is supported."}
+		if args.has("instance_id"):
+			var owned=nc.read_owned(state,state["actor_id"])
+			if not owned.get("ok",false):
+				return {"ok":false,"error":"Authoritative ownership or equipment state unavailable."}
+			if not owned["items"].has(args["instance_id"]):
+				return {"ok":false,"error":"Selected item is not owned."}
+			if args.has("quantity") and args["quantity"]>owned["items"][args["instance_id"]]["quantity"]:
+				return {"ok":false,"error":"Requested quantity exceeds owned quantity."}
+	elif kind in CHECKS:
+		return {"ok":false,"error":"No local challenge/feature authorization: difficulty, triggering effect and optional roll features must be established before rolling."}
 	elif kind in ROUTES:
-		if not DTO.exact_keys(proposed,["difficult","clearance","establish_clock"]) or not proposed["difficult"] is bool or proposed["clearance"]!="verified_unobstructed_supplied_foot_travel" or proposed["establish_clock"]!=false:
-			return {"ok":false,"error":"Route clearance, terrain or clock not established."}
-		var context=controller.scene_context(state)
-		if not context.get("ok",false) or not context["scene"]["routes"].any(func(route): return route["id"]==args["route_id"] and state["location_id"] in [route["from_id"],route["to_id"]] and args["destination_id"] in [route["from_id"],route["to_id"]] and args["destination_id"]!=state["location_id"]):
-			return {"ok":false,"error":"Route is not an established local route."}
-		ruling={"difficult":proposed["difficult"],"clearance":"verified_unobstructed_supplied_foot_travel","establish_clock":false}
-	elif kind in ROUTINE+["wait"]:
-		if not DTO.exact_keys(proposed,["safe_nonmechanical","seconds","establish_clock"]) or proposed["safe_nonmechanical"]!=true or proposed["seconds"]!=args.get("seconds",0) or not proposed["establish_clock"] is bool or (proposed["establish_clock"] and (kind!="wait" or state["elapsed_seconds"]!=null or not DTO.whole(args.get("seconds"),1,RAW.MAX_WALK_SECONDS))):
-			return {"ok":false,"error":"No-roll action, duration or tracked epoch not established."}
-		ruling={"safe_nonmechanical":true,"seconds":args.get("seconds",0),"establish_clock":proposed["establish_clock"]}
+		return {"ok":false,"error":"Route terrain, hazards and supplies are not established by a local clearance record."}
+	elif kind in ["rest","attune","unattune"]:
+		return {"ok":false,"error":"Uninterrupted rest or attunement context is not established."}
+	elif kind in ["item_transfer","currency_transfer","party_membership"]:
+		return {"ok":false,"error":"Verified participant consent is not established; no transfer or membership change."}
+	elif kind in ["loot_pickup","loot_take_all","object_interact"]:
+		return {"ok":false,"error":"Local access, ownership rights or unobstructed object state are not established."}
+	elif kind=="spell_cast":
+		return {"ok":false,"error":"Casting context including component availability is not established locally."}
+	elif kind=="wait":
+		return {"ok":false,"error":"Safe uninterrupted duration is not established locally."}
 	else:
-		if not proposed.is_empty():
-			return {"ok":false,"error":"Standalone tool cannot accept proposed mechanical patches."}
-		if not kind in DESCRIPTIVE+["party_membership","reconcile_legacy_slots"] and not controller.registry.noncombat.safe_actor(state):
-			return {"ok":false,"error":"Actor outside supported noncombat slice."}
-		if kind in ["item_transfer","currency_transfer"]:
-			if args["from_actor_id"]==args["to_actor_id"] or not state["actor_id"] in [args["from_actor_id"],args["to_actor_id"]]:
-				return {"ok":false,"error":"Invalid local transfer participants."}
-			var npc=args["to_actor_id"] if args["from_actor_id"]==state["actor_id"] else args["from_actor_id"]
-			var local=controller.enquiry("actors",{"location_id":state["location_id"]},64)
-			if not local.get("ok",false) or not local["data"]["actors"].any(func(row): return row["actor_id"]==npc and row["kind"]=="npc"):
-				return {"ok":false,"error":"Transfer requires disclosed local NPC."}
-		if req==job.get("consequence_request"):
-			var pending=job.get("pending_consequence",{})
-			var consent=pending.get("proposal",{}).get("consent","")
-			if not DTO.bounded_text(consent,2000) or not original.contains(consent) or not job.get("narration_event_id") in evidence_ids or pending.get("candidate_hash")!=str(pending.get("candidate",{}).get("text","")).sha256_text():
-				return {"ok":false,"error":"Original consent or committed pending-offer source unavailable."}
-	# Every rule reference used by C3 must exist in the pinned catalogue.
+		return {"ok":false,"error":"Action has no supported local contextual authorization."}
 	for section in REG.TOOLS[kind][2]:
 		var rule=controller.enquiry("rule_record",{"category":"rule-sections","id":section},1)
 		if not rule.get("ok",false):
-			return {"ok":false,"error":"Pinned applicable rule unavailable."}
+			return {"ok":false,"error":"Pinned applicable rule unavailable: "+section}
 	return {"ok":true,"ruling":ruling}
 
 # Derive descriptive clearance only from the exact staged proposal and committed public narration.
@@ -159,21 +131,13 @@ func review(req: Dictionary,scope: Dictionary,intent: Dictionary) -> Dictionary:
 	var job=controller.active()
 	if not state.get("ok",false) or scope.get("location_id")!=state["location_id"] or scope.get("revision")!=state["revision"] or not controller.registry.session.typed_equal(intent,job.get("intent")) or not bound_request(req,job,state):
 		return out
-	if direct_safe(req,job,state):
-		out["accepted"]=true
-		out["ruling"]={"safe_nonmechanical":true,"seconds":0,"establish_clock":false} if req["kind"] in ROUTINE else {}
-		out["reason"]="Local explicit safe selection or no-effect observation."
-		return out
-	var record=job.get("context_review",{})
-	if not record.get("authorization_version") in ["combined-v027","committed-description-v027"] or not controller.registry.session.same_request(record.get("request"),req) or record.get("revision")!=state["revision"] or not DTO.id_valid(record.get("attempt_id")):
-		return out
-	var checked=validate_assessment(req,record.get("report"),job,state)
+	var checked=local_decision(req,job,state)
 	if checked.get("ok",false):
 		out["accepted"]=true
 		out["ruling"]=checked["ruling"]
-		out["reason"]="Locally validated contextual evidence and registered rule shape."
+		out["reason"]="Deterministic local authorization; registered handler validates mechanics."
 	else:
-		out["reason"]=checked["error"]
+		out["reason"]=checked.get("error","Local authorization unavailable.")
 	return out
 
 # C4 compatibility callback checks the same durable independent reports.

@@ -814,20 +814,13 @@ func cancel() -> Dictionary:
 	advance.call_deferred()
 	return {"ok":true}
 
-func prepare_review(req: Dictionary,resume_stage: String) -> bool:
+func prepare_review(req: Dictionary,_resume_stage: String) -> bool:
 	if not reload():
 		return false
-	var job=active().duplicate(true)
-	var state=data["state"]
-	if policy.direct_safe(req,job,state):
+	var checked=policy.local_decision(req,active(),data["state"])
+	if checked.get("ok",false):
 		return true
-	var descriptive=policy.descriptive_assessment(req,job,state)
-	if not descriptive.is_empty():
-		var checked=policy.validate_assessment(req,descriptive,job,state)
-		if checked.get("ok",false):
-			job["context_review"]={"request":req.duplicate(true),"revision":state["revision"],"attempt_id":registry.session.make_id(),"report":descriptive,"authorization_version":"committed-description-v027"}
-			return update_active(job)
-	stop("clarification","Local contextual authorization required. No unverified action executed.")
+	stop("clarification",checked.get("error","Local contextual authorization unavailable."))
 	return false
 
 func advance() -> void:
