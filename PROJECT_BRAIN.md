@@ -721,3 +721,7 @@ Owner authorized deferring intermediate native QA to consolidated release-candid
 
 ### Narration reconciliation outcome binding
 Version new local outcome fingerprints (v2) using full-precision sorted JSON roundtrip and strict typed equality before hashing. Reject unknown fingerprint versions and empty canonical hashes; retain exact legacy v1 verification for existing pending candidates. Extend active candidate reopen fixture with equivalent integer/float and changed roll/string checks. This addresses a potential representation-sensitive reconciliation failure, not a proven native root cause. Native validation deferred; no GUI or release changes.
+
+
+### Deferred world reconciliation audit
+Discovery already persists request identity before execution and validates exact committed settlement before advancing. Base story processing lacked equivalent staged proposal binding: validate request ID, campaign, actor, story kind and exact source-bound arguments before settlement lookup, and current revision before fresh execution. Reject negative deferred cursors. Existing settlement replay remains intact; no new writes or schema changes. Static source review only; native interrupted quest/story and discovery regression validation outstanding. No publication.

@@ -546,6 +546,9 @@ func process_story() -> void:
 		return
 	var index=int(job.get("discovery_index",0))
 	var discoveries=job.get("discoveries",[])
+	if index<0 or int(job.get("story_index",0))<0:
+		stop("retry","Invalid deferred world cursor.")
+		return
 	if index>=discoveries.size():
 		if job.has("pending_consequence"):
 			process_consequence()

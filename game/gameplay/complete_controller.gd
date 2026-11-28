@@ -618,6 +618,9 @@ func process_story() -> void:
 	var job=active().duplicate(true)
 	var stories=job.get("story",[])
 	var index=int(job.get("story_index",0))
+	if index<0:
+		stop("retry","Invalid deferred story cursor.")
+		return
 	if index>=stories.size():
 		finish("committed","Turn and deferred processing complete.")
 		return
@@ -635,11 +638,19 @@ func process_story() -> void:
 		job["story_request"]=req
 		if not update_active(job):
 			return
+	var expected_args=item["args"].duplicate(true)
+	expected_args["source_event_id"]=job["narration_event_id"]
+	if not DTO.id_valid(req.get("request_id")) or req.get("kind")!="story_update" or req.get("campaign_id")!=campaign_id or req.get("actor_id")!=actor_id or not registry.session.typed_equal(req.get("args"),expected_args):
+		stop("retry","Deferred story request differs from committed narrative proposal.")
+		return
 	var prior=registry.session.settlement(campaign_id,req["request_id"])
 	if not prior.get("ok",false):
 		stop("retry","Deferred story settlement unavailable.")
 		return
 	if not prior.get("found",false):
+		if not registry.session.typed_equal(req.get("expected_revision"),data["state"]["revision"]):
+			stop("retry","Deferred story revision changed.")
+			return
 		if not prepare_review(req,"post_story"):
 			return
 		running=true
