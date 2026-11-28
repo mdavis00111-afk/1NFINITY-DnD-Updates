@@ -254,7 +254,7 @@ func gear_stats(pack: Dictionary,actor: Dictionary) -> Dictionary:
 	return {"equipment":{"armor_id":armor_id,"shield_id":shield_id,"weapon_ids":weapons,"armor_proficient":armor_proficient,"shield_proficient":shield_proficient,"armor_penalty":not armor_proficient or not shield_proficient,"protection_bonus":bonus},"armor_class":ac,"speed_feet":speed,"saving_throws":saves}
 
 func same_gear(stats: Dictionary,actor: Dictionary) -> bool:
-	if stats.is_empty() or stats["armor_class"]!=actor["combat"].get("armor_class") or stats["speed_feet"]!=actor["combat"].get("speed_feet") or stats["saving_throws"]!=actor.get("saving_throws"):
+	if stats.is_empty() or stats["armor_class"]!=actor["combat"].get("armor_class") or stats["speed_feet"]!=actor["combat"].get("speed_feet") or not typed_equal(stats["saving_throws"],actor.get("saving_throws")):
 		return false
 	var current = actor.get("equipment",{})
 	for key in ["armor_id","shield_id","armor_penalty"]:

@@ -107,6 +107,25 @@ func run() -> void:
 	if bag.size()<6:
 		finish()
 		return
+	var gear_service=preload("res://persistence/noncombat_store.gd").new()
+	var gear_state=session.token(id)
+	var gear_pack=gear_service.read_owned(gear_state,gear_state["actor_id"])
+	if gear_pack.get("ok",false):
+		var gear_actor=gear_pack["actor"]
+		var calculated=gear_service.gear_stats(gear_pack,gear_actor)
+		if not calculated.is_empty():
+			print("Equipment saving throws raw equality: ",calculated["saving_throws"]==gear_actor["saving_throws"]," typed equality: ",session.typed_equal(calculated["saving_throws"],gear_actor["saving_throws"]))
+			expect(gear_service.same_gear(calculated,gear_actor),"Equivalent persisted gear rejected")
+			var wrong=gear_actor.duplicate(true)
+			wrong["saving_throws"]["str"]+=1
+			expect(not gear_service.same_gear(calculated,wrong),"Incorrect saving throw accepted")
+			wrong=gear_actor.duplicate(true)
+			wrong["saving_throws"]["str"]=str(wrong["saving_throws"]["str"])
+			expect(not gear_service.same_gear(calculated,wrong),"String saving throw accepted")
+		else:
+			expect(false,"Gear calculation unavailable")
+	else:
+		expect(false,"Gear fixture read failed")
 	var req=request(id,"equip",{"instance_id":bag["shield"],"slot":"shield","grip":"one_handed"})
 	expect(not registry.execute(id,req,Callable()).get("ok",false),"Unreviewed equip accepted")
 	var eq=registry.execute(id,req,review)

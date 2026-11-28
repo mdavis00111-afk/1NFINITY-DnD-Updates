@@ -244,7 +244,7 @@ func run() -> void:
 		finish()
 		return
 	assert_loot_sql(id,container_id,custom_id,false)
-	print("Discovery projection coins: ",view["actor"]["coins"]," raw equality: ",session.typed_equal(view["actor"]["coins"],money(2))," typed equality: ",session.typed_equal(view["actor"]["coins"],money(2)))
+	print("Discovery projection coins: ",view["actor"]["coins"]," raw equality: ",view["actor"]["coins"]==money(2)," typed equality: ",session.typed_equal(view["actor"]["coins"],money(2)))
 	expect(session.typed_equal(view["actor"]["coins"],money(2)) and view["inventory"][0]["quantity"]==2,"Loot transferred automatically")
 	var dagger_instance = ""
 	for row in extension["loot_containers"][0]["items"]:
@@ -256,7 +256,8 @@ func run() -> void:
 	var before_failed_pickup = loot_sql(id,container_id)
 	print("Before failed pickup SQL: ",before_failed_pickup)
 	expect(not loot.pickup(id,pickup,clearance(pickup,"loot_transfer")).get("ok",false),"Injected failure not rejected")
-	expect(session.token(id)["revision"]==frozen["revision"] and not session.settlement(id,pickup["request_id"]).get("found",false) and session.typed_equal(base.gameplay_view(id)["actor"]["coins"],money(2)),"Failed pickup partially persisted")
+	var absent_settlement=session.settlement(id,pickup["request_id"])
+	expect(session.token(id)["revision"]==frozen["revision"] and absent_settlement.get("ok",false) and not absent_settlement.get("found",false) and session.typed_equal(base.gameplay_view(id)["actor"]["coins"],money(2)),"Failed pickup partially persisted")
 	var after_failed_pickup = loot_sql(id,container_id)
 	print("After failed pickup SQL: ",after_failed_pickup)
 	assert_loot_sql(id,container_id,custom_id,false)
@@ -270,7 +271,7 @@ func run() -> void:
 	view=base.gameplay_view(id)
 	extension=view.get("interaction_extension",{})
 	assert_loot_sql(id,container_id,custom_id,true)
-	print("Closed projection coins: ",view["actor"]["coins"]," raw equality: ",session.typed_equal(view["actor"]["coins"],money(7))," typed equality: ",session.typed_equal(view["actor"]["coins"],money(7)))
+	print("Closed projection coins: ",view["actor"]["coins"]," raw equality: ",view["actor"]["coins"]==money(7)," typed equality: ",session.typed_equal(view["actor"]["coins"],money(7)))
 	expect(session.typed_equal(view["actor"]["coins"],money(7)) and extension.get("loot_containers",[]).is_empty(),"Currency/closed loot view incorrect")
 	# The two pieces of the same discovered stack have identical provenance.
 	# They can be consolidated, not silently merged with the original master stack.

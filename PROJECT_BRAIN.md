@@ -674,3 +674,7 @@ Run 46087923985 Linux artifact 15240151290 pinned 3518ac6 confirms custom reuse 
 
 ### Native precision and projection correction
 Run 46088394508 Linux artifact 15239927487: exact decoded integer conversion succeeds at ±9007199254740991 but json_safe rejects both; adjacent lower values pass. Replace inclusive absf guard with strict signed bounds at exactly representable ±2^53. Four currency projection assertions use existing typed_equal instead of raw dictionary equality; native projection values correct and SQL assertions passed including outcome balance. No loot transaction changes. New candidate unexecuted; full process restart and equipment/resource corrections outstanding. No integration/publication.
+
+
+### Native persistence pass and scoped equipment correction
+Run 46088962585 Linux artifact 15240452068 persistence.log: C2 failures 0; ±safe boundary accepted, positive unsupported rejected. Corrected same_gear saving throw dictionary comparison only, based on calculated integer leaves versus persisted JSON numbers; native field-specific confirmation pending. Added real gear fixture positive and incorrect numeric/string negative assertions, restored raw diagnostic labels and required successful absent settlement lookup. New candidate not executed. Process restart and resource replay outstanding. No integration/publication.
