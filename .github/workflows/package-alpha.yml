@@ -1,0 +1,19 @@
+name: Package approved alpha
+on:
+  push:
+    branches: [godot]
+    paths: [release-request.json]
+permissions:
+  contents: write
+concurrency:
+  group: godot-alpha-publication
+  cancel-in-progress: false
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Package immutable source and publish atomically
+        run: python3 design/tools/package_alpha.py
