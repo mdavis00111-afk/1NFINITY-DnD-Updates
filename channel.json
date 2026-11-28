@@ -1,8 +1,8 @@
 {
   "channel": "godot",
-  "version": "0.0.32",
-  "source_commit": "fbe1474e8ebbe1add844c18832b101fe5aec80c9",
-  "notes": "Windows playtest. Retry can recover saved input after a DM connection failure. Includes clearer Gemini diagnostics, fewer duplicate campaign reads, scrollable update notes, a top-right Copy log button, and Esc to return to Main while preserving the draft.",
+  "version": "0.0.33",
+  "source_commit": "c4d52a28cd5fb1a4dc57f21c5f6cc73d632694bd",
+  "notes": "Windows playtest. Separates the Gemini DM's narration, check and mechanical request replies. Valid narration can recover from empty response placeholders. Genuine mechanical requests still go through Godot. Reopen the affected campaign and use Turn > Retry to recover the saved message.",
   "files": [
     {
       "path": "art/arcane.svg",
@@ -1238,11 +1238,11 @@
     },
     {
       "path": "gameplay/semantic_adapter.gd",
-      "blob": "13acab7d549f045ffd4f2ce18431679a636335ae"
+      "blob": "51fafdfd128fea796002648a5734849229253794"
     },
     {
       "path": "gameplay/semantic_controller.gd",
-      "blob": "ef87251a48d78d186791595b60deade1c2026227"
+      "blob": "a7ea8ab57e3caad76d480f77a384ff4338af9f96"
     },
     {
       "path": "gameplay/semantic_policy.gd",
@@ -1346,7 +1346,7 @@
     },
     {
       "path": "project.godot",
-      "blob": "aacc0b70a04e89bd8e596ff7ef38b52e3db2dd31"
+      "blob": "c05b84b32c2196d0103ffd18107b951cbbff4b47"
     },
     {
       "path": "rules/MASTER_REFERENCE.md",
@@ -1466,7 +1466,7 @@
     },
     {
       "path": "tests/semantic_integration_smoke.gd",
-      "blob": "9e76a198684f8c905fc07619bbdfdbde9488f1d2"
+      "blob": "ccea3572cb637101464e15796f8ad7aeb69c7b97"
     },
     {
       "path": "tests/sqlite_smoke.gd",
@@ -1570,7 +1570,7 @@
     },
     {
       "path": "version.txt",
-      "blob": "78bae5bb6d254d014e35be0b828497f1509d80bd"
+      "blob": "cd9d21e61aa04bf3c8b84fa5de1f3c3181056fed"
     },
     {
       "path": "world/geography_reconciler.gd",
