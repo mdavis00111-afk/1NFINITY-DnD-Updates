@@ -1,3 +1,7 @@
+## Conditional narration for basic checks
+
+Continue the DM-first branch from its verified head. The two-call conditional check is implemented. Read TESTING.md and HANDOFF.md for its scope and recovery guarantees. Keep state changes behind Godot validation and use a follow-up only when the result requires a new DM decision.
+
 ## Native DM prompt and content controls
 
 The native Storyteller and content-control port is on feature/v031-dm-first. Settings has Narrator guidance and per-profile Content Rules. Preserve existing settings when continuing the DM-first integration. No publication.

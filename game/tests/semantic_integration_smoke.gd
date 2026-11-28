@@ -238,6 +238,13 @@ func run() -> void:
 	if not expect(not shield.is_empty(),"Owned shield"):
 		finish()
 		return
+	if "--conditional-check" in OS.get_cmdline_user_args():
+		await conditional_check_case(id)
+		ctrl.close_session()
+		workspace.queue_free()
+		ctrl.queue_free()
+		finish()
+		return
 	if "--dm-first" in OS.get_cmdline_user_args():
 		await dm_first_case(id)
 		expect(players.load_record(master)==original and base.gameplay_view(b["id"])==sibling,"DM first save isolation")
@@ -272,6 +279,60 @@ func run() -> void:
 	workspace.queue_free()
 	ctrl.queue_free()
 	finish()
+
+func conditional_check_case(id: String) -> void:
+	var intent = pipeline_intent(id,"I try to work out what the inn's carved emblem represents.")
+	var start = outbound.size()
+	expect(ctrl.submit(intent).get("ok",false),"Conditional check accepted")
+	if not await pump("interpret"):
+		return
+	reply({})
+	if not await pump("narrate"):
+		return
+	ctrl.pause_reconcile=true
+	var check = {"ability":"int","skill":null,"difficulty":"nearly_impossible"}
+	var branches = {"success":"The pattern clicks into place.","failure":"The pattern remains puzzling."}
+	reply({"check":check,"branches":branches})
+	for _i in range(60):
+		await process_frame
+		if ctrl.active().get("stage")=="reconcile":
+			break
+	if not expect(ctrl.active().get("stage")=="reconcile","Selected branch staged from durable roll"):
+		return
+	var pending = session.settlement(id,intent["request_id"])
+	var stored = ctrl.registry.resolver.store.receipt_by_id(id,pending["logical_turn_id"])
+	if not expect(stored.get("found",false) and stored["receipt"]["rolls"].size()==1,"One durable roll"):
+		return
+	var chosen = stored["receipt"]["results"][0]["outcome"]
+	expect(ctrl.active()["candidate"]["text"]==branches[chosen] and outbound.size()-start==2,"Verified check selects the matching prose in two calls")
+	ctrl.close_session()
+	workspace.queue_free()
+	ctrl.queue_free()
+	await process_frame
+	if not bind(id) or not await pump("idle"):
+		return
+	var after = ctrl.registry.resolver.store.receipt_by_id(id,pending["logical_turn_id"])
+	expect(after["receipt"]==stored["receipt"] and outbound.size()-start==2,"Reopening preserves the roll and uses no extra provider call")
+	var settled = session.settlement(id,intent["request_id"])
+	var event = session.source(session.token(id),settled["event_id"])
+	expect(event.get("data",{}).get("text")==branches[chosen],"Only the chosen branch enters narration history")
+
+	intent=pipeline_intent(id,"I try to remember who designed the emblem.")
+	start=outbound.size()
+	expect(ctrl.submit(intent).get("ok",false),"Check-only request accepted")
+	if not await pump("interpret"):
+		return
+	reply({})
+	if not await pump("narrate"):
+		return
+	var serial = ctrl.adapter.serial
+	reply({"check":check})
+	if not await pump("narrate",serial):
+		return
+	var packet = ctrl.inspect_dm_packet()
+	expect(packet.get("receipt",{}).get("rolls",[]).size()==1 and outbound.size()-start==3,"Check-only path returns the verified roll to a third call")
+	reply(combined("The carving offers no clear answer."))
+	await pump("idle")
 
 func dm_first_case(id: String) -> void:
 	var before = session.token(id)

@@ -1,3 +1,7 @@
+## Conditional narration for basic checks
+
+The DM-first checkpoint now supports a one-response basic check. The DM may send a bounded RAW difficulty category, ability and optional pinned skill, plus two short prose branches. Godot chooses local public evidence, verifies a quiet eligible actor, resolves exactly one deterministic check and persists only the matching prose. The branches carry no world update, resource operation or replacement recap. A check without branches returns its committed result to the DM for normal follow-up. Initial authorization covers simple checks for quiet, healthy level-one human fighters and clerics with no subclass, feats, active inspiration or review requirements.
+
 ## Native DM prompt and content controls
 
 Ported the supplied Python Storyteller and audience controls to native Godot on the unpublished v0.0.31 branch. The existing Narrator editor holds the adapted Storyteller default. The Content Rules editor saves profile guidance and four Gemini thresholds. Campaign opening, semantic and coordinator requests use the selected profile. Existing custom guidance and narrator settings are kept. Old stock values adopt the new defaults. Provider safeguards still apply. Historical Python action schemas and rules adjudication were outside this port.

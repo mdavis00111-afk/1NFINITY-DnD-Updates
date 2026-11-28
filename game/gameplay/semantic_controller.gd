@@ -213,7 +213,32 @@ func receive_unresolved_dm(identity: Dictionary,result: Dictionary,job: Dictiona
 	var state = data["state"]
 	var text = job["intent"]["args"].get("text","")
 	var operation = result.get("mechanics",{})
-	if DTO.exact_keys(result,["mechanics"]):
+	if DTO.exact_keys(result,["check"]) or DTO.exact_keys(result,["check","branches"]):
+		var check = result["check"]
+		var branches = result.get("branches",{})
+		if not registry.dm_check_valid(check) or (result.has("branches") and (not DTO.exact_keys(branches,["success","failure"]) or not DTO.bounded_text(branches["success"],2000) or not DTO.bounded_text(branches["failure"],2000))):
+			stop("clarification","Invalid check or conditional narration.")
+			return failure(status)
+		var context = scene_context(state)
+		if not context.get("ok",false):
+			stop("retry","Check scene unavailable.")
+			return failure(status)
+		var sources: Array = context["scene"].get("recent_events",[])+context["scene"].get("location_history",[])
+		sources.sort_custom(func(a,b): return a["event_id"]>b["event_id"])
+		var evidence = 0
+		for row in sources:
+			if DTO.whole(row.get("event_id"),1) and registry.source_valid(state,int(row["event_id"])):
+				evidence=int(row["event_id"])
+				break
+		if evidence==0:
+			stop("clarification","No verified local scene event for this check.")
+			return failure(status)
+		operation={"kind":"ability_check","args":{"ability":check["ability"],"skill":check["skill"],"difficulty":check["difficulty"],"text":text,"source_event_id":evidence,"circumstances":[]}}
+		job["dm_basic_check"]=true
+		if result.has("branches"):
+			job["check_branches"]=branches.duplicate(true)
+			job["check_attempt"]=identity["attempt_id"]
+	elif DTO.exact_keys(result,["mechanics"]):
 		if not registry.interpreter_action_valid(operation) or operation["kind"] not in REG.DM_OPERATIONS or not registry.dm_operation_bound(operation,job["lookup_facts"],text):
 			stop("clarification","Requested mechanics have no supported local operation.")
 			return failure(status)
@@ -274,6 +299,22 @@ func recover_active() -> void:
 			stop("retry","Unresolved DM context changed.")
 			return
 		ask("narrate",job,{"scene":context["scene"],"turn_id":job["turn_id"],"maturity_id":state["campaign"].get("maturity_id","standard")})
+		return
+	if job.has("check_branches"):
+		var receipt = outcome(job)
+		var results = receipt.get("results",[])
+		if not PACK.committed_receipt_usable(receipt) or receipt["next_revision"]!=data["state"]["revision"] or receipt["turn_id"]!=data["state"]["pending_turn_id"] or results.size()!=1 or results[0]["kind"]!="ability_check" or not results[0]["outcome"] in ["success","failure","automatic_failure"]:
+			stop("retry","Conditional narration needs the committed check receipt.")
+			return
+		var branch = "success" if results[0]["outcome"]=="success" else "failure"
+		var attempt = job["check_attempt"]
+		job["turn_id"]=receipt["turn_id"]
+		var geo = PACK.identity(data["state"],job["turn_id"],attempt)
+		geo.merge({"source_event_id":null,"facts":[]})
+		var text = job["check_branches"][branch]
+		job.erase("check_branches")
+		job.erase("check_attempt")
+		accept_combined(job,{"text":text,"recap":"","geography":geo,"story":[],"discoveries":[]},attempt)
 		return
 	if job.has("unresolved_prose"):
 		var state = data["state"]
@@ -447,8 +488,12 @@ func accept_combined(job: Dictionary,result: Dictionary,attempt: String) -> Dict
 		return failure(status)
 	job["candidate"]=PACK.identity(data["state"],job["turn_id"],attempt)
 	job["candidate"]["text"]=result["text"]
-	job["narrative_recap"]=result["recap"]
-	job["local_recap_hash"]=result["recap"].sha256_text()
+	if result["recap"].is_empty():
+		job.erase("narrative_recap")
+		job.erase("local_recap_hash")
+	else:
+		job["narrative_recap"]=result["recap"]
+		job["local_recap_hash"]=result["recap"].sha256_text()
 	job["geography"]=result["geography"].duplicate(true)
 	# Combined transport uses one identity; the B4 local transaction uses
 	# distinct operation IDs for narration and geography. Allocate only

@@ -94,7 +94,19 @@ func local_decision(req: Dictionary,job: Dictionary,state: Dictionary) -> Dictio
 			if args.has("quantity") and args["quantity"]>owned["items"][args["instance_id"]]["quantity"]:
 				return {"ok":false,"error":"Requested quantity exceeds owned quantity."}
 	elif kind in CHECKS:
-		return {"ok":false,"error":"No local challenge/feature authorization: difficulty, triggering effect and optional roll features must be established before rolling."}
+		var actor = state["actor"]
+		# Narrow first pass. Complex feature, effect and contest cases keep
+		# their existing denial until their local mechanics are supported.
+		if kind!="ability_check" or not job.get("dm_basic_check",false) or job["intent"]["kind"]!="chat" or args["text"]!=job["intent"]["args"]["text"] or not args["circumstances"].is_empty() or not nc.safe_actor(state) or actor.get("race_id")!="human" or not actor.get("class_id") in ["fighter","cleric"] or not str(actor.get("subclass_id","")).is_empty() or not actor.get("feat_ids",[]).is_empty() or actor.get("inspiration",false):
+			return {"ok":false,"error":"This check needs local challenge or feature handling outside the supported basic check."}
+		var source = controller.registry.session.source(state,args["source_event_id"])
+		if not controller.registry.session.public_source(source) or not controller.registry.source_valid(state,int(args["source_event_id"])):
+			return {"ok":false,"error":"The check's local scene evidence is unavailable."}
+		if args["skill"]!=null:
+			var skill = controller.enquiry("rule_record",{"category":"skills","id":args["skill"]},1)
+			if not skill.get("ok",false) or skill["data"].get("ability_score",{}).get("index","").to_lower()!=args["ability"]:
+				return {"ok":false,"error":"Skill or its pinned ability does not match."}
+		ruling={"seconds":0,"establish_clock":false,"optional_features_resolved":true,"verified_circumstances":[],"effect_dc":null}
 	elif kind in ROUTES:
 		return {"ok":false,"error":"Route terrain, hazards and supplies are not established by a local clearance record."}
 	elif kind in ["rest","attune","unattune"]:

@@ -615,3 +615,6 @@ func dm_operation_bound(operation: Dictionary,facts: Array,text: String) -> bool
 				if args["instance_id"]==item["instance_id"] and input in ["i use my "+name,"use my "+name,"i eat my "+name,"eat my "+name,"i drink my "+name,"drink my "+name]:
 					return true
 	return false
+
+func dm_check_valid(check: Variant) -> bool:
+	return DTO.exact_keys(check,["ability","skill","difficulty"]) and check["ability"] in RAW.ABILITIES and (check["skill"]==null or DTO.bounded_text(check["skill"],100)) and RAW.DIFFICULTY.has(check["difficulty"])

@@ -1,3 +1,7 @@
+## Conditional narration for basic checks
+
+Added the conditional check to semantic_adapter.gd, semantic_controller.gd, semantic_policy.gd and tool_registry.gd. The existing request journal and logical receipt provide crash recovery. The selected narration is staged against the committed roll and reused on reopen. No schema or publication updates.
+
 ## Native DM prompt and content controls
 
 Codex Cloud adapted STORY_SYSTEM and content_control.py supplied by the owner. The port uses maturity_profiles.gd, narrator_prompt.gd, prompt_sharing.gd, main.gd, gemini.gd, semantic_adapter.gd, campaign_manager.gd and turn_coordinator.gd. Tests in ai_profile_smoke.gd. No runtime Python or updater change.

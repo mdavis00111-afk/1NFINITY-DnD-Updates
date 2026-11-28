@@ -1,3 +1,7 @@
+## Conditional narration for basic checks
+
+The focused --conditional-check fixture in semantic_integration_smoke.gd passed with zero failures on Godot 4.7.2 Linux with the test-only SQLite bridge and mock Gemini. It verified two calls, one committed roll, only the selected branch entering history, reopen without another call or roll, and a check-only third call with the same verified roll. Standalone parser, Godot controller check-only and Git whitespace checks passed. Windows and live Gemini remain untested.
+
 ## Native DM prompt and content controls
 
 Godot 4.7.2 Linux ai_profile_smoke.gd passed in a disposable user directory. It checks editable profile and threshold persistence, stock migration, Standard fallback, campaign transport payload and non-campaign provider defaults. GDScript parser and whitespace checks passed. Windows Settings and live Gemini validation are outstanding.
