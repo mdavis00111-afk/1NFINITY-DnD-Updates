@@ -190,6 +190,7 @@ func run() -> void:
 		quit(2)
 		return
 	prompt_fixture()
+	expect(not session.same_request(null,{}) and not session.same_request({},null) and not session.same_request("invalid",{}),"Absent or malformed staged request fails closed")
 	var players=PLAYER.new()
 	var master=players.make_id()
 	if not expect(players.save_record(master_record(master)).is_empty(),"Master fixture"):

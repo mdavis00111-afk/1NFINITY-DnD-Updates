@@ -157,7 +157,7 @@ func review(req: Dictionary,scope: Dictionary,intent: Dictionary) -> Dictionary:
 	var out={"request_id":req["request_id"],"campaign_id":req["campaign_id"],"actor_id":req["actor_id"],"expected_revision":req["expected_revision"],"accepted":false,"ruling":{},"reason":"Independent contextual evidence unavailable."}
 	var state=controller.registry.session.token(req["campaign_id"])
 	var job=controller.active()
-	if not state.get("ok",false) or scope.get("location_id")!=state["location_id"] or scope.get("revision")!=state["revision"] or intent!=job.get("intent") or not bound_request(req,job,state):
+	if not state.get("ok",false) or scope.get("location_id")!=state["location_id"] or scope.get("revision")!=state["revision"] or not controller.registry.session.typed_equal(intent,job.get("intent")) or not bound_request(req,job,state):
 		return out
 	if direct_safe(req,job,state):
 		out["accepted"]=true
@@ -165,7 +165,7 @@ func review(req: Dictionary,scope: Dictionary,intent: Dictionary) -> Dictionary:
 		out["reason"]="Local explicit safe selection or no-effect observation."
 		return out
 	var record=job.get("context_review",{})
-	if not record.get("authorization_version") in ["combined-v027","committed-description-v027"] or record.get("request")!=req or record.get("revision")!=state["revision"] or not DTO.id_valid(record.get("attempt_id")):
+	if not record.get("authorization_version") in ["combined-v027","committed-description-v027"] or not controller.registry.session.same_request(record.get("request"),req) or record.get("revision")!=state["revision"] or not DTO.id_valid(record.get("attempt_id")):
 		return out
 	var checked=validate_assessment(req,record.get("report"),job,state)
 	if checked.get("ok",false):

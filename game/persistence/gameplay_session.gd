@@ -32,7 +32,9 @@ func request_valid(request: Variant,version: String = VERSION) -> bool:
 
 # Compare requests in the same JSON representation used by durable storage.
 # Godot JSON decodes numbers as floats, including nested integer operands.
-func same_request(a: Dictionary,b: Dictionary) -> bool:
+func same_request(a: Variant,b: Variant) -> bool:
+	if not a is Dictionary or not b is Dictionary:
+		return false
 	var left = JSON.new()
 	var right = JSON.new()
 	if not request_valid(a,str(a.get("schema_version",""))) or not request_valid(b,str(b.get("schema_version",""))):

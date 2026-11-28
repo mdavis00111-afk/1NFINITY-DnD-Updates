@@ -749,3 +749,7 @@ Linux exact 3a28bef: import PASS, 397 files, 10/14; world now PASS, campaign zer
 
 ### C4 transition and GUI diagnostic follow-up
 Source inspection confirms base recover_active always dispatched narrate even after accepted candidate advanced to critical/background. Restore stage-specific dispatch for C4 base fixture/controller; explicit semantic subclass override keeps combined production protocol at narrate/reconcile only, including legacy recovery. GUI smoke now reports exact control path, rectangle, bounds and minimum size on failure, with identical enclosure tolerance; approved GUI untouched. Native tests not executed; next run must confirm C4 progression and identify actual clipping controls. No publication.
+
+
+### Semantic authorization and ordered recovery audit
+Owner will handle GUI corrections separately; retain GUI failures as outstanding, no layout changes. Fixed same_request typed Dictionary parameters rejecting null/malformed optional staged slots before validation: accepts Variant and fails closed unless both dictionaries. Final policy review now uses canonical request and typed intent comparison, not raw equality. Fresh interpretation clears prior assessment; ordered continuation requires exact committed request identity and successful settlement read. Added active malformed/absent request regression. Native execution pending; no release or GUI change.

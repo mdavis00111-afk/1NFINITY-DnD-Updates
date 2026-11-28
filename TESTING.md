@@ -434,3 +434,7 @@ Candidate includes canonical settlement/authorization comparisons, versioned out
 
 ### v0.0.27 consolidated validation package
 Prepared design/V027_RELEASE_CANDIDATE.md using existing native runner and release safety helper; specifies exact-SHA full suite evidence, live acceptance and updater/profile rollback gates. No new runtime dependency, no game source change, no tests executed or release published. Latest verified native baseline 10/14 both OS. Candidate awaits consolidated native evidence.
+
+
+### Semantic authorization and ordered recovery audit
+Owner will handle GUI corrections separately; retain GUI failures as outstanding, no layout changes. Fixed same_request typed Dictionary parameters rejecting null/malformed optional staged slots before validation: accepts Variant and fails closed unless both dictionaries. Final policy review now uses canonical request and typed intent comparison, not raw equality. Fresh interpretation clears prior assessment; ordered continuation requires exact committed request identity and successful settlement read. Added active malformed/absent request regression. Native execution pending; no release or GUI change.

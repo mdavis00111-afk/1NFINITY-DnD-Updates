@@ -197,6 +197,8 @@ func receive_interpretation(identity: Dictionary,result: Dictionary,selected: Ar
 	if job["intent"]["kind"]=="chat":
 		job["input_evidence"]={"request":req.duplicate(true),"original":job["intent"]["args"]["text"],"revision":data["state"]["revision"]}
 	job.erase("input_candidate")
+	# Never carry an earlier action assessment into a fresh interpretation.
+	job.erase("context_review")
 	job["tool"]=req
 	# Bind the combined interpretation/assessment to the exact local request.
 	# Existing independent interpretation remains until checkpoint 3.
@@ -636,7 +638,7 @@ func finish(status_code: String,message: String) -> void:
 				if result.get("outcome") in ["failure","automatic_failure","failed"]:
 					super.finish("cancelled","Prior mechanical outcome remains committed; dependent actions stopped after failure.")
 					return
-		if not settled.get("found",false) or settled["status"]!="committed":
+		if not settled.get("ok",false) or not settled.get("found",false) or settled["status"]!="committed" or not registry.session.same_request(settled.get("request"),job["tool"]):
 			stop("retry","Dependent action cannot start without prior settlement.")
 			return
 		var done=job.get("completed_steps",[])
