@@ -471,3 +471,7 @@ Source checkpoints 3–5 implemented; do not restart historical C1–C6. Native 
 
 ### Alpha 0.0.27 packaging
 Owner authorized live testing instead of mandatory GitHub gameplay regression. Latest Linux baseline 12/14; semantic corrections unverified; GUI owner-managed. No claim of native or live acceptance. Packaging only.
+
+
+### Alpha 0.0.29 packaging
+Owner authorized live testing instead of mandatory GitHub gameplay regression. Latest Linux baseline 12/14; semantic corrections unverified; GUI owner-managed. No claim of native or live acceptance. Packaging only.
