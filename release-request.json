@@ -1,6 +1,6 @@
 {
-  "version": "0.0.30",
-  "source_commit": "738d1e383360e5531c8974b55f069497a2b6dc4d",
+  "version": "0.0.31",
+  "source_commit": "0223e259562bd6da736fb28370d65c8803ce579e",
   "approved_new_paths": [],
-  "notes": "Separates compact intent interpretation from the complete, verified DM packet. Includes local lookup selection, inspectable outbound narration binding and preserved inscription recovery. See TESTING.md for owner Windows acceptance."
+  "notes": "DM-first alpha. Corrected lookup and narration response contracts for ordinary dialogue, optional world proposals, and supported mechanics. Includes editable content controls, conditional checks, and map sketch. See TESTING.md for Windows acceptance."
 }
