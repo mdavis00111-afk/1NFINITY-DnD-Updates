@@ -432,7 +432,7 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 	if closed or running or notifying or not reload():
 		return failure("Controller unavailable.")
 	var job=active().duplicate(true)
-	if job.is_empty() or identity!=inflight or identity!=job.get("attempt") or identity.get("revision")!=data["state"]["revision"] or identity.get("stage")!=job["stage"] or JSON.stringify(result).length()>65536:
+	if job.is_empty() or identity!=inflight or not registry.session.typed_equal(identity,job.get("attempt")) or identity.get("revision")!=data["state"]["revision"] or identity.get("stage")!=job["stage"] or JSON.stringify(result).length()>65536:
 		return failure("Stale or invalid semantic reply.")
 	var stage=job["stage"]
 	inflight={}

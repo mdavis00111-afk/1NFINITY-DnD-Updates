@@ -705,3 +705,7 @@ Owner clarified v0.0.27 is a development milestone, not feature complete. Existi
 
 ### Semantic durable identity correction
 Owner confirmed last live GUI good; preserve design, investigate headless layout separately. Linux ea43535 semantic logs show repeated interpret stage stalls. Controller compares in-memory attempt dictionaries against JSON journal readback; use existing strict typed_equal for durable attempt identity and same_request for durable settlement request checks in semantic and complete controllers. Preserve stage/revision/actor checks and provider budgets. Root cause inferred, native validation pending. No publication.
+
+
+### Native QA 46094317930 follow-up
+Both platforms tested 99a71aa: 10/14 suites pass; campaign, noncombat and cartography renderer now pass, persistence/restart remain green. C4 direct receive still compared journal attempt via raw dictionary inequality; use strict typed_equal as in semantic controller. World committed check replay assertion now requires successful replay and typed equality of entire receipt, preserving all dice values and rejecting type coercion. C5 fixture still contains obsolete adjudicate/critical/background provider stages; requires separate migration to combined contract, not bypassing authorization. GUI unchanged per owner. Native confirmation pending; no publication.

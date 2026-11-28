@@ -9,6 +9,7 @@ const WORLD = preload("res://world/world_store.gd")
 const TURN = preload("res://turns/turn_store.gd")
 const RAW = preload("res://turns/raw_mechanics.gd")
 const RESOLVER = preload("res://turns/turn_resolver.gd")
+const SESSION = preload("res://persistence/gameplay_session.gd")
 const CAT = preload("res://rules/catalog.gd")
 var failures: Array[String] = []
 
@@ -249,7 +250,8 @@ func run() -> void:
 	var roll = check_receipt["rolls"][0]
 	expect(roll["mode"]=="normal" and roll["values"].size()==1 and roll["total"]==roll["selected"]+6 and roll["target"]==15 and roll["result"]==("success" if roll["total"]>=15 else "failure"),"Incorrect check receipt")
 	expect(engine.snapshot(id).get("elapsed_seconds")==7260,"Check time not committed")
-	expect(resolver.resolve(id,token,request_id,turn_id,packet,refs,approval).get("receipt")==check_receipt,"Committed check rerolled")
+	var replayed_check=resolver.resolve(id,token,request_id,turn_id,packet,refs,approval)
+	expect(replayed_check.get("ok",false) and SESSION.new().typed_equal(replayed_check.get("receipt"),check_receipt),"Committed check replay changed receipt or failed")
 	expect(engine.commit_narration(id,turn_id,5,"The check is resolved.").get("ok",false),"Check narration failed")
 	token=engine.snapshot(id)
 	turn_id=players.make_id()
