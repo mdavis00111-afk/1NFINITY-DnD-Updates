@@ -653,3 +653,12 @@ Owner approved push-triggered packaging only, no mandatory gameplay CI. Packager
 
 
 Owner explicitly requested v0.0.27 live alpha publication. Pinned candidate 6b74eaae48887dfd4524083963f2fa18c6df1d9e. Packaging request submitted; publication not yet verified. Candidate game/design checkout avoids conflicting append-only docs; live packaging script retained.
+
+
+### Candidate development record
+
+Linux exact 527a403: 12/14 suites pass, campaign and C4 now pass, GUI eight failures owner-managed (left minimum height 708 at y74; three panels and three dice controls clip), semantic ten failures. Windows still running at inspection. Legacy fixture was comparing pending settlement result/event against committed narration result/event; now verifies actual pending-to-committed transition, canonical request, logical receipt results and unchanged actor. Descriptive authorization had another raw staged request equality; use canonical same_request. Added timeout tool/staged kind diagnostics to isolate remaining clarification. No native rerun yet; remaining semantic root cause not confirmed. No publication or GUI changes.
+
+
+### Alpha 0.0.27 packaging
+Owner authorized live testing instead of mandatory GitHub gameplay regression. Latest Linux baseline 12/14; semantic corrections unverified; GUI owner-managed. No claim of native or live acceptance. Packaging only.

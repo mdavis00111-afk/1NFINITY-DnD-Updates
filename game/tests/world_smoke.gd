@@ -9,6 +9,7 @@ const WORLD = preload("res://world/world_store.gd")
 const TURN = preload("res://turns/turn_store.gd")
 const RAW = preload("res://turns/raw_mechanics.gd")
 const RESOLVER = preload("res://turns/turn_resolver.gd")
+const SESSION = preload("res://persistence/gameplay_session.gd")
 const CAT = preload("res://rules/catalog.gd")
 var failures: Array[String] = []
 
@@ -65,6 +66,20 @@ func run() -> void:
 	if not opening.is_empty():
 		expect(base.commit_opening(id,opening["previous"],JSON.stringify({"start_id":"tavern","location_name":"Oakhaven","atmosphere":"A busy inn.","npcs":[{"name":"Mara","occupation":"Innkeeper","attitude":0}],"world_facts":["The inn has an oak door."],"thumbnail_id":"tavern"})).is_empty(),"Opening fixture failed")
 	var original_actor = base.actor_record(id)
+	var travel_fixture=original_actor.duplicate(true)
+	var travel_load={"complete":true,"known_lb":0.0}
+	for speed in [25,30,35,25.0,30.0,35.0]:
+		travel_fixture["combat"]["speed_feet"]=speed
+		expect(RAW.travel_actor(travel_fixture,[],null,travel_load).get("ok",false),"Supported travel speed rejected: "+str(speed))
+	for speed in [0,26,30.5,"30",true,null]:
+		travel_fixture["combat"]["speed_feet"]=speed
+		expect(not RAW.travel_actor(travel_fixture,[],null,travel_load).get("ok",false),"Unsupported travel speed accepted: "+str(speed))
+	travel_fixture["combat"]["speed_feet"]=30.0
+	travel_fixture["combat"]["exhaustion"]=1
+	expect(not RAW.travel_actor(travel_fixture,[],null,travel_load).get("ok",false),"Exhausted travel accepted")
+	travel_fixture["combat"]["exhaustion"]=0
+	travel_fixture["combat"]["conditions"]=["prone"]
+	expect(not RAW.travel_actor(travel_fixture,[],null,travel_load).get("ok",false),"Conditioned travel accepted")
 	var original_log = base.read_log(id)
 	var path = base.path_for(id)
 	var hidden = players.make_id()
@@ -235,7 +250,8 @@ func run() -> void:
 	var roll = check_receipt["rolls"][0]
 	expect(roll["mode"]=="normal" and roll["values"].size()==1 and roll["total"]==roll["selected"]+6 and roll["target"]==15 and roll["result"]==("success" if roll["total"]>=15 else "failure"),"Incorrect check receipt")
 	expect(engine.snapshot(id).get("elapsed_seconds")==7260,"Check time not committed")
-	expect(resolver.resolve(id,token,request_id,turn_id,packet,refs,approval).get("receipt")==check_receipt,"Committed check rerolled")
+	var replayed_check=resolver.resolve(id,token,request_id,turn_id,packet,refs,approval)
+	expect(replayed_check.get("ok",false) and SESSION.new().typed_equal(replayed_check.get("receipt"),check_receipt),"Committed check replay changed receipt or failed")
 	expect(engine.commit_narration(id,turn_id,5,"The check is resolved.").get("ok",false),"Check narration failed")
 	token=engine.snapshot(id)
 	turn_id=players.make_id()

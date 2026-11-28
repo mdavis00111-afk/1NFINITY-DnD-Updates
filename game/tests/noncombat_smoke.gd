@@ -107,12 +107,35 @@ func run() -> void:
 	if bag.size()<6:
 		finish()
 		return
+	var gear_service=preload("res://persistence/noncombat_store.gd").new()
+	var gear_state=session.token(id)
+	var gear_pack=gear_service.read_owned(gear_state,gear_state["actor_id"])
+	if gear_pack.get("ok",false):
+		var gear_actor=gear_pack["actor"]
+		var calculated=gear_service.gear_stats(gear_pack,gear_actor)
+		if not calculated.is_empty():
+			print("Equipment saving throws raw equality: ",calculated["saving_throws"]==gear_actor["saving_throws"]," typed equality: ",session.typed_equal(calculated["saving_throws"],gear_actor["saving_throws"]))
+			expect(gear_service.same_gear(calculated,gear_actor),"Equivalent persisted gear rejected")
+			var wrong=gear_actor.duplicate(true)
+			wrong["saving_throws"]["str"]+=1
+			expect(not gear_service.same_gear(calculated,wrong),"Incorrect saving throw accepted")
+			wrong=gear_actor.duplicate(true)
+			wrong["saving_throws"]["str"]=str(wrong["saving_throws"]["str"])
+			expect(not gear_service.same_gear(calculated,wrong),"String saving throw accepted")
+		else:
+			expect(false,"Gear calculation unavailable")
+	else:
+		expect(false,"Gear fixture read failed")
 	var req=request(id,"equip",{"instance_id":bag["shield"],"slot":"shield","grip":"one_handed"})
 	expect(not registry.execute(id,req,Callable()).get("ok",false),"Unreviewed equip accepted")
 	var eq=registry.execute(id,req,review)
 	expect(eq.get("ok",false),"Equip shield failed: "+str(eq.get("error","")))
 	expect(base.actor_record(id)["combat"]["armor_class"]==14,"Shield AC wrong")
 	expect(registry.execute(id,req,review).get("replayed",false),"Equip replay missing")
+	var equip_revision=session.token(id)["revision"]
+	var changed=req.duplicate(true)
+	changed["args"]["grip"]="two_handed"
+	expect(not registry.execute(id,changed,review).get("ok",false) and session.token(id)["revision"]==equip_revision,"Conflicting equip replay accepted or mutated revision")
 	var invalid_swap=action(id,"swap",{"instance_id":bag["greatsword"],"slot":"main_hand","grip":"two_handed","replace_instance_ids":[]})
 	expect(not invalid_swap.get("ok",false),"Implicit displaced shield accepted")
 	var swap=action(id,"swap",{"instance_id":bag["greatsword"],"slot":"main_hand","grip":"two_handed","replace_instance_ids":[bag["shield"]]})
@@ -124,7 +147,7 @@ func run() -> void:
 	var consumed=registry.execute(id,potion,review)
 	expect(consumed.get("ok",false) and consumed.get("result",{}).get("rolls",[]).size()==1,"Healing potion failed")
 	var replay=registry.execute(id,potion,review)
-	expect(replay.get("replayed",false) and replay.get("result")==consumed.get("result"),"Potion rerolled/replayed differently")
+	expect(replay.get("replayed",false) and session.typed_equal(replay.get("result"),consumed.get("result")),"Potion rerolled/replayed differently")
 	expect(not items(id).has("magic:potion-of-healing-common"),"Potion quantity not removed")
 	var ration=action(id,"item_use",{"instance_id":bag["rations-1-day"],"quantity":1,"target_id":actor_id})
 	expect(ration.get("ok",false) and not items(id).has("rations-1-day"),"Ration accounting failed")
@@ -136,12 +159,34 @@ func run() -> void:
 	var interrupted=registry.execute(id,resource,review)
 	expect(not interrupted.get("ok",false) and registry.noncombat.prepared.has(id),"Injected failure not retained for retry")
 	expect(session.token(id)["revision"]==before["revision"] and base.actor_record(id)["resources"]["second_wind"]["spent"]==0,"Resource partially committed")
-	var held=registry.noncombat.prepared.get(id,{}).get("result",{}).get("rolls",[])
+	var held_entry=registry.noncombat.prepared.get(id,{}).duplicate(true)
+	var held=held_entry.get("result",{}).get("rolls",[])
 	SQL.run(base.path_for(id),[SQL.stmt("DROP TRIGGER c3_fixture_abort")])
 	var retried=registry.execute(id,resource,review)
-	expect(retried.get("ok",false) and retried.get("result",{}).get("rolls",[])==held and base.actor_record(id)["resources"]["second_wind"]["spent"]==1,"Prepared retry changed dice or expenditure")
+	expect(retried.get("ok",false) and session.typed_equal(retried.get("result",{}).get("rolls",[]),held) and base.actor_record(id)["resources"]["second_wind"]["spent"]==1,"Prepared retry changed dice or expenditure")
+	if retried.get("ok",false) and not held_entry.is_empty():
+		var committed_state=session.token(id)
+		var conflicting=held_entry.duplicate(true)
+		conflicting["context"]["request"]["args"]["quantity"]=2
+		registry.noncombat.prepared[id]=conflicting
+		expect(not registry.noncombat.retry_prepared(id,resource["request_id"]).get("ok",false),"Conflicting prepared replay accepted")
+		registry.noncombat.prepared[id]=held_entry
+		var durable_replay=registry.noncombat.retry_prepared(id,resource["request_id"])
+		var replay_state=session.token(id)
+		expect(durable_replay.get("ok",false) and durable_replay.get("replayed",false) and committed_state.get("ok",false) and replay_state.get("ok",false) and replay_state["revision"]==committed_state["revision"],"Committed prepared replay failed or changed revision")
 	var short=action(id,"rest",{"rest_kind":"short","hit_dice":0,"prepared_ids":null})
-	expect(short.get("ok",false) and base.actor_record(id)["resources"]["second_wind"]["spent"]==0,"Short rest reset failed")
+	expect(short.get("ok",false) and base.actor_record(id)["resources"]["second_wind"]["spent"]==0,"Short rest reset failed: "+str(short.get("error","")))
+	if short.get("ok",false):
+		var cancel_req=request(id,"resource_use",{"resource_id":"second_wind","quantity":1,"target_id":actor_id})
+		var cancel_before=session.token(id)["revision"]
+		var cancel_fault=SQL.run(base.path_for(id),[SQL.stmt("CREATE TRIGGER c3_cancel_abort BEFORE UPDATE ON actors BEGIN SELECT RAISE(ABORT,\'fixture cancellation\'); END")])
+		expect(cancel_fault.get("ok",false),"Cancellation fault trigger failed")
+		var cancel_attempt=registry.execute(id,cancel_req,review)
+		expect(not cancel_attempt.get("ok",false) and registry.noncombat.prepared.has(id),"Cancellation fixture not prepared")
+		SQL.run(base.path_for(id),[SQL.stmt("DROP TRIGGER c3_cancel_abort")])
+		var cancelled=registry.cancel_uncommitted(id,cancel_req["request_id"])
+		var cancel_replay=registry.execute(id,cancel_req,review)
+		expect(cancelled.get("ok",false) and cancelled.get("status")=="cancelled" and cancel_replay.get("replayed",false) and not cancel_replay.get("ok",false) and cancel_replay.get("status")=="cancelled" and session.token(id)["revision"]==cancel_before and base.actor_record(id)["resources"]["second_wind"]["spent"]==0,"Cancellation replay changed state or executed")
 	# Source-backed object and contextual difficulty, no keyword matching.
 	var evidence=SQL.run(base.path_for(id),[SQL.stmt("SELECT max(id) AS id FROM events WHERE kind='gameplay_change'")],true)
 	var source_id=int(evidence["results"][0][0]["id"]) if evidence.get("ok",false) else 0

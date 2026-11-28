@@ -254,7 +254,7 @@ func gear_stats(pack: Dictionary,actor: Dictionary) -> Dictionary:
 	return {"equipment":{"armor_id":armor_id,"shield_id":shield_id,"weapon_ids":weapons,"armor_proficient":armor_proficient,"shield_proficient":shield_proficient,"armor_penalty":not armor_proficient or not shield_proficient,"protection_bonus":bonus},"armor_class":ac,"speed_feet":speed,"saving_throws":saves}
 
 func same_gear(stats: Dictionary,actor: Dictionary) -> bool:
-	if stats.is_empty() or stats["armor_class"]!=actor["combat"].get("armor_class") or stats["speed_feet"]!=actor["combat"].get("speed_feet") or stats["saving_throws"]!=actor.get("saving_throws"):
+	if stats.is_empty() or stats["armor_class"]!=actor["combat"].get("armor_class") or stats["speed_feet"]!=actor["combat"].get("speed_feet") or not typed_equal(stats["saving_throws"],actor.get("saving_throws")):
 		return false
 	var current = actor.get("equipment",{})
 	for key in ["armor_id","shield_id","armor_penalty"]:
@@ -414,7 +414,7 @@ func retry_prepared(id: String,rid: String) -> Dictionary:
 	if not prior.get("ok",false):
 		return prior
 	if prior.get("found",false):
-		if prior["request"]!=entry["context"]["request"] or prior["status"]!="committed":
+		if not same_request(prior["request"],entry["context"]["request"]) or prior["status"]!="committed":
 			return fail("Prepared request conflicts with durable settlement.")
 		prepared.erase(id)
 		return {"ok":true,"replayed":true,"result":prior["result"],"revision":prior["revision"]}
@@ -433,17 +433,17 @@ func abandon_prepared(id: String,rid: String) -> Dictionary:
 	if not prior.get("ok",false):
 		return fail("Cannot abandon an unconfirmed settlement.")
 	if prior.get("found",false):
-		if prior["status"]=="cancelled" and prior["request"]==req:
+		if prior["status"]=="cancelled" and same_request(prior["request"],req):
 			prepared.erase(id)
 			return prior
 		return fail("Cannot abandon a committed or conflicting settlement.")
 	var state=token(id)
 	if not state.get("ok",false) or state["actor_id"]!=req["actor_id"] or state["pending_turn_id"]!=null:
 		return fail("Campaign or pending narration changed.")
-	var batch=[TURN.new().guard(state),SQL.stmt("INSERT INTO meta(key,value) VALUES('c3_cancel_guard',(SELECT 'ok' WHERE NOT EXISTS(SELECT 1 FROM gameplay_requests WHERE request_id=? OR status='accepted_pending')))",[rid]),SQL.stmt("INSERT INTO gameplay_requests(request_id,actor_id,kind,expected_revision,status,request_payload,result_payload,settled_revision) VALUES(?,?,?,?,'cancelled',?,'{}',?)",[rid,req["actor_id"],req["kind"],req["expected_revision"],JSON.stringify(req),state["revision"]]),SQL.stmt("DELETE FROM meta WHERE key='c3_cancel_guard'"),SQL.stmt("DELETE FROM meta WHERE key='turn_write_guard'")]
+	var batch=[TURN.new().guard(state),SQL.stmt("INSERT INTO meta(key,value) VALUES('c3_cancel_guard',(SELECT 'ok' WHERE NOT EXISTS(SELECT 1 FROM gameplay_requests WHERE request_id=? OR status='accepted_pending')))",[rid]),SQL.stmt("INSERT INTO gameplay_requests(request_id,actor_id,kind,expected_revision,status,request_payload,result_payload,settled_revision) VALUES(?,?,?,?,'cancelled',?,'{}',?)",[rid,req["actor_id"],req["kind"],req["expected_revision"],JSON.stringify(req,"",true,true),state["revision"]]),SQL.stmt("DELETE FROM meta WHERE key='c3_cancel_guard'"),SQL.stmt("DELETE FROM meta WHERE key='turn_write_guard'")]
 	SQL.run(path(id),batch)
 	var confirmed=settlement(id,rid)
-	if not confirmed.get("found",false) or confirmed["status"]!="cancelled" or confirmed["request"]!=req:
+	if not confirmed.get("ok",false) or not confirmed.get("found",false) or confirmed["status"]!="cancelled" or not same_request(confirmed["request"],req):
 		return fail("Cancellation not confirmed; retain prepared request.")
 	prepared.erase(id)
 	return confirmed
@@ -661,8 +661,18 @@ func rest(id: String,req: Dictionary,clearance: Dictionary) -> Dictionary:
 	var args=req["args"]
 	var actor=state["actor"].duplicate(true)
 	var combat=actor["combat"]
-	if not args["rest_kind"] in ["short","long"] or not DTO.whole(args["hit_dice"],0,1) or not DTO.whole(combat.get("hit_dice_total"),1,1) or not DTO.whole(combat.get("hit_dice_spent"),0,1) or not combat.get("hit_die") in [6,8,10,12] or not DTO.whole(actor.get("ability_modifiers",{}).get("con"),-5,10) or not resource_map_valid(actor) or not slots_valid(actor) or actor["spellcasting"].get("concentration")!=null:
-		return fail("Rest hit dice, resources or effect state requires review.")
+	if not args["rest_kind"] in ["short","long"] or not DTO.whole(args["hit_dice"],0,1):
+		return fail("Rest kind or requested hit dice requires review.")
+	if not DTO.whole(combat.get("hit_dice_total"),1,1) or not DTO.whole(combat.get("hit_dice_spent"),0,1):
+		return fail("Rest hit dice accounting requires review.")
+	if not DTO.whole(combat.get("hit_die"),6,12) or not int(combat["hit_die"]) in [6,8,10,12] or not DTO.whole(actor.get("ability_modifiers",{}).get("con"),-5,10):
+		return fail("Rest hit die or Constitution modifier requires review.")
+	if not resource_map_valid(actor):
+		return fail("Rest resource map requires review.")
+	if not slots_valid(actor):
+		return fail("Rest spell slot map requires review.")
+	if actor["spellcasting"].get("concentration")!=null:
+		return fail("Rest concentration state requires review.")
 	var commands: Array=[]
 	var rolls: Array=[]
 	var restored=0

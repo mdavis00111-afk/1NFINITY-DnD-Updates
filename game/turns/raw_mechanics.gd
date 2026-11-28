@@ -200,7 +200,7 @@ static func travel_actor(actor: Dictionary, inventory: Array, cat, instance_load
 	if not actor_ready(actor):
 		return fail("Actor is not able to undertake supported travel.")
 	var combat = actor["combat"]
-	if not combat.get("speed_feet") in [25,30,35] or combat["exhaustion"]!=0 or not combat["conditions"].is_empty():
+	if not DTO.whole(combat.get("speed_feet"),25,35) or not int(combat["speed_feet"]) in [25,30,35] or combat["exhaustion"]!=0 or not combat["conditions"].is_empty():
 		return fail("Travel with conditions, exhaustion or unknown speed requires another handler.")
 	var scores = actor.get("ability_scores")
 	if not scores is Dictionary:

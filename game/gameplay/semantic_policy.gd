@@ -34,7 +34,7 @@ func rule_shape(req: Dictionary) -> Dictionary:
 func bound_request(req: Dictionary,job: Dictionary,state: Dictionary) -> bool:
 	if req.get("campaign_id")!=state["campaign_id"] or req.get("actor_id")!=state["actor_id"] or req.get("expected_revision")!=state["revision"] or not REG.TOOLS.has(req.get("kind")) or not controller.registry.arguments_valid(req["args"],REG.TOOLS[req["kind"]][0]):
 		return false
-	if req==job.get("tool") or req==job.get("story_request") or req==job.get("consequence_request"):
+	if controller.registry.session.same_request(req,job.get("tool")) or controller.registry.session.same_request(req,job.get("story_request")) or controller.registry.session.same_request(req,job.get("consequence_request")):
 		return true
 	return false
 
@@ -42,7 +42,7 @@ func direct_safe(req: Dictionary,job: Dictionary,state: Dictionary) -> bool:
 	if not bound_request(req,job,state) or not controller.registry.noncombat.quiet_context(state):
 		return false
 	var intent=job["intent"]
-	var exact=intent["kind"]==req["kind"] and intent["args"]==req["args"]
+	var exact=intent["kind"]==req["kind"] and controller.registry.session.typed_equal(intent["args"],req["args"])
 	if req["kind"] in ROUTINE and intent["kind"]=="chat" and req["args"]["text"]==intent["args"]["text"] and RAW.actor_ready(state["actor"]):
 		return true
 	return exact and req["kind"] in DIRECT_SAFE and controller.registry.noncombat.safe_actor(state)
@@ -131,7 +131,7 @@ func validate_assessment(req: Dictionary,report: Variant,job: Dictionary,state: 
 # Derive descriptive clearance only from the exact staged proposal and committed public narration.
 # The registry still validates the typed operation and performs its own transaction.
 func descriptive_assessment(req: Dictionary,job: Dictionary,state: Dictionary) -> Dictionary:
-	if not req["kind"] in DESCRIPTIVE or req!=job.get("story_request") or not bound_request(req,job,state):
+	if not req["kind"] in DESCRIPTIVE or not controller.registry.session.same_request(req,job.get("story_request")) or not bound_request(req,job,state):
 		return {}
 	if not controller.committed_job_source(job,state) or (req["kind"]!="story_update" and not controller.discovery_request_valid(req,job,state)):
 		return {}
@@ -157,7 +157,7 @@ func review(req: Dictionary,scope: Dictionary,intent: Dictionary) -> Dictionary:
 	var out={"request_id":req["request_id"],"campaign_id":req["campaign_id"],"actor_id":req["actor_id"],"expected_revision":req["expected_revision"],"accepted":false,"ruling":{},"reason":"Independent contextual evidence unavailable."}
 	var state=controller.registry.session.token(req["campaign_id"])
 	var job=controller.active()
-	if not state.get("ok",false) or scope.get("location_id")!=state["location_id"] or scope.get("revision")!=state["revision"] or intent!=job.get("intent") or not bound_request(req,job,state):
+	if not state.get("ok",false) or scope.get("location_id")!=state["location_id"] or scope.get("revision")!=state["revision"] or not controller.registry.session.typed_equal(intent,job.get("intent")) or not bound_request(req,job,state):
 		return out
 	if direct_safe(req,job,state):
 		out["accepted"]=true
@@ -165,7 +165,7 @@ func review(req: Dictionary,scope: Dictionary,intent: Dictionary) -> Dictionary:
 		out["reason"]="Local explicit safe selection or no-effect observation."
 		return out
 	var record=job.get("context_review",{})
-	if not record.get("authorization_version") in ["combined-v027","committed-description-v027"] or record.get("request")!=req or record.get("revision")!=state["revision"] or not DTO.id_valid(record.get("attempt_id")):
+	if not record.get("authorization_version") in ["combined-v027","committed-description-v027"] or not controller.registry.session.same_request(record.get("request"),req) or record.get("revision")!=state["revision"] or not DTO.id_valid(record.get("attempt_id")):
 		return out
 	var checked=validate_assessment(req,record.get("report"),job,state)
 	if checked.get("ok",false):

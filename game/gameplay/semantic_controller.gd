@@ -33,7 +33,7 @@ func bind_ai(id: String,context_reviewer: Callable=Callable(),prose_reviewer: Ca
 	return bind_campaign(id,policy.review,policy.review_prose)
 
 func matches(identity: Dictionary,stage: String) -> bool:
-	return not closed and not running and not notifying and reload() and not active().is_empty() and identity==inflight and identity==active().get("attempt") and identity.get("stage")==stage and active().get("stage")==stage and identity.get("revision")==data["state"]["revision"]
+	return not closed and not running and not notifying and reload() and not active().is_empty() and identity==inflight and registry.session.typed_equal(identity,active().get("attempt")) and identity.get("stage")==stage and active().get("stage")==stage and identity.get("revision")==data["state"]["revision"]
 
 func scene_context(state: Dictionary) -> Dictionary:
 	var key=[state["campaign_id"],state["actor_id"],state["revision"],state["pending_turn_id"],state["metadata"],state["location_id"]]
@@ -94,6 +94,8 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	expanded["public_quests"]=ext.get("public_quests",[]).slice(0,32)
 	expanded["story"]=context_builder.select_story(ext.get("story_records",[]),scene,expanded["public_actors"],str(job["intent"]["args"].get("text","")))
 	expanded["overview"]=expanded["story"].filter(func(row): return row["kind"] in ["overview","situation"])
+	# Keep overview records in one packet field, not twice.
+	expanded["story"]=expanded["story"].filter(func(row): return not row["kind"] in ["overview","situation"])
 	expanded["selected_context"]=job.get("selected_context",[])
 	expanded["recent_outcomes"]=job.get("completed_steps",[])
 	expanded["interpreted"]=job.get("tool",{})
@@ -146,6 +148,7 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 
 func receive_interpretation(identity: Dictionary,result: Dictionary,selected: Array) -> Dictionary:
 	if not matches(identity,"interpret") or JSON.stringify(result).length()>65536:
+		adapter.diagnostic("interpret_identity_or_size_rejected")
 		return failure("Stale interpretation.")
 	var job=active().duplicate(true)
 	if result.has("status"):
@@ -187,19 +190,22 @@ func receive_interpretation(identity: Dictionary,result: Dictionary,selected: Ar
 	if not job.get("completed_steps",[]).is_empty():
 		req["request_id"]=job.get("next_id",registry.session.make_id())
 		for previous in job["completed_steps"]:
-			if previous["kind"]==req["kind"] and previous["args"]==req["args"]:
+			if previous["kind"]==req["kind"] and registry.session.typed_equal(previous["args"],req["args"]):
 				stop("clarification","Repeated dependent action requires explicit new intent.")
 				return failure(status)
 	job["remaining"]=remaining
 	if job["intent"]["kind"]=="chat":
 		job["input_evidence"]={"request":req.duplicate(true),"original":job["intent"]["args"]["text"],"revision":data["state"]["revision"]}
 	job.erase("input_candidate")
+	# Never carry an earlier action assessment into a fresh interpretation.
+	job.erase("context_review")
 	job["tool"]=req
 	# Bind the combined interpretation/assessment to the exact local request.
 	# Existing independent interpretation remains until checkpoint 3.
 	if not assessment.is_empty():
 		var checked=policy.validate_assessment(req,assessment,job,data["state"])
 		if not checked.get("ok",false) and not policy.direct_safe(req,job,data["state"]):
+			adapter.diagnostic("context_assessment_rejected")
 			stop("clarification",checked.get("error","Contextual assessment unavailable."))
 			return failure(status)
 		if checked.get("ok",false):
@@ -214,6 +220,7 @@ func receive_interpretation(identity: Dictionary,result: Dictionary,selected: Ar
 	job["attempt"]={}
 	inflight={}
 	if not update_active(job):
+		adapter.diagnostic("interpret_journal_write_unconfirmed")
 		return failure("Interpretation persistence unconfirmed.")
 	refresh()
 	advance.call_deferred()
@@ -226,7 +233,7 @@ func outcome(job: Dictionary) -> Dictionary:
 	var req=job.get("tool",{})
 	if standalone(job):
 		var settled=registry.session.settlement(campaign_id,req["request_id"])
-		if not settled.get("found",false) or settled["request"]!=req or settled["status"]!="committed" or settled["logical_turn_id"]!=null:
+		if not settled.get("found",false) or not registry.session.same_request(settled["request"],req) or settled["status"]!="committed" or settled["logical_turn_id"]!=null:
 			return {}
 		var source=registry.session.source(data["state"],settled["event_id"])
 		if not registry.session.public_source(source):
@@ -234,6 +241,10 @@ func outcome(job: Dictionary) -> Dictionary:
 		return {"kind":"standalone_settlement","request_id":req["request_id"],"event_id":settled["event_id"],"revision":settled["revision"],"action":req["kind"],"result":settled["result"],"summary":source["data"].get("text","")}
 	var recovered=registry.recover(campaign_id,req.get("request_id",""))
 	return recovered["receipt"] if recovered.get("status")=="pending_narration" else {}
+
+func legacy_review_stages() -> bool:
+	# Production combined protocol never dispatches obsolete review stages.
+	return false
 
 func recover_active() -> void:
 	if not reload():
@@ -273,6 +284,7 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 	if stage=="narrate" and result.has("geography"):
 		var context=scene_context(data["state"])
 		if not DTO.exact_keys(result,["text","recap","geography","story","discoveries"]) or not DTO.bounded_text(result["recap"],3000) or not DTO.bounded_text(result["text"],12000) or not context.get("ok",false) or not PACK.valid_geography(result["geography"],PACK.identity(data["state"],job["turn_id"],identity["attempt_id"]),result["text"],context["ids"]) or not valid_story(result["story"],result["text"]) or not valid_discoveries(result["discoveries"],result["text"]):
+			adapter.diagnostic("combined_world_validation_rejected")
 			stop("retry","Combined narration/world proposal failed validation.")
 			return failure(status)
 		var verified=outcome(job)
@@ -295,12 +307,14 @@ func receive(identity: Dictionary,result: Dictionary) -> Dictionary:
 		job["definition_refs"]={}
 		job["discovery_receipts"]={}
 		job["local_candidate_hash"]=result["text"].sha256_text()
-		job["local_outcome_hash"]=JSON.stringify(verified).sha256_text()
+		job["local_outcome_hash"]=canonical_outcome_hash(verified)
+		job["local_outcome_hash_version"]=2
 		job["critical_verified"]=true
 		job["stage"]="reconcile"
 		job["attempt"]={}
 		inflight={}
 		if not update_active(job):
+			adapter.diagnostic("narration_journal_write_unconfirmed")
 			return failure("Combined narration persistence unconfirmed.")
 		refresh()
 		advance.call_deferred()
@@ -455,7 +469,7 @@ func committed_job_source(job: Dictionary,state: Dictionary) -> bool:
 	if not DTO.id_valid(req.get("request_id")) or not DTO.whole(event_id,1) or req.get("campaign_id")!=state["campaign_id"] or req.get("actor_id")!=state["actor_id"]:
 		return false
 	var settled=registry.session.settlement(state["campaign_id"],req["request_id"])
-	if not settled.get("ok",false) or not settled.get("found",false) or settled.get("request")!=req or settled.get("status")!="committed":
+	if not settled.get("ok",false) or not settled.get("found",false) or not registry.session.same_request(settled.get("request"),req) or settled.get("status")!="committed":
 		return false
 	if standalone(job):
 		var linked=RECON.new().standalone_event(state["campaign_id"],req["request_id"])
@@ -507,7 +521,7 @@ func discovery_arguments(job: Dictionary,state: Dictionary,index: int,request_id
 				var prior=registry.session.settlement(state["campaign_id"],str(recorded.get("request_id","")))
 				var expected=original["args"].duplicate(true)
 				expected["source_event_id"]=event_id
-				if not prior.get("ok",false) or not prior.get("found",false) or prior.get("status")!="committed" or prior.get("request")!=recorded or recorded.get("kind")!=original["kind"] or recorded.get("args")!=expected or prior["revision"]>state["revision"]:
+				if not prior.get("ok",false) or not prior.get("found",false) or prior.get("status")!="committed" or not registry.session.same_request(prior.get("request"),recorded) or recorded.get("kind")!=original["kind"] or not registry.session.typed_equal(recorded.get("args"),expected) or prior["revision"]>state["revision"]:
 					return {}
 				var definition=prior["result"].get("definition_id")
 				if not definition is String or definition.is_empty() or definition.begins_with("@"):
@@ -518,15 +532,15 @@ func discovery_arguments(job: Dictionary,state: Dictionary,index: int,request_id
 func discovery_request_valid(req: Dictionary,job: Dictionary,state: Dictionary,settled: Dictionary={}) -> bool:
 	var index=int(job.get("discovery_index",0))
 	var entries=job.get("discoveries",[])
-	if index<0 or index>=entries.size() or req!=job.get("story_request") or req.get("kind")!=entries[index]["kind"] or req.get("campaign_id")!=state["campaign_id"] or req.get("actor_id")!=state["actor_id"]:
+	if index<0 or index>=entries.size() or not registry.session.same_request(req,job.get("story_request")) or req.get("kind")!=entries[index]["kind"] or req.get("campaign_id")!=state["campaign_id"] or req.get("actor_id")!=state["actor_id"]:
 		return false
 	if settled.is_empty():
 		if req.get("expected_revision")!=state["revision"]:
 			return false
-	elif settled.get("request")!=req or settled.get("status")!="committed" or settled.get("revision")!=state["revision"]:
+	elif not registry.session.same_request(settled.get("request"),req) or settled.get("status")!="committed" or settled.get("revision")!=state["revision"]:
 		return false
 	var expected=discovery_arguments(job,state,index,req.get("request_id",""),settled)
-	return not expected.is_empty() and req.get("args")==expected and registry.arguments_valid(expected,REG.TOOLS[req["kind"]][0])
+	return not expected.is_empty() and registry.session.typed_equal(req.get("args"),expected) and registry.arguments_valid(expected,REG.TOOLS[req["kind"]][0])
 
 func process_story() -> void:
 	if not reload():
@@ -540,6 +554,9 @@ func process_story() -> void:
 		return
 	var index=int(job.get("discovery_index",0))
 	var discoveries=job.get("discoveries",[])
+	if index<0 or int(job.get("story_index",0))<0:
+		stop("retry","Invalid deferred world cursor.")
+		return
 	if index>=discoveries.size():
 		if job.has("pending_consequence"):
 			process_consequence()
@@ -577,13 +594,13 @@ func process_story() -> void:
 		registry.execute(campaign_id,req,review_tool)
 		running=false
 		prior=registry.session.settlement(campaign_id,req["request_id"])
-	if not prior.get("found",false) or prior["request"]!=req or prior["status"]!="committed" or not reload():
+	if not prior.get("found",false) or not registry.session.same_request(prior["request"],req) or prior["status"]!="committed" or not reload():
 		stop("retry","Discovery not committed; independent review or explicit skip required.")
 		return
 	# Recovery of an already-present row must prove the EXACT request committed,
 	# just as the fresh-execution branch does. Never advance a deferred cursor
 	# after a rejected/cancelled request or a different request using this ID.
-	if not prior.get("ok",false) or not prior.get("found",false) or prior.get("request")!=req or prior.get("status")!="committed":
+	if not prior.get("ok",false) or not prior.get("found",false) or not registry.session.same_request(prior.get("request"),req) or prior.get("status")!="committed":
 		stop("retry","Deferred settlement differs or was not committed; preserve the pending work.")
 		return
 	if not discovery_request_valid(req,job,data["state"],prior):
@@ -621,7 +638,7 @@ func finish(status_code: String,message: String) -> void:
 				if result.get("outcome") in ["failure","automatic_failure","failed"]:
 					super.finish("cancelled","Prior mechanical outcome remains committed; dependent actions stopped after failure.")
 					return
-		if not settled.get("found",false) or settled["status"]!="committed":
+		if not settled.get("ok",false) or not settled.get("found",false) or settled["status"]!="committed" or not registry.session.same_request(settled.get("request"),job["tool"]):
 			stop("retry","Dependent action cannot start without prior settlement.")
 			return
 		var done=job.get("completed_steps",[])
@@ -743,7 +760,7 @@ func process_consequence() -> void:
 		stop("retry","Continuation source unavailable.")
 		return
 	var root=registry.session.settlement(campaign_id,job["tool"]["request_id"])
-	if not root.get("found",false) or root["status"]!="committed" or root["request"]!=pending["original_request"] or state["pending_turn_id"]!=null or not idle_database():
+	if not root.get("found",false) or root["status"]!="committed" or not registry.session.same_request(root["request"],pending["original_request"]) or state["pending_turn_id"]!=null or not idle_database():
 		stop("retry","Original action and narration must settle before continuation.")
 		return
 	var source=registry.session.source(state,job["narration_event_id"])
@@ -776,7 +793,7 @@ func process_consequence() -> void:
 		registry.execute(campaign_id,req,review_tool)
 		running=false
 		prior=registry.session.settlement(campaign_id,req["request_id"])
-	if not prior.get("found",false) or prior["request"]!=req or prior["status"]!="committed" or not reload():
+	if not prior.get("found",false) or not registry.session.same_request(prior["request"],req) or prior["status"]!="committed" or not reload():
 		stop("retry","Transfer not committed; recover or cancel without asserting acquisition.")
 		return
 	# Save the exact C3 settlement identity before narrating it. If interrupted
@@ -844,7 +861,7 @@ func prepare_review(req: Dictionary,resume_stage: String) -> bool:
 			job["context_review"]={"request":req.duplicate(true),"revision":state["revision"],"attempt_id":registry.session.make_id(),"report":descriptive,"authorization_version":"committed-description-v027"}
 			return update_active(job)
 	var record=job.get("context_review",{})
-	if record.get("authorization_version")=="combined-v027" and record.get("request")==req and record.get("revision")==state["revision"]:
+	if record.get("authorization_version")=="combined-v027" and registry.session.same_request(record.get("request"),req) and record.get("revision")==state["revision"]:
 		var checked=policy.validate_assessment(req,record.get("report"),job,state)
 		if checked.get("ok",false):
 			return true
@@ -856,7 +873,7 @@ func prepare_review(req: Dictionary,resume_stage: String) -> bool:
 func advance() -> void:
 	if closed or running or notifying or not reload():
 		return
-	if not inflight.is_empty() and inflight==active().get("attempt"):
+	if not inflight.is_empty() and registry.session.typed_equal(inflight,active().get("attempt")):
 		return
 	var job=active().duplicate(true)
 	if job.get("stage")=="adjudicate":
@@ -894,6 +911,13 @@ func retry() -> Dictionary:
 	advance.call_deferred()
 	return {"ok":true}
 
+func canonical_outcome_hash(verified: Dictionary) -> String:
+	# Normalize through the same JSON representation used by durable work.
+	var normalized=JSON.parse_string(JSON.stringify(verified,"",true,true))
+	if not normalized is Dictionary or not registry.session.typed_equal(verified,normalized):
+		return ""
+	return JSON.stringify(normalized,"",true,true).sha256_text()
+
 func reviewed_candidate(job: Dictionary,verified: Dictionary,scene: Dictionary) -> bool:
 	if not job.get("critical_verified",false):
 		return false
@@ -906,7 +930,11 @@ func reviewed_candidate(job: Dictionary,verified: Dictionary,scene: Dictionary) 
 		var expected=str(verified.get("summary","")) if standalone(job) else RECON.new().receipt_line(verified)
 		return text==expected
 	if job.has("local_candidate_hash"):
-		return job["local_candidate_hash"]==text.sha256_text() and job.get("local_outcome_hash")==JSON.stringify(verified).sha256_text()
+		var version=job.get("local_outcome_hash_version",1)
+		if not registry.session.typed_equal(version,1) and not registry.session.typed_equal(version,2):
+			return false
+		var expected=canonical_outcome_hash(verified) if registry.session.typed_equal(version,2) else JSON.stringify(verified).sha256_text()
+		return not expected.is_empty() and job["local_candidate_hash"]==text.sha256_text() and job.get("local_outcome_hash")==expected
 	var ext=BASE.new().gameplay_view(campaign_id).get("interaction_extension",{})
 	if ext.get("revision")!=data["state"]["revision"]:
 		return false

@@ -74,14 +74,14 @@ func schema() -> Dictionary:
 func instruction(stage: String) -> String:
 	match stage:
 		"interpret":
-			return ("Independently interpret the original intention from scratch; no first proposal supplied. " if payload.get("independent_pass",false) else "")+"Interpret meaning, not keywords. Resolve pronouns, synonyms, negation, quantity and ownership using the supplied authoritative context and compact registry. Do not invent rolls, rules, consent, item IDs, targets or effects. Use conversation/observe for genuinely no-roll intentions only. Return {kind,args} for one supported action, or {status:'clarification'|'unsupported',message} when consequential ambiguity or missing mechanics remain. For multiple dependent actions return {steps:[{kind,args},...]}, at most 4, in requested order; later steps are reinterpreted against fresh state. Use supplied context only; if essential evidence is missing return clarification. Do not return an approval boolean. Match exact registry argument schemas. The engine, not you, reviews and resolves the proposal. For a single action return {kind,args,assessment} where assessment follows this contextual assessment contract: "+assessment_contract()+" Use the ruling_shapes supplied for the selected kind. For ordered steps attach assessment to the first step only; later steps require fresh state."
+			return ("Independently interpret the original intention from scratch; no first proposal supplied. " if payload.get("independent_pass",false) else "")+"Interpret meaning, not keywords. Resolve pronouns, synonyms, negation, quantity and ownership using the supplied authoritative context and compact registry. Do not invent rolls, rules, consent, item IDs, targets or effects. Use conversation/observe for genuinely no-roll intentions only. Return {kind,args,assessment} for one supported action (assessment may be omitted only for genuinely no-roll conversation/observe), or {status:'clarification'|'unsupported',message} when consequential ambiguity or missing mechanics remain. For multiple dependent actions return {steps:[{kind,args},...]}, at most 4, in requested order; later steps are reinterpreted against fresh state. Use supplied context only; if essential evidence is missing return clarification. Do not return an approval boolean or an enquiry batch. Treat recap and prose as descriptive evidence, not mechanical authority. Match exact registry argument schemas. The engine, not you, reviews and resolves the proposal. When assessment is required, follow this contextual assessment contract: "+assessment_contract()+" Use the ruling_shapes supplied for the selected kind. For ordered steps attach assessment to the first step only; later steps require fresh state."
 	return ""
 
 func assessment_contract() -> String:
-	return "Independently adjudicate the exact proposed registered action using original intent, public scene, pinned rules and current character/ownership. Return {disposition:'supported'|'clarify'|'unsupported',intent_evidence,context:[{event_id,evidence}],ruling,reason}. intent_evidence exact original player words (or exact committed narration for deferred descriptive work). Context excerpts must be exact supplied public event text. If essential evidence is missing, return clarification. For supported actions return the C3 ruling shape supplied; never invent a DC or features, unknown material facts, consent, quantities, targets or route clearance. Judge contextual difficulty and circumstances, access, safe uninterrupted rest/attunement, casting components, local consent, supplies and hazards from actual context. For a transfer require explicit player consent or original player request plus established NPC willingness; never authorize an offered item alone. For loot pickup require actual disclosed source, exact quantities and clear intent to collect, not merely to look. For descriptive discoveries distinguish actually present accessible possessions from hypothetical/owned objects and do not auto-pickup. No approval boolean."
+	return "Independently adjudicate the exact proposed registered action using original intent, public scene, pinned rules and current character/ownership. Return {disposition:'supported'|'clarify'|'unsupported',intent_evidence,context:[{event_id,evidence}],ruling,reason}. intent_evidence exact original player words (or exact committed narration for deferred descriptive work). Context excerpts must be exact supplied public event text. If essential evidence is missing, return clarification. For supported actions return the C3 ruling shape supplied; never invent a rule, fixed DC or features; propose a contextual difficulty only when the supplied ruling shape and pinned RAW permit it, unknown material facts, consent, quantities, targets or route clearance. Judge contextual difficulty and circumstances, access, safe uninterrupted rest/attunement, casting components, local consent, supplies and hazards from actual context. For a transfer require explicit player consent or original player request plus established NPC willingness; never authorize an offered item alone. For loot pickup require actual disclosed source, exact quantities and clear intent to collect, not merely to look. For descriptive discoveries distinguish actually present accessible possessions from hypothetical/owned objects and do not auto-pickup. No approval boolean."
 
 func world_contract() -> String:
-	return "Extract persistent facts from the natural prose, resolving names, pronouns, quantities and synonyms using the supplied catalogue and public context. Report only established, player-disclosed facts, not guesses, negations or future possibilities. Return {geography,story,discoveries}; geography must have exact provided identity, source_event_id:null and facts matching the supplied B4 schema. Story entries {evidence,args} use story_update args excluding source_event_id. discoveries entries {evidence,kind,args} propose define_official, define_custom, actor_generate or loot_discover (source_event_id omitted; actor_generate also omits generation_key; loot definition_id may be @0 referring to an earlier definition at index 0 in this list); never auto-pickup or transfer. Prefer existing official equivalents and stable identities. Do not invent missing mechanical stats; custom attributes are proposals only. Use exact evidence excerpts. Empty arrays are valid."
+	return "Extract persistent facts from the natural prose, resolving names, pronouns, quantities and synonyms using the supplied catalogue and public context. Report only established, player-disclosed facts, not guesses, negations or future possibilities. Return {geography,story,discoveries}; geography must have exact provided identity, source_event_id:null and facts matching the supplied B4 schema. Story entries {evidence,args} use story_update args excluding source_event_id. discoveries entries {evidence,kind,args} propose define_official, define_custom, actor_generate or loot_discover (source_event_id omitted; actor_generate also omits generation_key; loot definition_id may be @0 referring to an earlier definition at index 0 in this list); never auto-pickup or transfer. Reuse established location, actor and item identities from the supplied context; do not create a replacement merely because a name is mentioned again. Prefer existing official equivalents and stable identities. Do not invent missing mechanical stats; custom attributes are proposals only. Use exact evidence excerpts. Empty arrays are valid."
 
 func prompt() -> String:
 	var stage=str(identity["stage"])
@@ -120,8 +120,14 @@ func send() -> void:
 	var prose=identity["stage"]=="narrate"
 	transport.generate(input,"","",true,schema(),65536,8192 if prose else 4096,0.8 if prose else 0.2)
 
+func diagnostic(code: String) -> void:
+	if OS.get_environment("INFINITY_TEST_USER_ROOT").is_empty():
+		return
+	print("SEMANTIC_QA ",code," stage=",identity.get("stage","none"))
+
 func received(epoch: int,clock: int,ok: bool,message: String) -> void:
 	if epoch!=serial or not current():
+		diagnostic("response_stale")
 		return
 	metrics.append({"stage":identity["stage"],"call":calls,"elapsed_ms":Time.get_ticks_msec()-clock,"ok":ok})
 	metrics=metrics.slice(maxi(0,metrics.size()-64))
@@ -129,8 +135,12 @@ func received(epoch: int,clock: int,ok: bool,message: String) -> void:
 	if not ok:
 		failed(message)
 		return
-	var parsed=JSON.parse_string(message)
-	if not parsed is Dictionary:
+	# Invalid provider JSON is an expected recoverable input, not an engine error.
+	var parser=JSON.new()
+	var parse_status=parser.parse(message)
+	var parsed=parser.data
+	if parse_status!=OK or not parsed is Dictionary:
+		diagnostic("response_not_json_object")
 		repair("Return one complete JSON object.")
 		return
 	if parsed.has("queries"):
@@ -151,7 +161,7 @@ func received(epoch: int,clock: int,ok: bool,message: String) -> void:
 						repair("Invalid action in ordered list; use exact registry types.")
 						return
 			elif not valid_tool(parsed) and not (DTO.exact_keys(parsed,["status","message"]) and parsed["status"] in ["clarification","unsupported"] and DTO.bounded_text(parsed["message"],1000)):
-				repair("Unknown tool or malformed arguments. Use catalogue types; ask an enquiry if uncertain.")
+				repair("Unknown tool or malformed arguments. Use catalogue types; return clarification if uncertain.")
 				return
 	deliver(parsed)
 
@@ -196,9 +206,11 @@ func deliver(value: Dictionary) -> void:
 				if entry.get("result",{}).get("ok",false):
 					selected.append(entry)
 	if id["stage"]=="interpret" and controller.has_method("receive_interpretation"):
-		controller.receive_interpretation(id,value,selected)
+		var result: Dictionary=controller.receive_interpretation(id,value,selected)
+		diagnostic("interpret_accepted" if result.get("ok",false) else "interpret_rejected")
 	else:
-		controller.receive(id,value)
+		var result: Dictionary=controller.receive(id,value)
+		diagnostic("narrate_accepted" if result.get("ok",false) else "narrate_rejected")
 
 func failed(detail: String = "Provider request unavailable.") -> void:
 	if current():

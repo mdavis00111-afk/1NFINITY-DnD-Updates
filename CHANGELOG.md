@@ -46,3 +46,7 @@ Only releases visible in the inspected branch history are listed; skipped versio
 - Three-column reference-based gameplay workspace with campaign-local HUD, equipment, inventory, spell/skill displays, committed DM log, scenery, reference shortcuts, manual Godot dice and navigation.
 - Campaign creation/resume/settings return and opening request lifecycle, normalized read-only SQL projection, RAW display corrections and structured Gemini opening responses; no turn controller yet.
 - New gameplay art and QA corrections; seven independent SQL fixture checks passed twice; five PNGs independently retrieved and hash/CRC checked. Godot/Windows visual and runtime verification pending. Owner-authorized playtest, existing updater preserved; back up user data separately.
+
+
+### Alpha 0.0.27 packaging
+Owner authorized live testing instead of mandatory GitHub gameplay regression. Latest Linux baseline 12/14; semantic corrections unverified; GUI owner-managed. No claim of native or live acceptance. Packaging only.

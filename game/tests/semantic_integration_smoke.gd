@@ -117,6 +117,7 @@ func pump(stage: String,after_serial: int=-1) -> bool:
 			return true
 		if stage!="idle" and ctrl.inflight.get("stage")==stage and is_instance_valid(ctrl.adapter.transport) and not ctrl.adapter.transport.prompt.is_empty() and ctrl.adapter.serial>after_serial:
 			return true
+	print("SEMANTIC_QA pump_timeout expected=",stage," active=",ctrl.active().get("stage","none")," inflight=",ctrl.inflight.get("stage","none")," calls=",outbound.size()," tool=",ctrl.active().get("tool",{}).get("kind","none")," staged=",ctrl.active().get("story_request",{}).get("kind","none"))
 	return expect(false,"Expected "+stage+"; got "+str(ctrl.active().get("stage"))+" / "+ctrl.status)
 
 func reply(value: Variant) -> void:
@@ -189,6 +190,7 @@ func run() -> void:
 		quit(2)
 		return
 	prompt_fixture()
+	expect(not session.same_request(null,{}) and not session.same_request({},null) and not session.same_request("invalid",{}),"Absent or malformed staged request fails closed")
 	var players=PLAYER.new()
 	var master=players.make_id()
 	if not expect(players.save_record(master_record(master)).is_empty(),"Master fixture"):
@@ -560,6 +562,9 @@ func candidate_reopen(id: String) -> void:
 	if not expect(ctrl.active().get("stage")=="reconcile","Valid combined candidate persisted before reconciliation"):
 		return
 	var candidate=ctrl.active().duplicate(true)
+	var hash_int=ctrl.canonical_outcome_hash({"roll":17,"nested":[2,{"spent":1}]})
+	expect(not hash_int.is_empty() and hash_int==ctrl.canonical_outcome_hash({"roll":17.0,"nested":[2.0,{"spent":1.0}]}),"Outcome hash survives numeric JSON representation")
+	expect(hash_int!=ctrl.canonical_outcome_hash({"roll":18,"nested":[2,{"spent":1}]}) and hash_int!=ctrl.canonical_outcome_hash({"roll":"17","nested":[2,{"spent":1}]}),"Outcome hash rejects changed roll and string coercion")
 	var before=durable_snapshot(id)
 	ctrl.close_session()
 	workspace.queue_free()
@@ -707,6 +712,7 @@ func legacy_recovery_cases(id: String) -> void:
 		var request=job["tool"].duplicate(true)
 		var rid=request["request_id"]
 		var settled=session.settlement(id,rid)
+		var receipt_before=ctrl.registry.resolver.store.receipt_by_id(id,settled["logical_turn_id"])
 		var before=durable_snapshot(id)
 		var calls=outbound.size()
 		job["stage"]=stage
@@ -738,7 +744,10 @@ func legacy_recovery_cases(id: String) -> void:
 		reply(response)
 		if not await pump("idle"):
 			return
-		expect(session.settlement(id,rid)==settled,"Legacy "+stage+" original settlement intact")
+		var after=session.settlement(id,rid)
+		# A pending mechanical receipt becomes committed with a narration event.
+		var receipt_after=ctrl.registry.resolver.store.receipt_by_id(id,settled["logical_turn_id"])
+		expect(settled.get("status")=="accepted_pending" and after.get("ok",false) and after.get("status")=="committed" and session.same_request(after.get("request"),settled.get("request")) and session.typed_equal(after.get("logical_turn_id"),settled.get("logical_turn_id")) and after.get("event_id")!=null and receipt_before.get("found",false) and receipt_after.get("found",false) and session.typed_equal(receipt_before["receipt"]["results"],receipt_after["receipt"]["results"]) and session.typed_equal(session.token(id)["actor"],before["actor"]),"Legacy "+stage+" original settlement intact")
 		await rejected_response(id,identity,response,false,"Legacy "+stage+" duplicate narration")
 
 func authority_cases(id: String,shield: String) -> void:

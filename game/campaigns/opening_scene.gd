@@ -52,7 +52,10 @@ static func clean_text(value: Variant, limit: int) -> String:
 static func validate(raw: String, start_id: String) -> Dictionary:
 	if raw.length()>4000 or STARTS.find_start(start_id).is_empty():
 		return {}
-	var parsed = JSON.parse_string(raw)
+	var parser = JSON.new()
+	if parser.parse(raw)!=OK:
+		return {}
+	var parsed = parser.data
 	if not parsed is Dictionary or not exact_keys(parsed,KEYS) or parsed["start_id"]!=start_id:
 		return {}
 	var name = clean_text(parsed["location_name"],80)
