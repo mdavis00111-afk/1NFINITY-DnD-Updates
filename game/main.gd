@@ -4,6 +4,7 @@ const CHANNEL = "https://raw.githubusercontent.com/mdavis00111-afk/1NFINITY-DnD-
 const GOLD = Color("#f4ce7b")
 const MUTED = Color("#a8997e")
 const GEMINI = preload("res://systems/gemini.gd")
+const SEMANTIC_ADAPTER = preload("res://gameplay/semantic_adapter.gd")
 const THEME_PATH = "res://themes/master_theme.tres"
 const CONFIG_PATH = "user://settings.cfg"
 const LOG_COPY_LIMIT = 256 * 1024
@@ -184,8 +185,16 @@ func read_recent_log(path: String) -> String:
 			content = content.slice(first)
 	return content.get_string_from_utf8()
 
-func copy_game_log() -> void:
+func log_for_clipboard() -> String:
 	var recent = read_recent_log(game_log_path())
+	var boundary = SEMANTIC_ADAPTER.latest_boundary_line
+	# A running process may not have flushed the newest diagnostic to disk yet.
+	if not boundary.is_empty() and not recent.contains(boundary):
+		recent=boundary if recent.is_empty() else recent.rstrip("\r\n")+"\n"+boundary
+	return "" if recent.is_empty() else "1NFINITY D&D v"+version+"\n"+recent
+
+func copy_game_log() -> void:
+	var recent = log_for_clipboard()
 	if recent.is_empty():
 		copy_log_button.text = "No log"
 	else:

@@ -1,3 +1,7 @@
+## DM validation details and clipboard
+
+Godot 4.7.2 Linux `--check-only` passed for `main.gd`, the semantic adapter and controller, and the integration fixture. With the disposable Linux SQLite bridge and mock Gemini, `semantic_integration_smoke.gd` passed `--menu-shortcuts`, `--provider-format` and `--transport-retry`. The fixture checked that Copy log includes the installed version and an in-memory event missing from the file, and that an invalid reply identifies its missing text, bad flag type and unexpected fields before any state revision change. The safe event excludes the raw keys and contents. Git whitespace checks passed. Windows clipboard and live Gemini were not run for this checkpoint.
+
 ## v0.0.33 DM response forms
 
 Godot 4.7.2 Linux `--check-only` passed for the adapter, controller and integration fixture. `semantic_integration_smoke.gd` passed in `--provider-format`, `--conditional-check`, `--dm-first` and `--transport-retry` modes using mock Gemini and the isolated SQLite test bridge. The provider-format fixture uses the key and type shape captured on Windows, with explicitly empty mechanical dictionaries, and verifies that two calls settle only the authored observation. A populated check beside prose stayed retryable before any receipt or revision change. The other modes retained local mechanics, conditional narration, spell expenditure, inscription and pending-request recovery. `git diff --check` passed.
