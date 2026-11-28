@@ -1,10 +1,14 @@
+## v0.0.29 development checkpoint — step 2 interpreter rewrite
+
+Owner scoped this commit to step 2 and directly necessary integration only; do not publish. AI 1 prompt now selects typed intent and read-only lookups, no assessment or adjudication. Adapter rejects assessment-bearing action envelopes; controller no longer sends ruling shapes or independent-pass flag. Existing legacy contextual authorization remains fail-closed: actions needing assessment may stop until steps 3–4 replace that contract. Legacy argument schemas still require contextual fields; interpreter must clarify rather than invent them. Steps 3–10 remain outstanding, including local authorization, rejection completion, missing attributes, DM packet and dependent-action call budget. Existing narration and updater untouched. Static edit anchors checked; native/runtime and integration fixtures not run. Published baseline remains v0.0.28.
+
 # OWNER DIRECTIVE — RUNTIME TESTING
 
 All Godot runtime, Windows installation and live gameplay testing is performed by the owner on their PC. The AI developer performs available static source, dependency, schema, SQL and integration checks. Absence of local Godot is not a development or publication blocker. Complete authorized changes and publish through the existing updater for owner testing. No mandatory GitHub Actions gameplay tests or Codex handoff. Preserve existing integrity and safety requirements.
 
 # ACTIVE TASK — OWNER-AUTHORIZED v0.0.29 AI PIPELINE REPLACEMENT
 
-Execute this task now, as sole lead developer. This supersedes conflicting historical task queues and assessment protocols. The owner has already authorized all ten steps, source changes, wiring and publication. Do not ask for routine approval, return another plan, or stop after reading. Continue through implementation, integration and publication in the same session where tools permit. Current baseline v0.0.28; verify channel.json and HEAD first. Step 1 architectural decision complete; steps 2–10 outstanding. No v0.0.29 runtime changes have been made by this handover.
+Execute this task now, as sole lead developer. This supersedes conflicting historical task queues and assessment protocols. The owner has already authorized all ten steps, source changes, wiring and publication. Do not ask for routine approval, return another plan, or stop after reading. Continue through implementation, integration and publication in the same session where tools permit. Current baseline v0.0.28; verify channel.json and HEAD first. Step 1 architectural decision complete; step 2 interpreter rewrite committed as an unpublished checkpoint; steps 3–10 outstanding. See checkpoint limitations above.
 
 ## Execute in order
 1. Preserve existing Godot deterministic mechanics, SQLite rules and persistence, approved GUI, saves, settings, portraits, campaigns and updater. Inspect actual handlers and their prerequisites; no unrelated rebuild.
@@ -34,7 +38,7 @@ This directive supersedes all earlier mandatory CI, release-hold, historical pha
 - Use existing automatic packaging and updater. Verify actual channel version, immutable source, manifest and version files before announcing UPDATE AND LIVE TEST — v[version]. Do not claim installation or gameplay success before observed.
 - Update PROJECT_BRAIN.md and NEXT_CHAT.md at each development milestone; maintain HANDOFF.md, DEV_BRIEF.md, TESTING.md as relevant. Keep NEXT_CHAT concise and current. Historical records remain historical. New chats need only read PROJECT_BRAIN.md and NEXT_CHAT.md, then follow the owner's current request.
 
-Current published alpha: v0.0.28, source e4cd886a9bd89d65c8649466cfcec09901e4547c, 397 packaged blobs. Live gameplay and installation acceptance outstanding. Earlier Linux baseline 12/14; semantic corrections unverified, GUI corrections owner-managed. No mandatory retest. Next task: execute the active v0.0.29 directive above.
+Current published alpha: v0.0.28, source e4cd886a9bd89d65c8649466cfcec09901e4547c, 397 packaged blobs. Live gameplay and installation acceptance outstanding. Earlier Linux baseline 12/14; semantic corrections unverified, GUI corrections owner-managed. No mandatory retest. Next task: continue steps 3–10 of the active v0.0.29 directive above.
 
 ## Owner clarification — AI request budget
 A natural-language action receives one Rules-Check interpretation. If Godot rejects it, display the deterministic reason directly (missing item, resource, eligibility etc.); no narration request, AI reconsideration or automatic retry. Successful ordinary actions receive interpretation and narration; supported direct GUI actions use zero AI requests. Additional AI requests are permitted only where a genuinely required attribute is absent from SQLite, to propose the missing attribute for validated persistence; never fabricate RAW or override a mechanical rejection. This is a standing requirement, not evidence that every runtime path has been verified.

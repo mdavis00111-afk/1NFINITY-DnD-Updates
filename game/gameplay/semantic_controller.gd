@@ -125,14 +125,7 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 		expanded["lookup_catalogue"]=REG.QUERY_TYPES
 		expanded["next_step_hint"]=job.get("remaining",[]).front() if not job.get("remaining",[]).is_empty() else null
 		expanded["completed_steps"]=job.get("completed_steps",[])
-		expanded["independent_pass"]=false
-		var shapes={}
-		for kind in REG.TOOLS:
-			var args={}
-			for key in REG.TOOLS[kind][0]:
-				args[key]=null
-			shapes[kind]=policy.rule_shape({"kind":kind,"args":args})
-		expanded["ruling_shapes"]=shapes
+
 	elif stage=="narrate":
 		expanded["player_text"]=job["intent"]["args"].get("text",payload.get("player_text",""))
 		expanded.erase("original_player_text")
