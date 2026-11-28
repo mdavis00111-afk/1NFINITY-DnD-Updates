@@ -650,3 +650,7 @@ Source checkpoints 3–5 implemented; do not restart historical C1–C6. Native 
 
 ### v0.0.27 settlement readback correction candidate
 Corrected durable request comparison to compare both envelopes after JSON round-trip, avoiding nested integer/float representation mismatch while preserving exact fields, actor, revision and status checks. Added underlying readback diagnostic. Linux corrected run 46084904289: 6/14, import passed; persistence and loot fail at acknowledged settlement, semantic at canonical upgrade. This correction is source-derived and requires native confirmation; Windows rerun still pending at observation. No publication.
+
+
+### Scoped settlement QA candidate
+Prior run 46084904289 completed on both OS: 6/14 each, matching failures; Windows production SQLite confirms canonical upgrade and loot settlement errors. Scoped branch push trigger enabled without changing engine hashes or test isolation. Request comparison now requires valid envelopes, JSON-safe operands, successful dictionary decoding and full precision serialization; native fixture logs baseline equality and checks identity, argument, type and precision boundaries. Existing persistence replay and recovery assertions retained. Native results pending; no integration or publication. Architect DEV_BRIEF.md on godot preserved.

@@ -56,7 +56,31 @@ func actor_args(id: String,location: String,event_id: int,existing: Variant,name
 func story_args(kind: String,key: String,title: String,description: String,status: String,location: String,event_id: int) -> Dictionary:
 	return {"record_id":null,"identity_key":key,"kind":kind,"title":title,"description":description,"status":status,"visibility":"player","certainty":"fact","location_id":location,"parent_id":null,"source_event_id":event_id,"progress_current":null,"progress_max":null,"participants":[]}
 
+func request_comparison_tests() -> void:
+	var a = {"schema_version":"2","campaign_id":session.make_id(),"actor_id":session.make_id(),"request_id":session.make_id(),"expected_revision":7,"kind":"fixture","args":{"nested":[{"quantity":2,"flag":true}]}}
+	var b = JSON.parse_string(JSON.stringify(a))
+	print("Baseline raw dictionary equality: ",a==b)
+	expect(session.same_request(a,b),"Equivalent nested numeric request rejected")
+	for key in ["campaign_id","actor_id","request_id","expected_revision"]:
+		var changed = a.duplicate(true)
+		changed[key]=8 if key=="expected_revision" else session.make_id()
+		expect(not session.same_request(a,changed),"Changed request identity accepted: "+key)
+	for value in [3, "2", true, null, Vector2(2,0), INF, 9007199254740992]:
+		var changed = a.duplicate(true)
+		changed["args"]["nested"][0]["quantity"]=value
+		expect(not session.same_request(a,changed),"Changed or invalid quantity accepted: "+str(value))
+	var invalid = a.duplicate(true)
+	invalid["args"]=[]
+	expect(not session.same_request(invalid,invalid),"Invalid envelope matched itself")
+	var boundary = a.duplicate(true)
+	boundary["args"]["nested"][0]["quantity"]=9007199254740991
+	expect(session.same_request(boundary,JSON.parse_string(JSON.stringify(boundary,"",true,true))),"Safe integer boundary failed")
+	var unsafe = boundary.duplicate(true)
+	unsafe["args"]["nested"][0]["quantity"]=9007199254740992
+	expect(not session.same_request(unsafe,unsafe),"Unsafe integer boundary accepted")
+
 func run() -> void:
+	request_comparison_tests()
 	var expected = OS.get_environment("INFINITY_TEST_USER_ROOT").replace("\\","/").trim_suffix("/")
 	var actual = ProjectSettings.globalize_path("user://").replace("\\","/").trim_suffix("/")
 	if expected.is_empty() or expected!=actual or FileAccess.file_exists("user://players.db") or FileAccess.file_exists("user://settings.cfg") or DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(BASE.ROOT)):

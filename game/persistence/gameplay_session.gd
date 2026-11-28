@@ -33,7 +33,36 @@ func request_valid(request: Variant,version: String = VERSION) -> bool:
 # Compare requests in the same JSON representation used by durable storage.
 # Godot JSON decodes numbers as floats, including nested integer operands.
 func same_request(a: Dictionary,b: Dictionary) -> bool:
-	return JSON.parse_string(JSON.stringify(a))==JSON.parse_string(JSON.stringify(b))
+	var left = JSON.new()
+	var right = JSON.new()
+	if not request_valid(a,str(a.get("schema_version",""))) or not request_valid(b,str(b.get("schema_version",""))):
+		return false
+	if not a["schema_version"] in ["1","2"] or not b["schema_version"] in ["1","2"]:
+		return false
+	if not json_safe(a) or not json_safe(b):
+		return false
+	if left.parse(JSON.stringify(a,"",true,true))!=OK or right.parse(JSON.stringify(b,"",true,true))!=OK:
+		return false
+	return left.data is Dictionary and right.data is Dictionary and left.data==right.data
+
+# Reject values that JSON cannot represent losslessly as request operands.
+func json_safe(value: Variant) -> bool:
+	match typeof(value):
+		TYPE_NIL, TYPE_BOOL, TYPE_STRING:
+			return true
+		TYPE_INT, TYPE_FLOAT:
+			return is_finite(float(value)) and absf(float(value))<=9007199254740991.0
+		TYPE_ARRAY:
+			for item in value:
+				if not json_safe(item):
+					return false
+			return true
+		TYPE_DICTIONARY:
+			for key in value:
+				if not key is String or not json_safe(value[key]):
+					return false
+			return true
+	return false
 
 func settlement(id: String,request_id: String) -> Dictionary:
 	if not DTO.id_valid(request_id):
