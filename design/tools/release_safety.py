@@ -31,6 +31,38 @@ def validate_paths(paths):
         files.add(key)
 
 
+def validate_manifest(manifest, audit):
+    """Compare a deployable manifest to the exact byte-audited game inventory."""
+    version = manifest.get('version')
+    commit = manifest.get('source_commit')
+    if (manifest.get('channel') != 'godot' or not isinstance(version, str)
+            or not re.fullmatch(r'\d+\.\d+\.\d+', version)
+            or not isinstance(commit, str) or not re.fullmatch(r'[0-9a-f]{40}', commit)
+            or commit != audit.get('commit') or version != audit.get('version')):
+        raise ValueError('Manifest source/version mismatch')
+    entries = manifest.get('files')
+    expected = audit.get('files')
+    if not isinstance(entries, list) or not isinstance(expected, dict) or not entries or len(entries) > 10000:
+        raise ValueError('Invalid manifest inventory')
+    actual = {}
+    for entry in entries:
+        if (not isinstance(entry, dict) or not isinstance(entry.get('path'), str)
+                or not isinstance(entry.get('blob'), str)
+                or not re.fullmatch(r'[0-9a-f]{40}', entry['blob'])):
+            raise ValueError('Invalid manifest entry')
+        if entry['path'] in actual:
+            raise ValueError('Duplicate manifest entry')
+        actual[entry['path']] = entry['blob']
+    validate_paths(actual)
+    validate_paths(expected)
+    if not {'project.godot', 'main.tscn', 'main.gd', 'version.txt'}.issubset(actual):
+        raise ValueError('Required startup file missing')
+    if actual != {path: entry['blob'] for path, entry in expected.items()}:
+        raise ValueError('Manifest differs from exact audited game tree')
+    if audit.get('pending_art_clearance'):
+        raise ValueError('Outstanding art clearance')
+
+
 def digest(path):
     with path.open('rb') as stream:
         h = hashlib.sha256()
@@ -112,6 +144,9 @@ def main():
     sub = parser.add_subparsers(dest='action', required=True)
     audit = sub.add_parser('paths')
     audit.add_argument('inventory', type=Path)
+    check = sub.add_parser('manifest')
+    check.add_argument('manifest', type=Path)
+    check.add_argument('inventory', type=Path)
     for action in ('snapshot', 'restore-copy'):
         cmd = sub.add_parser(action)
         cmd.add_argument('source', type=Path)
@@ -123,6 +158,9 @@ def main():
         document = json.loads(args.inventory.read_text(encoding='utf-8'))
         files = document['files']
         validate_paths(files.keys() if isinstance(files, dict) else [x['path'] for x in files])
+    elif args.action == 'manifest':
+        validate_manifest(json.loads(args.manifest.read_text(encoding='utf-8')),
+                          json.loads(args.inventory.read_text(encoding='utf-8')))
     elif args.action == 'snapshot':
         snapshot(args.source, args.destination)
     else:

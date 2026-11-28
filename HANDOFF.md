@@ -484,3 +484,7 @@ Prepared design/V027_RELEASE_CANDIDATE.md using existing native runner and relea
 
 ### Semantic authorization and ordered recovery audit
 Owner will handle GUI corrections separately; retain GUI failures as outstanding, no layout changes. Fixed same_request typed Dictionary parameters rejecting null/malformed optional staged slots before validation: accepts Variant and fails closed unless both dictionaries. Final policy review now uses canonical request and typed intent comparison, not raw equality. Fresh interpretation clears prior assessment; ordered continuation requires exact committed request identity and successful settlement read. Added active malformed/absent request regression. Native execution pending; no release or GUI change.
+
+
+### Updater and manifest audit
+Read live v0.0.26 channel and shipped Update.ps1/Launch.cmd. Staged per-file Git blob verification, startup handshake and atomic pointer replacement present; rollback is previous-folder restart, not profile rollback. Existing root updater is not distributed by game manifest; Windows path preflight is release-side, not a claim of hardened installed updater. Added development-only release_safety.py manifest command comparing exact byte-audited inventory, source/version, path safety, required files and art clearance; no live manifest generated or changed. Actual Windows fault matrix, profile restore and multi-PC installation remain unexecuted. GUI owner-managed. No publication.
