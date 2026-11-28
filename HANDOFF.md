@@ -1,3 +1,20 @@
+# CURRENT OWNER DIRECTIVE — ACTIVE ALPHA DEVELOPMENT (2026-11-28)
+
+This directive supersedes all earlier mandatory CI, release-hold, historical phase queue and architect approval instructions in repository documents. We are developing a playable alpha, not certifying a finished product.
+
+- The owner selects the next feature or bug. If the owner says combat, implement combat in the existing game; do not restart C1–C6, rebuild unrelated systems, redesign approved GUI, or expand scope. Make only necessary supporting changes; explain material cross-system dependencies.
+- One lead developer, working from current godot HEAD and channel.json. Implement directly, commit and publish owner-authorized incremental alpha updates. No repeated routine approval, manual relay, or status-only loops.
+- Keep testing in-house: local source/syntax/dependency/SQL checks and focused local runtime checks when available, followed by owner live gameplay. Do not dispatch, rerun, wait for, or require GitHub Actions gameplay regression suites. Historical failures are evidence, not a mandatory development queue. Record unexecuted checks honestly. Packaging workflow is distribution infrastructure, not gameplay testing.
+- Preserve saves, campaigns, settings, portraits, approved GUI, existing mechanics, 2014 RAW and Godot/SQLite authority. Gemini cannot override mechanics. No Python game runtime. Never publish secrets or personal saves. Do not waive manifest/hash integrity or knowingly ship destructive changes.
+- Use existing automatic packaging and updater. Verify actual channel version, immutable source, manifest and version files before announcing UPDATE AND LIVE TEST — v[version]. Do not claim installation or gameplay success before observed.
+- Update PROJECT_BRAIN.md and NEXT_CHAT.md at each development milestone; maintain HANDOFF.md, DEV_BRIEF.md, TESTING.md as relevant. Keep NEXT_CHAT concise and current. Historical records remain historical. New chats need only read PROJECT_BRAIN.md and NEXT_CHAT.md, then follow the owner's current request.
+
+Current published alpha: v0.0.27, source 5425e3c35a40ed04a7c8583bd0493c8ca090d963, 397 packaged blobs. Live gameplay and installation acceptance outstanding. Earlier Linux baseline 12/14; semantic corrections unverified, GUI corrections owner-managed. No mandatory retest. No next feature selected yet; await owner's live feedback or requested feature.
+
+---
+
+# Historical records — superseded where inconsistent with current directive
+
 # Current development handoff
 Updated 2026-11-27. Read PROJECT_BRAIN.md and AGENTS.md.
 Task P0-02 Windows GUI refinement: owner authorized publication of 0.0.22 playtest. Candidate 202cf09a8a6557665958b0303d3cd439730cce11; previous live 65debd822cadd20fcc2efa061957ea47a12396c9. Source prepared; channel.json is authoritative for actual publication. Changed game scripts: character_creator.gd, character_manager.gd, full_character_sheet.gd, portrait_art.gd, tests/layout_smoke.gd, version.txt and project.godot. No SQL/schema, mechanics, launcher, updater or private data changes. Static dependency checks recorded; Windows executable cannot run in Linux (Exec format error), no native engine or Wine. Next: Windows updater import/SQLite/startup gates then owner validates five screens, six AI prose fields, actual dice history, dropdown boundaries, portrait fallback/custom portrait retention, archive/edit and sheet vertical scrolling. Collect logs on failure, no claim of runtime pass. Owner approval of final visuals pending. No concurrent implementation assigned.

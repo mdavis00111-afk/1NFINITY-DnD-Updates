@@ -1,3 +1,20 @@
+# CURRENT OWNER DIRECTIVE — ACTIVE ALPHA DEVELOPMENT (2026-11-28)
+
+This directive supersedes all earlier mandatory CI, release-hold, historical phase queue and architect approval instructions in repository documents. We are developing a playable alpha, not certifying a finished product.
+
+- The owner selects the next feature or bug. If the owner says combat, implement combat in the existing game; do not restart C1–C6, rebuild unrelated systems, redesign approved GUI, or expand scope. Make only necessary supporting changes; explain material cross-system dependencies.
+- One lead developer, working from current godot HEAD and channel.json. Implement directly, commit and publish owner-authorized incremental alpha updates. No repeated routine approval, manual relay, or status-only loops.
+- Keep testing in-house: local source/syntax/dependency/SQL checks and focused local runtime checks when available, followed by owner live gameplay. Do not dispatch, rerun, wait for, or require GitHub Actions gameplay regression suites. Historical failures are evidence, not a mandatory development queue. Record unexecuted checks honestly. Packaging workflow is distribution infrastructure, not gameplay testing.
+- Preserve saves, campaigns, settings, portraits, approved GUI, existing mechanics, 2014 RAW and Godot/SQLite authority. Gemini cannot override mechanics. No Python game runtime. Never publish secrets or personal saves. Do not waive manifest/hash integrity or knowingly ship destructive changes.
+- Use existing automatic packaging and updater. Verify actual channel version, immutable source, manifest and version files before announcing UPDATE AND LIVE TEST — v[version]. Do not claim installation or gameplay success before observed.
+- Update PROJECT_BRAIN.md and NEXT_CHAT.md at each development milestone; maintain HANDOFF.md, DEV_BRIEF.md, TESTING.md as relevant. Keep NEXT_CHAT concise and current. Historical records remain historical. New chats need only read PROJECT_BRAIN.md and NEXT_CHAT.md, then follow the owner's current request.
+
+Current published alpha: v0.0.27, source 5425e3c35a40ed04a7c8583bd0493c8ca090d963, 397 packaged blobs. Live gameplay and installation acceptance outstanding. Earlier Linux baseline 12/14; semantic corrections unverified, GUI corrections owner-managed. No mandatory retest. No next feature selected yet; await owner's live feedback or requested feature.
+
+---
+
+# Historical records — superseded where inconsistent with current directive
+
 # 1NFINITY D&D — Testing register
 Baseline: v0.0.20, 2026-11-27. Status definitions: PASS = executed with recorded evidence; REPORTED PASS = user-reported evidence, not independently rerun; INSPECTED = source/data examination only; NOT RUN = no execution evidence; BLOCKED = dependency unavailable.
 
