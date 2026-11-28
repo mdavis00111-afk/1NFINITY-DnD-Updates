@@ -211,6 +211,42 @@ def run(args):
                 reason = ''
                 try:
                     require_suite_success(code, output, suite)
+                    if suite == 'persistence':
+                        restart_code, restart_output = execute(
+                            command + ['--script', 'res://tests/persistence_smoke.gd'],
+                            {**child, 'INFINITY_QA_REOPEN': '1'},
+                            logs / 'persistence-restart.log', 600)
+                        require_success(restart_code, restart_output, 'persistence restart')
+                        if len(re.findall(r'(?m)^C2 process restart failures: 0\s* = 'PASS'
+                except RuntimeError as exc:
+                    result, reason = 'FAIL', str(exc)
+                report['suites'][suite] = {'status': result, 'exit': code, 'user_root': str(user), 'reason': reason}
+                (project / 'project.godot').write_text(original, encoding='utf-8')
+            report['status'] = 'PASS' if all(x['status'] == 'PASS' for x in report['suites'].values()) else 'FAILED'
+            return int(report['status'] != 'PASS')
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
+        report['error'] = str(exc)
+        print(str(exc), file=sys.stderr)
+        return 1
+    finally:
+        (logs / 'report.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--repo', required=True)
+    parser.add_argument('--ref', required=True)
+    parser.add_argument('--logs', required=True, help='new directory, never an existing folder')
+    parser.add_argument('--godot', help='absolute path to a standalone Godot 4.7.2 executable')
+    parser.add_argument('--audit-only', action='store_true')
+    parser.add_argument('--suites', nargs='+', choices=SUITES + ('assets',), default=list(SUITES))
+    return run(parser.parse_args())
+
+
+if __name__ == '__main__':
+    sys.exit(main())
+, restart_output)) != 1:
+                            raise RuntimeError('persistence restart completion missing')
                     result = 'PASS'
                 except RuntimeError as exc:
                     result, reason = 'FAIL', str(exc)

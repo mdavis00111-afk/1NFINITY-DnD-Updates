@@ -678,3 +678,7 @@ Run 46088394508 Linux artifact 15239927487: exact decoded integer conversion suc
 
 ### Native persistence pass and scoped equipment correction
 Run 46088962585 Linux artifact 15240452068 persistence.log: C2 failures 0; ±safe boundary accepted, positive unsupported rejected. Corrected same_gear saving throw dictionary comparison only, based on calculated integer leaves versus persisted JSON numbers; native field-specific confirmation pending. Added real gear fixture positive and incorrect numeric/string negative assertions, restored raw diagnostic labels and required successful absent settlement lookup. New candidate not executed. Process restart and resource replay outstanding. No integration/publication.
+
+
+### Process restart QA and resource settlement identity
+Windows/Linux 3518ac6 both import PASS, 6/14 suites, identical five persistence failures. Added second Godot process on same isolated persistence root after successful writer, checkpoint canonical request/settlement/revision and verify replay unchanged. Scoped noncombat prepared durable settlement/cancellation request identity checks use same_request; no healing/rest rules changed. Native execution pending; resource failure attribution remains unverified. No integration/publication.

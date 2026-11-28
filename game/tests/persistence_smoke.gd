@@ -20,7 +20,10 @@ var loot = LOOT.new()
 var stories = STORY.new()
 
 func _initialize() -> void:
-	run.call_deferred()
+	if OS.get_environment("INFINITY_QA_REOPEN")=="1":
+		reopen_run.call_deferred()
+	else:
+		run.call_deferred()
 
 func expect(ok: bool,message: String) -> void:
 	if not ok:
@@ -454,4 +457,36 @@ func run() -> void:
 					var repeated_migration = MIGRATION.new().ensure(missing_id)
 					expect(repeated_migration.get("ok",false) and not repeated_migration.get("migrated",true) and base.gameplay_view(missing_id)==once,"Repeat migration changed stable repaired state")
 	expect(base.gameplay_view(b["id"])==sibling and players.load_record(master_id)==original_master,"Missing ownership fixture affected sibling/master")
+	if failures.is_empty():
+		var checkpoint=FileAccess.open("user://qa-reopen.json",FileAccess.WRITE)
+		if checkpoint==null:
+			expect(false,"Restart checkpoint write failed")
+		else:
+			checkpoint.store_string(JSON.stringify({"request":generate,"settlement":reopened,"revision":session.token(id)["revision"]},"",true,true))
+			checkpoint.close()
 	finish()
+
+func reopen_run() -> void:
+	var expected=OS.get_environment("INFINITY_TEST_USER_ROOT").replace("\\","/").trim_suffix("/")
+	var actual=ProjectSettings.globalize_path("user://").replace("\\","/").trim_suffix("/")
+	if expected.is_empty() or expected!=actual or not FileAccess.file_exists("user://qa-reopen.json"):
+		push_error("Restart requires authorized fixture checkpoint")
+		quit(2)
+		return
+	var data=JSON.parse_string(FileAccess.get_file_as_string("user://qa-reopen.json"))
+	if not data is Dictionary or not data.get("request") is Dictionary:
+		push_error("Invalid restart checkpoint")
+		quit(2)
+		return
+	var req=data["request"]
+	var id=req["campaign_id"]
+	var prior=session.settlement(id,req["request_id"])
+	expect(prior.get("ok",false) and prior.get("found",false) and session.typed_equal(prior,data["settlement"]),"Restart durable settlement differs")
+	var replay=GENERATOR.new().generate(id,req,true)
+	expect(replay.get("ok",false) and replay.get("replayed",false),"Restart replay failed")
+	expect(session.token(id).get("revision")==data["revision"],"Restart replay changed revision")
+	expect(session.typed_equal(session.settlement(id,req["request_id"]),prior),"Restart replay changed settlement")
+	for message in failures:
+		push_error(message)
+	print("C2 process restart failures: ",failures.size())
+	quit(0 if failures.is_empty() else 1)
