@@ -1,3 +1,19 @@
+## v0.0.29 Step 8 packet validation
+
+Codex Cloud parsed turn_context.gd, semantic_controller.gd, semantic_adapter.gd, tool_registry.gd and complete_controller.gd with standalone gdtoolkit 4.5.0. Source assertions checked read-only assembly, reuse of the single existing dispatch call site and unchanged release inputs. Reviewed request, standalone settlement, logical receipt, narration linkage and revision checks. Git whitespace checks passed.
+
+Owner-only Godot/Windows cases use a disposable campaign and the existing capture transport.
+
+| Case | Expected |
+| --- | --- |
+| Narrate an ordinary committed logical turn and a committed standalone tool action | Inspect the current packet during dispatch. The original text including spacing matches the accepted input, and binding, outcome, selected rules and memory match the local context. |
+| Execute ordered steps with both standalone and receipt-backed predecessors | Earlier outcomes match the durable settlements and public receipt data. Historical selected enquiries retain their original revisions. |
+| Alter a predecessor reference, arguments, event or revision in a fixture | Packet construction stops at recovery without dispatching narration or repeating mechanics. |
+| Resume a saved pending-narration job and inspect a packet after advancing the revision | A valid packet rebuilds from durable state. Inspection with a stale attempt or revision returns empty. |
+| Exercise a declined continuation and a settled continuation | Pending proposals stay outside completed outcomes. A settled continuation carries the verified earlier reference and its current outcome. |
+
+No Godot, Windows or provider runtime tests were executed.
+
 ## v0.0.29 Step 7B eligibility checks
 
 Codex Cloud static review traced the registered action handlers, SQLite item-definition writes, the missing-attribute result consumers and terminal rejection. A source scan confirmed the code has one declaration, three comparisons and zero producers. The Git diff whitelist, whitespace check and release-input equality checks passed.

@@ -3,6 +3,7 @@ extends RefCounted
 const SQL=preload("res://systems/sqlite.gd")
 const DTO=preload("res://world/world_dto.gd")
 const CAT=preload("res://rules/catalog.gd")
+const PACK=preload("res://turns/agent_packets.gd")
 const REG=preload("res://gameplay/tool_registry.gd")
 const DIRECT_KINDS="'equip','quick_equip','swap','unequip','attune','unattune','item_use','item_drop','item_transfer','currency_transfer','loot_pickup','loot_take_all','spell_cast','spell_prepare','spell_unprepare','resource_use','rest','object_interact'"
 # Only durable narration linked by the existing turn receipt or standalone
@@ -141,3 +142,82 @@ func select_story(records: Array,scene: Dictionary,actors: Array,text: String) -
 		if selected.size()>=24:
 			break
 	return selected
+
+# Journal entries identify earlier steps. The durable settlement and receipt
+# supply their outcomes. Never promote a journal description to a result.
+func committed_steps(state: Dictionary,job: Dictionary,registry) -> Dictionary:
+	var steps = job.get("completed_steps",[])
+	if not steps is Array or steps.size()>4:
+		return {"ok":false}
+	var output: Array = []
+	var seen: Array = [job["tool"]["request_id"]]
+	var revision = job["intent"]["expected_revision"]
+	for step in steps:
+		if not DTO.exact_keys(step,["request_id","kind","args","event_id","revision"]) or not DTO.id_valid(step["request_id"]) or step["request_id"] in seen or not DTO.whole(step["revision"],revision,job["tool"]["expected_revision"]):
+			return {"ok":false}
+		var settled = registry.session.settlement(state["campaign_id"],step["request_id"])
+		if not settled.get("ok",false) or not settled.get("found",false) or settled["status"]!="committed" or settled["event_id"]!=step["event_id"] or settled["revision"]!=step["revision"]:
+			return {"ok":false}
+		var request = settled["request"]
+		if request["actor_id"]!=state["actor_id"] or request["expected_revision"]<revision or request["kind"]!=step["kind"] or not registry.session.typed_equal(request["args"],step["args"]):
+			return {"ok":false}
+		var source = registry.session.source(state,settled["event_id"])
+		if not registry.session.public_source(source):
+			return {"ok":false}
+		var verified = step.duplicate(true)
+		if settled["logical_turn_id"]==null:
+			verified["result"]=settled["result"]
+		else:
+			var stored = registry.resolver.store.receipt_by_id(state["campaign_id"],settled["logical_turn_id"])
+			var receipt = stored.get("receipt",{})
+			if not stored.get("ok",false) or not stored.get("found",false) or stored.get("narration_event_id")!=settled["event_id"] or not PACK.committed_receipt_usable(receipt) or receipt["prior_revision"]!=request["expected_revision"] or receipt["next_revision"]+1>settled["revision"]:
+				return {"ok":false}
+			verified["receipt"]=PACK.public_receipt(receipt)
+		output.append(verified)
+		seen.append(step["request_id"])
+		revision=step["revision"]
+	return {"ok":true,"outcomes":output}
+
+# The existing narration payload is the inspectable packet. This final
+# assembly is read-only and verifies its current and earlier outcomes.
+func dm_packet(state: Dictionary,job: Dictionary,payload: Dictionary,registry) -> Dictionary:
+	var request = job.get("tool",{})
+	var intent = job.get("intent",{})
+	var session = registry.session
+	if not session.request_valid(request) or not session.request_valid(intent,str(intent.get("schema_version",""))) or request["campaign_id"]!=state["campaign_id"] or request["actor_id"]!=state["actor_id"] or intent["campaign_id"]!=state["campaign_id"] or intent["actor_id"]!=state["actor_id"] or intent["expected_revision"]>request["expected_revision"]:
+		return {}
+	var settled = session.settlement(state["campaign_id"],request["request_id"])
+	if not settled.get("ok",false) or not settled.get("found",false) or not session.same_request(settled["request"],request):
+		return {}
+	var turn_id = payload.get("turn_id")
+	if payload.has("receipt"):
+		if settled["status"]!="accepted_pending" or settled["logical_turn_id"]!=turn_id or state["pending_turn_id"]!=turn_id:
+			return {}
+		var stored = registry.resolver.store.receipt_by_id(state["campaign_id"],turn_id)
+		var receipt = stored.get("receipt",{})
+		if not stored.get("ok",false) or not stored.get("found",false) or stored.get("narration_event_id")!=null or not PACK.committed_receipt_usable(receipt) or receipt["prior_revision"]!=request["expected_revision"] or receipt["next_revision"]!=state["revision"] or not session.typed_equal(payload["receipt"],PACK.public_receipt(receipt)):
+			return {}
+	else:
+		var outcome = payload.get("settlement",{})
+		if settled["status"]!="committed" or settled["logical_turn_id"]!=null or state["pending_turn_id"]!=null or turn_id!=request["request_id"] or settled["revision"]!=state["revision"] or outcome.get("request_id")!=request["request_id"] or outcome.get("event_id")!=settled["event_id"] or outcome.get("revision")!=settled["revision"] or outcome.get("action")!=request["kind"] or not session.typed_equal(outcome.get("result"),settled["result"]):
+			return {}
+		var source = session.source(state,settled["event_id"])
+		if not session.public_source(source) or outcome.get("summary")!=source["data"].get("text",""):
+			return {}
+	var earlier = committed_steps(state,job,registry)
+	var current = session.token(state["campaign_id"])
+	if not earlier.get("ok",false) or not current.get("ok",false) or not registry.resolver.store.matching_token(state,current):
+		return {}
+	var packet = payload.duplicate(true)
+	packet["binding"]={"schema_version":"1","campaign_id":state["campaign_id"],"actor_id":state["actor_id"],"intent_request_id":intent["request_id"],"tool_request_id":request["request_id"],"expected_revision":request["expected_revision"],"revision":state["revision"],"turn_id":turn_id}
+	packet["player_text"]=intent["args"].get("text",payload.get("player_text",""))
+	packet["recent_outcomes"]=earlier["outcomes"]
+	# Continuations identify an earlier outcome. Leave the old proposal and
+	# uncommitted prose out of the confirmed history.
+	var prior = payload.get("prior_outcome",{})
+	if not prior.is_empty():
+		var linked: Array = earlier["outcomes"].filter(func(step): return step["request_id"]==prior.get("original_request_id") and step["event_id"]==prior.get("original_event_id"))
+		if linked.size()!=1:
+			return {}
+		packet["prior_outcome"]={"original_request_id":linked[0]["request_id"],"original_event_id":linked[0]["event_id"]}
+	return packet

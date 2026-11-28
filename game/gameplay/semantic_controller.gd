@@ -5,6 +5,7 @@ const POLICY=preload("res://gameplay/semantic_policy.gd")
 const REVIEW=preload("res://gameplay/independent_review.gd")
 const CONTEXT=preload("res://gameplay/turn_context.gd")
 var context_builder=CONTEXT.new()
+var last_dm_packet: Dictionary={}
 var scene_cache_key: Array=[]
 var scene_cache: Dictionary={}
 var scene_reads=0
@@ -49,6 +50,18 @@ func scene_context(state: Dictionary) -> Dictionary:
 
 func command_catalogue() -> Dictionary:
 	return context_builder.catalogue(registry)
+
+# Local inspection uses the same data sent to the existing narration adapter.
+# Return a defensive copy only for the active request at its live revision.
+func inspect_dm_packet() -> Dictionary:
+	if closed or last_dm_packet.is_empty():
+		return {}
+	var binding = last_dm_packet["binding"]
+	var current = registry.session.token(campaign_id)
+	var job = active()
+	if not current.get("ok",false) or current["revision"]!=binding["revision"] or current["actor_id"]!=binding["actor_id"] or job.get("stage")!="narrate" or job.get("intent",{}).get("request_id")!=binding["intent_request_id"] or not registry.session.same_request(job.get("tool"),last_dm_packet["interpreted"]) or not registry.session.typed_equal(job.get("attempt"),inflight) or inflight.is_empty():
+		return {}
+	return last_dm_packet.duplicate(true)
 
 func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 	var rid=job["intent"]["request_id"]
@@ -129,6 +142,11 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 		expanded["player_text"]=job["intent"]["args"].get("text",payload.get("player_text",""))
 		expanded.erase("original_player_text")
 		expanded["world_catalogue"]=context_builder.world_catalogue(registry)
+		last_dm_packet={}
+		expanded=context_builder.dm_packet(state,job,expanded,registry)
+		if expanded.is_empty():
+			stop("retry","Narration packet could not verify the current or earlier committed outcomes.")
+			return
 
 	# Base C4 payload has its own limit. Trim duplicate large fields only,
 	# retaining exact original input and verified outcome.
@@ -136,6 +154,8 @@ func ask(stage: String,job: Dictionary,payload: Dictionary) -> void:
 		for key in ["selected_context","recent_events","story","inventory","public_actors"]:
 			if expanded.get(key) is Array:
 				expanded[key]=expanded[key].slice(0,8)
+	if stage=="narrate" and JSON.stringify(expanded).length()<=120000:
+		last_dm_packet=expanded.duplicate(true)
 	sample("context_build",Time.get_ticks_msec()-clock)
 	super.ask(stage,job,expanded)
 

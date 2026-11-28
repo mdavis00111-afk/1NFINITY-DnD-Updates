@@ -1,3 +1,7 @@
+## v0.0.29 Step 8 checkpoint
+
+Inspect the bound DM-ready packet using semantic_controller.inspect_dm_packet() during the active narration attempt. See PROJECT_BRAIN.md and TESTING.md. Step 9 owns provider-call budgets and dependent-action interpretation changes. Step 7B remains deferred and its proposal path is disabled. Continue from verified godot HEAD and keep the updater channel at v0.0.28.
+
 ## v0.0.29 Step 7B prerequisite
 
 The Step 7B audit confirmed zero eligible producers on the Step 7A action set. Keep proposals disabled until a supported action has a required custom attribute whose absence leaves eligibility independently provable. When such an action exists, specify its attribute path and validation constraints, then recheck request, revision, actor, ownership, quantity and settlement before any approved write or one-time resume. Continue from the live godot tip. Keep v0.0.29 unpublished.

@@ -1,3 +1,9 @@
+## v0.0.29 Step 8 DM-ready packet checkpoint
+
+The semantic controller consolidates its existing narration data through turn_context.gd. The packet binds campaign, actor, original intent and tool request IDs, turn, expected revision and current revision. It retains the exact journaled input, selected enquiries with their original revisions, rules, public state and memory. Current mechanics come from the matching standalone settlement or durable logical receipt. Earlier steps are verified against their full action arguments, revision and public event, with narrated receipt linkage checked for logical turns. Unverified earlier history stops packet dispatch and enters existing recovery. Continuation history carries only verified identifiers.
+
+Use semantic_controller.inspect_dm_packet() for an independent local copy during the active narration attempt. This uses the existing dispatch and does not persist a second packet, perform mechanics or initiate provider calls. Steps 7B and 9 remain outstanding. No publication.
+
 ## v0.0.29 Step 7B eligibility checkpoint
 
 Blocked on an eligible producer of `missing_custom_attributes`. The audit found no registered action that both establishes eligibility from persisted facts and requires an absent custom attribute to finish. Equip and slot reconciliation require known physical placement. Pickup, transfer and travel require known load for their capacity or pace checks. Full drop permits a nullable load projection. Consumption and attunement execute only their supported pinned effects. Discovery validates charge capacity before creating a charged instance. Definition registration creates definitions and does not repair an owned instance.
