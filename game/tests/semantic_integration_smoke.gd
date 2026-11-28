@@ -642,6 +642,8 @@ func persistent_npc_location(id: String) -> void:
 		expect(map["routes"].any(func(row): return row["name"]=="Willow Road" and row["to_id"]==village_id),"Same-reply route reaches the committed map")
 		expect(map["relationships"].any(func(row): return row["to_id"]==village_id and row["direction"]=="north"),"Same-reply relative direction reaches the committed map")
 		expect(session.token(id)["location_id"]==location_id,"Map update does not move the player")
+		var groups = preload("res://cartography/map_model.gd").relative_neighbors(map)
+		expect(groups.get(Vector2.UP,[]).any(func(row): return row["id"]==village_id),"Reported location is available north of the party in the unscaled sketch")
 
 
 func geography_discovery_case(id: String) -> void:

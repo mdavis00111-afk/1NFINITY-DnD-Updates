@@ -164,3 +164,45 @@ func annotate(location_id: String, note: String) -> Dictionary:
 	if not data.get("locations",[]).any(func(row): return row.get("id")==location_id):
 		return {"ok":false,"error":"Choose a known location."}
 	return store.add_annotation(campaign_id,location_id,note)
+
+# Direction-only view for campaigns without plotted geometry. These are
+# screen directions, with no world position, scale or movement authority.
+const SCREEN_DIRECTIONS = {
+	"north":Vector2.UP,"south":Vector2.DOWN,"east":Vector2.RIGHT,"west":Vector2.LEFT,
+	"northeast":Vector2(1,-1),"northwest":Vector2(-1,-1),"southeast":Vector2(1,1),"southwest":Vector2(-1,1)
+}
+
+static func relative_neighbors(snapshot: Dictionary) -> Dictionary:
+	var party = snapshot.get("party_location")
+	if not party is Dictionary:
+		return {}
+	var by_id: Dictionary = {}
+	for row in snapshot.get("locations",[]):
+		by_id[row["id"]]=row
+	var directions: Dictionary = {}
+	for relation in snapshot.get("relationships",[]):
+		var direction = SCREEN_DIRECTIONS.get(relation.get("direction"))
+		if relation.get("kind")!="relative" or direction==null:
+			continue
+		var target = relation["to_id"]
+		if target==party["id"]:
+			target=relation["from_id"]
+			direction=-direction
+		elif relation["from_id"]!=party["id"]:
+			continue
+		if by_id.has(target) and target!=party["id"]:
+			if directions.has(target) and directions[target]!=direction:
+				directions[target]=null
+			else:
+				directions[target]=direction
+	var groups: Dictionary = {}
+	var ids = directions.keys()
+	ids.sort()
+	for id in ids:
+		var direction = directions[id]
+		if direction==null:
+			continue
+		if not groups.has(direction):
+			groups[direction]=[]
+		groups[direction].append(by_id[id])
+	return groups

@@ -1,5 +1,5 @@
 extends Control
-## Draws only the supplied player MapView; all coordinates are miles, not tiles.
+## Draws the player MapView. World coordinates are miles. A separate direction-only sketch uses screen space.
 ## Pan/zoom and display settings are transient. No write API in this node.
 signal location_selected(id: String)
 signal region_selected(id: String)
@@ -414,10 +414,36 @@ func _draw() -> void:
 		var b = places[measurement[1]]
 		if MODEL.positioned(a) and MODEL.positioned(b) and in_region(a) and in_region(b):
 			draw_route([a,b],{"color":"#70523c","width":1.4,"dash":[4,4]})
-	if not has_geometry():
+	if not has_geometry() and not draw_relative_sketch():
 		draw_label("Positions not yet established",size*0.5,25,INK)
 		draw_label("Known names remain in the journal.",size*0.5+Vector2(0,25),16,INK)
 	draw_chrome()
+
+func draw_relative_sketch() -> bool:
+	if not region_id.is_empty() or size.x<350 or size.y<270:
+		return false
+	var neighbors = MODEL.relative_neighbors(snapshot)
+	if neighbors.is_empty():
+		return false
+	var center = size*0.5
+	draw_label("Reported directions · not to scale",Vector2(size.x*0.5,35),21,INK)
+	draw_circle(center,6,RED)
+	draw_label(str(snapshot["party_location"]["name"]),center+Vector2(0,23),18,INK)
+	var extent = Vector2(size.x*0.29,size.y*0.29)
+	for direction in neighbors:
+		var at_screen = center+direction*extent
+		var line = center.direction_to(at_screen)
+		draw_dashed_line(center+line*12,at_screen-line*20,Color(INK,0.5),1.3,5.0)
+		draw_circle(at_screen,4,INK)
+		var rows = neighbors[direction]
+		for index in range(mini(rows.size(),3)):
+			var row = rows[index]
+			var label_at = at_screen+Vector2(0,18+index*18)
+			draw_label(str(row["name"]).left(25),label_at,16,RED if row["id"]==selected_id else INK)
+			hits.append({"id":row["id"],"rect":Rect2(label_at-Vector2(70,14),Vector2(140,18)),"point":label_at})
+		if rows.size()>3:
+			draw_label("More in the journal",at_screen+Vector2(0,72),14,INK)
+	return true
 
 func draw_chrome() -> void:
 	# Fixed parchment ornaments, not part of world coordinates.

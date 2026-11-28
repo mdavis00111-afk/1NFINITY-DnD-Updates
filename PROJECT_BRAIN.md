@@ -1,3 +1,7 @@
+## Direction-only map sketch
+
+The map draws an unscaled direction sketch when no plotted geometry is available and committed relative geography connects places to the current party location. Sketch positions are screen-only. Missing or conflicting directions have no plotted marker. Distance measurement and world coordinates still require plotted geometry.
+
 ## DM map response integration
 
 The DM submits map proposals in the existing geography.facts response field. New places use reply-local keys, and Godot reconciles them into durable IDs for committed routes and relationships. Reported locations remain unplaced when exact coordinates are unknown. Discovery does not move the character.

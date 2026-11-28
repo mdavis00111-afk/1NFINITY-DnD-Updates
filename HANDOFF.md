@@ -1,3 +1,7 @@
+## Direction-only map sketch
+
+Updated map_model.gd, map_canvas.gd and the --dm-map fixture. The canvas fallback uses disclosed relative relations only. No map layout coordinates persist to SQLite.
+
 ## DM map response integration
 
 Clarified the existing geography.facts contract in semantic_adapter.gd and verified the DM-first response through the reconciler to the map projection with semantic_integration_smoke.gd. No renderer, schema, movement or release change.

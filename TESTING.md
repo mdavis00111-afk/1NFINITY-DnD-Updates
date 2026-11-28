@@ -1,3 +1,7 @@
+## Direction-only map sketch
+
+The focused Godot 4.7.2 Linux --dm-map fixture passed with mock Gemini and the test-only SQLite bridge. It confirmed the DM-reported place reaches the sketch north of the party while authoritative coordinates remain null. Visual layout and Windows rendering were not exercised.
+
 ## DM map response integration
 
 Godot 4.7.2 headless --dm-map passed with mock Gemini and the isolated Linux SQLite test bridge. Two provider calls disclosed Willowfen, its northward relationship to Oak Inn, and Willow Road in one reply. Godot persisted the shared target ID, kept coordinates unknown, preserved player location and returned the facts through the map projection. Windows rendering and live Gemini remain owner acceptance.

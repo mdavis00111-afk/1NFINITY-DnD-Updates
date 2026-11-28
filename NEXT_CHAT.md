@@ -1,3 +1,7 @@
+## Direction-only map sketch
+
+The DM map now renders a direction-only sketch from committed relative geography while coordinates are unresolved. Combat remains deferred.
+
 ## DM map response integration
 
 DM map discovery on feature/v031-dm-first is wired and tested. See TESTING.md for the focused --dm-map fixture. Exact coordinates and player movement remain separate from map discovery. Combat remains deferred.
