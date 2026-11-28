@@ -1,3 +1,7 @@
+## Screen and turn performance diagnostics
+
+Codex Cloud is instrumenting screen and gameplay waits on `feature/performance-log` from `godot` publication `f37785ac52341b02d437a7253e995928abdf92da` (v0.0.34). Scope is bounded safe timing records and Copy log, including screen construction, campaign and rules reads, Gemini wait and committed reply presentation. The live release remains v0.0.34 while the diagnostic changes are developed.
+
 ## v0.0.33 processing stall
 
 Codex Cloud is working on `feature/dm-turn-timeout` from live v0.0.33. Scope is the narrated-turn stall, provider deadlines, safe turn recovery and the synchronous reads around provider dispatch. The candidate includes the previously tested diagnostics from `45ed595cbf723ec842f2eed14a23cdd2463ba199`. The owner reports frozen Processing narrate and a Windows viewport input warning. Actual Windows timings remain outstanding.
